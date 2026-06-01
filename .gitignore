@@ -1,0 +1,14 @@
+/AGENTS.md
+.idea
+.dart_tool/
+build/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Local environment / secrets
+.env
+.env.*
+*.env
+*.local
+*.local.*

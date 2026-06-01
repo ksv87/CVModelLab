@@ -1,0 +1,22 @@
+{
+  "images": [
+    {"id": 1, "file_name": "image_001.jpg", "width": 200, "height": 200},
+    {"id": 2, "file_name": "image_002.jpg", "width": 200, "height": 200},
+    {"id": 3, "file_name": "image_003.jpg", "width": 200, "height": 200},
+    {"id": 4, "file_name": "image_004.jpg", "width": 200, "height": 200},
+    {"id": 5, "file_name": "nested/image_005.jpg", "width": 200, "height": 200}
+  ],
+  "annotations": [
+    {"id": 101, "image_id": 1, "category_id": 1, "bbox": [10, 10, 100, 100], "area": 10000, "iscrowd": 0},
+    {"id": 102, "image_id": 2, "category_id": 2, "bbox": [50, 50, 30, 30], "area": 900, "iscrowd": 0},
+    {"id": 103, "image_id": 4, "category_id": 3, "bbox": [100, 100, 80, 80], "area": 6400, "iscrowd": 0},
+    {"id": 104, "image_id": 5, "category_id": 1, "bbox": [0, 0, 100, 100], "area": 10000, "iscrowd": 0},
+    {"id": 105, "image_id": 5, "category_id": 3, "bbox": [150, 150, 10, 10], "area": 100, "iscrowd": 0}
+  ],
+  "categories": [
+    {"id": 1, "name": "red"},
+    {"id": 2, "name": "yellow"},
+    {"id": 3, "name": "green"}
+  ]
+}
+
