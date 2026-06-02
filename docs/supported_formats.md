@@ -54,4 +54,4 @@ Supported matches include exact file name, relative path, and basename fallback:
 - Invalid boxes are reported as parser issues.
 - Scores outside `0..1` can be reported as warnings but do not necessarily stop loading.
 - Web/PWA mode cannot read arbitrary local paths; the user must select files.
-- AP/mAP metrics and pycocotools compatibility are roadmap items, not current release features.
+- COCO AP/mAP metrics (pycocotools) run via a Python sidecar on desktop. The web build cannot launch Python, so AP metrics must be imported as precomputed JSON there.

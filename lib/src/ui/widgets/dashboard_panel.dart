@@ -9,6 +9,12 @@ class DashboardPanel extends StatelessWidget {
     required this.selectedMatches,
     required this.selectedMatch,
     required this.issues,
+    this.apEvalResult,
+    this.canRunApEval = false,
+    this.runningApEval = false,
+    this.onRunApEval,
+    this.onImportApMetrics,
+    this.apEvalUnavailableReason,
     super.key,
   });
 
@@ -18,6 +24,12 @@ class DashboardPanel extends StatelessWidget {
   final List<DetectionMatch> selectedMatches;
   final DetectionMatch? selectedMatch;
   final List<ParseIssue> issues;
+  final ApEvalResult? apEvalResult;
+  final bool canRunApEval;
+  final bool runningApEval;
+  final VoidCallback? onRunApEval;
+  final VoidCallback? onImportApMetrics;
+  final String? apEvalUnavailableReason;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +60,15 @@ class DashboardPanel extends StatelessWidget {
           matches: selectedMatches,
           categoriesById: dataset.categoriesById,
           selectedMatch: selectedMatch,
+        ),
+        const SizedBox(height: 16),
+        _ApMetricsSection(
+          apEvalResult: apEvalResult,
+          canRunApEval: canRunApEval,
+          runningApEval: runningApEval,
+          onRunApEval: onRunApEval,
+          onImportApMetrics: onImportApMetrics,
+          apEvalUnavailableReason: apEvalUnavailableReason,
         ),
         if (issues.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -80,6 +101,12 @@ class BrowserDashboardTabs extends StatelessWidget {
     required this.selectedMatches,
     required this.selectedMatch,
     required this.issues,
+    this.apEvalResult,
+    this.canRunApEval = false,
+    this.runningApEval = false,
+    this.onRunApEval,
+    this.onImportApMetrics,
+    this.apEvalUnavailableReason,
     super.key,
   });
 
@@ -89,6 +116,12 @@ class BrowserDashboardTabs extends StatelessWidget {
   final List<DetectionMatch> selectedMatches;
   final DetectionMatch? selectedMatch;
   final List<ParseIssue> issues;
+  final ApEvalResult? apEvalResult;
+  final bool canRunApEval;
+  final bool runningApEval;
+  final VoidCallback? onRunApEval;
+  final VoidCallback? onImportApMetrics;
+  final String? apEvalUnavailableReason;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +142,12 @@ class BrowserDashboardTabs extends StatelessWidget {
                 _DashboardOverview(
                   evalResult: evalResult,
                   issues: issues,
+                  apEvalResult: apEvalResult,
+                  canRunApEval: canRunApEval,
+                  runningApEval: runningApEval,
+                  onRunApEval: onRunApEval,
+                  onImportApMetrics: onImportApMetrics,
+                  apEvalUnavailableReason: apEvalUnavailableReason,
                 ),
                 _SelectedDetailsView(
                   dataset: dataset,
@@ -129,10 +168,22 @@ class _DashboardOverview extends StatelessWidget {
   const _DashboardOverview({
     required this.evalResult,
     required this.issues,
+    this.apEvalResult,
+    this.canRunApEval = false,
+    this.runningApEval = false,
+    this.onRunApEval,
+    this.onImportApMetrics,
+    this.apEvalUnavailableReason,
   });
 
   final EvalResult evalResult;
   final List<ParseIssue> issues;
+  final ApEvalResult? apEvalResult;
+  final bool canRunApEval;
+  final bool runningApEval;
+  final VoidCallback? onRunApEval;
+  final VoidCallback? onImportApMetrics;
+  final String? apEvalUnavailableReason;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +203,15 @@ class _DashboardOverview extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _ClassStatsTable(stats: evalResult.perClassStats.values.toList()),
+        const SizedBox(height: 16),
+        _ApMetricsSection(
+          apEvalResult: apEvalResult,
+          canRunApEval: canRunApEval,
+          runningApEval: runningApEval,
+          onRunApEval: onRunApEval,
+          onImportApMetrics: onImportApMetrics,
+          apEvalUnavailableReason: apEvalUnavailableReason,
+        ),
         if (issues.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
@@ -462,5 +522,173 @@ class _SelectedImageDetails extends StatelessWidget {
       DetectionMatchType.falseNegative => 'FN',
       DetectionMatchType.ignored => 'Ignored',
     };
+  }
+}
+
+class _ApMetricsSection extends StatelessWidget {
+  const _ApMetricsSection({
+    this.apEvalResult,
+    this.canRunApEval = false,
+    this.runningApEval = false,
+    this.onRunApEval,
+    this.onImportApMetrics,
+    this.apEvalUnavailableReason,
+  });
+
+  final ApEvalResult? apEvalResult;
+  final bool canRunApEval;
+  final bool runningApEval;
+  final VoidCallback? onRunApEval;
+  final VoidCallback? onImportApMetrics;
+  final String? apEvalUnavailableReason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'COCO AP Metrics',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (runningApEval)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (apEvalResult != null) ...[
+          _ApMetricsGrid(result: apEvalResult!),
+          if (apEvalResult!.perClass.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _ApPerClassTable(perClass: apEvalResult!.perClass),
+          ],
+        ] else ...[
+          const Text('COCO AP metrics have not been computed yet.'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              Tooltip(
+                message: onRunApEval == null
+                    ? (apEvalUnavailableReason ?? '')
+                    : '',
+                child: ElevatedButton.icon(
+                  onPressed: onRunApEval,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Run COCO AP evaluation'),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onImportApMetrics,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Import AP metrics JSON'),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ApMetricsGrid extends StatelessWidget {
+  const _ApMetricsGrid({required this.result});
+
+  final ApEvalResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    String fmt(double? v) => v == null ? '-' : v.toStringAsFixed(3);
+    final List<_MetricItem> items = [
+      _MetricItem('AP@[.5:.95]', fmt(result.ap)),
+      _MetricItem('AP50', fmt(result.ap50)),
+      _MetricItem('AP75', fmt(result.ap75)),
+      _MetricItem('APsmall', fmt(result.apSmall)),
+      _MetricItem('APmedium', fmt(result.apMedium)),
+      _MetricItem('APlarge', fmt(result.apLarge)),
+      _MetricItem('AR1', fmt(result.ar1)),
+      _MetricItem('AR10', fmt(result.ar10)),
+      _MetricItem('AR100', fmt(result.ar100)),
+      _MetricItem('ARsmall', fmt(result.arSmall)),
+      _MetricItem('ARmedium', fmt(result.arMedium)),
+      _MetricItem('ARlarge', fmt(result.arLarge)),
+    ];
+    return GridView.builder(
+      itemCount: items.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 56,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemBuilder: (context, index) {
+        final _MetricItem item = items[index];
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  item.label,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                Text(
+                  item.value,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ApPerClassTable extends StatelessWidget {
+  const _ApPerClassTable({required this.perClass});
+
+  final List<ClassApMetric> perClass;
+
+  @override
+  Widget build(BuildContext context) {
+    String fmt(double? v) => v == null ? '-' : v.toStringAsFixed(3);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 14,
+        headingRowHeight: 32,
+        dataRowMinHeight: 32,
+        dataRowMaxHeight: 36,
+        columns: const [
+          DataColumn(label: Text('Class')),
+          DataColumn(label: Text('AP')),
+          DataColumn(label: Text('AP50')),
+          DataColumn(label: Text('AP75')),
+          DataColumn(label: Text('AR')),
+        ],
+        rows: [
+          for (final ClassApMetric cls in perClass)
+            DataRow(
+              cells: [
+                DataCell(Text(cls.categoryName)),
+                DataCell(Text(fmt(cls.ap))),
+                DataCell(Text(fmt(cls.ap50))),
+                DataCell(Text(fmt(cls.ap75))),
+                DataCell(Text(fmt(cls.ar))),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 }

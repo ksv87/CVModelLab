@@ -1,3 +1,4 @@
+import '../ap_eval/ap_eval_models.dart';
 import 'eval_config.dart';
 
 class CvmlProject {
@@ -66,6 +67,7 @@ class ProjectModelRunSource {
     required this.addedAt,
     this.predictionsPath,
     this.predictionsFileName,
+    this.apEvalResult,
   });
 
   final String id;
@@ -73,4 +75,5 @@ class ProjectModelRunSource {
   final String? predictionsPath;
   final String? predictionsFileName;
   final DateTime addedAt;
+  final ApEvalResult? apEvalResult;
 }

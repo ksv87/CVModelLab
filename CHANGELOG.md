@@ -4,6 +4,12 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Recommendations and report exports
+
+- Added rule-based recommendations with deterministic evidence and navigation links.
+- Added XLSX and PDF report generation alongside HTML and CSV exports.
+- Added COCO AP metrics through a desktop Python sidecar and AP metrics import for non-desktop workflows.
+
 ## Analysis workspace and project workflow
 
 - Added the Flutter analysis workspace for loading annotations, predictions, and images.

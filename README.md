@@ -15,6 +15,16 @@ Object detection model failures are hard to understand from aggregate metrics al
 - Check whether failures are caused by model behavior, class imbalance, missing images, suspicious boxes, or small objects.
 - Export shareable reports for dataset and model review.
 
+## Release the current version Highlights
+
+CV Model Lab the current version is the first feature-complete release. It covers the full COCO detection review loop end to end:
+
+- Professional COCO AP metrics (AP@[.5:.95], AP50/75, AP/AR by size, per-class AP) computed with a pycocotools sidecar on desktop, or imported as precomputed AP JSON on any platform.
+- Report export in HTML, CSV, XLSX, and PDF.
+- Rule-based Recommendations, Dataset Health, Worst Cases, and Confusion Matrix analysis.
+- Model Comparison, including an AP diff between two runs.
+- Annotated Image Export, desktop project save/load, and Web/PWA restore mode.
+
 ## Features
 
 - COCO annotations loading.
@@ -25,8 +35,12 @@ Object detection model failures are hard to understand from aggregate metrics al
 - Dataset Health Check for missing images, suspicious boxes, rare classes, and imbalance.
 - Confusion Matrix with GT rows, prediction columns, missed objects, and background false positives.
 - Worst Cases mining for review queues.
+- Rule-based Recommendations with deterministic evidence and suggested actions.
 - Model Comparison with fixed, broken, improved, and regressed image statuses.
+- COCO AP metrics (AP@[.5:.95], AP50, AP75, AP/AR by object size, AR1/10/100, per-class AP) via a pycocotools sidecar on desktop, or by importing precomputed AP JSON.
 - HTML and CSV export.
+- XLSX workbook export.
+- PDF report export.
 - Annotated Image Export for visual overlays.
 - Desktop project save/load.
 - Web/PWA restore mode for browser workflows.
@@ -90,8 +104,9 @@ Use the command that matches your OS and installed Flutter desktop support.
 7. Check Dataset Health for input-data issues.
 8. Open Confusion Matrix and Worst Cases to prioritize review.
 9. Compare model runs.
-10. Export HTML/CSV reports or annotated images.
-11. Save the project on desktop or use Web/PWA restore mode in the browser.
+10. Run COCO AP metrics on desktop, or import precomputed AP JSON.
+11. Export HTML/CSV/XLSX/PDF reports or annotated images.
+12. Save the project on desktop or use Web/PWA restore mode in the browser.
 
 User guide: [User Guide](docs/user_guide.md) / [Руководство пользователя](docs/ru/user_guide.md).
 
@@ -126,16 +141,34 @@ The confusion matrix uses GT categories as rows and predicted categories as colu
 
 Worst Cases ranks images that deserve review first, such as images with many false positives, many false negatives, severe class confusion, high-confidence false positives, low-IoU true positives, or missing local image files.
 
+## Recommendations
+
+Rule-based Recommendations analyze metrics, Dataset Health, Worst Cases, class confusion, and model comparison results. They explain low recall, low precision, rare classes, class imbalance, small-object issues, high-confidence false positives, dataset health errors, threshold tradeoffs, and candidate regressions without using an LLM.
+
 ## Model Comparison
 
-Model Comparison loads two prediction runs for the same COCO dataset and compares per-class precision/recall and image-level behavior. Images are grouped as fixed, broken, improved, regressed, still correct, or still wrong depending on how the candidate run changes the error profile.
+Model Comparison loads two prediction runs for the same COCO dataset and compares per-class precision/recall and image-level behavior. Images are grouped as fixed, broken, improved, regressed, still correct, or still wrong depending on how the candidate run changes the error profile. When both runs have COCO AP metrics, the compare screen also shows an AP diff.
+
+## COCO AP Metrics
+
+CV Model Lab can compute standard pycocotools-compatible COCO average precision and recall: AP@[.5:.95], AP50, AP75, AP/AR for small/medium/large objects, AR1/AR10/AR100, and per-class AP/AR.
+
+- **Desktop:** the app runs a bundled Python sidecar (`tools/ap_evaluator/ap_eval.py`) that wraps `pycocotools.COCOeval`. The sidecar runs through [uv](https://docs.astral.sh/uv/) if available (no manual dependency install needed) or through a `python3` that has `pycocotools` installed. The "Run COCO AP evaluation" button appears on the dashboard.
+- **Web/PWA:** browsers cannot launch a Python process, so AP evaluation cannot run in the web build. Instead, use **Import AP metrics JSON** to load a precomputed AP result (for example, one produced by the desktop app or by running the sidecar manually). Imported AP metrics drive the same dashboard cards, per-class table, comparison AP diff, and report sections.
+
+AP metrics are included in HTML, CSV (`ap_metrics.csv`, `per_class_ap.csv`), XLSX, and PDF exports when available, and are saved into desktop project files.
+
+Sidecar usage and the AP JSON format: [tools/ap_evaluator/README.md](tools/ap_evaluator/README.md).
 
 ## Exports
 
 CV Model Lab supports:
 
 - HTML report export.
-- CSV export for per-class metrics, image errors, matches, small-object stats, confusion matrix, confusion pairs, dataset health, and worst cases.
+- CSV export for per-class metrics, image errors, matches, small-object stats, confusion matrix, confusion pairs, dataset health, worst cases, AP metrics, and per-class AP.
+- CSV export for rule-based recommendations.
+- XLSX workbook export for metrics, errors, matches, health issues, worst cases, recommendations, AP metrics, and comparison tables.
+- PDF report export with overall metrics, per-class tables, confusion matrix, recommendations, AP metrics, and comparison summaries.
 - Annotated Image Export with overlay images.
 
 ## Architecture
@@ -159,7 +192,7 @@ flutter analyze
 flutter test
 ```
 
-The test suite covers IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV generation, Dataset Health Check, Worst Cases, and annotated export selection.
+The test suite covers IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV/XLSX/PDF generation, Dataset Health Check, Worst Cases, annotated export selection, AP result parsing, AP export, AP project serialization, and the embedded sidecar script guard.
 
 ## Build
 
@@ -175,13 +208,11 @@ Build scripts are available in [scripts](scripts/). Desktop builds must be run o
 ## Roadmap
 
 - Release screenshots and sample exported reports.
-- PDF/XLSX export.
-- pycocotools-compatible AP metrics.
-- Python analyzer sidecar.
-- Rule-based and optional LLM recommendations.
+- Optional LLM recommendations.
 - ONNX inference integration.
 - Video/frame sequence support.
 - Thumbnail cache and recent projects.
+- Desktop installers and macOS signing/notarization.
 
 ## License
 

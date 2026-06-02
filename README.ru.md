@@ -15,6 +15,16 @@ CV Model Lab помогает разбирать качество датасет
 - понять, связаны ли ошибки с моделью, class imbalance, missing images, suspicious boxes или small objects;
 - экспортировать отчеты для ревью датасета и модели.
 
+## Главное в релизе the current version
+
+CV Model Lab the current version - первый feature-complete релиз. Он закрывает полный цикл анализа COCO detection:
+
+- Профессиональные COCO AP metrics (AP@[.5:.95], AP50/75, AP/AR по размеру, per-class AP) через pycocotools sidecar на desktop, либо импорт precomputed AP JSON на любой платформе.
+- Экспорт отчетов в HTML, CSV, XLSX и PDF.
+- Rule-based Recommendations, Dataset Health, Worst Cases и Confusion Matrix.
+- Model Comparison, включая AP diff между двумя моделями.
+- Annotated Image Export, desktop project save/load и Web/PWA restore mode.
+
 ## Возможности
 
 - Загрузка COCO annotations.
@@ -25,8 +35,12 @@ CV Model Lab помогает разбирать качество датасет
 - Dataset Health Check для missing images, suspicious boxes, rare classes и imbalance.
 - Confusion Matrix с GT rows, prediction columns, missed objects и background false positives.
 - Worst Cases для приоритизации ручного анализа.
+- Rule-based Recommendations с deterministic evidence и suggested actions.
 - Model Comparison со статусами fixed, broken, improved и regressed.
+- COCO AP metrics (AP@[.5:.95], AP50, AP75, AP/AR по размеру объекта, AR1/10/100, per-class AP) через pycocotools sidecar на desktop или импортом precomputed AP JSON.
 - HTML и CSV export.
+- XLSX workbook export.
+- PDF report export.
 - Annotated Image Export для визуальных overlays.
 - Desktop project save/load.
 - Web/PWA restore mode для браузерных сценариев.
@@ -90,8 +104,9 @@ flutter run -d windows
 7. Проверить Dataset Health.
 8. Открыть Confusion Matrix и Worst Cases.
 9. Сравнить model runs.
-10. Экспортировать HTML/CSV reports или annotated images.
-11. Сохранить проект на desktop или использовать Web/PWA restore mode.
+10. Запустить COCO AP metrics на desktop или импортировать precomputed AP JSON.
+11. Экспортировать HTML/CSV/XLSX/PDF reports или annotated images.
+12. Сохранить проект на desktop или использовать Web/PWA restore mode.
 
 Руководство: [Руководство пользователя](docs/ru/user_guide.md) / [User Guide](docs/user_guide.md).
 
@@ -126,16 +141,34 @@ Confusion Matrix использует GT categories как строки и predi
 
 Worst Cases ранжирует изображения, которые стоит проверить первыми: много false positives, много false negatives, сильная class confusion, high-confidence false positives, low-IoU true positives или missing local image files.
 
+## Recommendations
+
+Rule-based Recommendations анализируют metrics, Dataset Health, Worst Cases, class confusion и model comparison results. Они объясняют low recall, low precision, rare classes, class imbalance, small-object issues, high-confidence false positives, dataset health errors, threshold tradeoffs и candidate regressions без LLM.
+
 ## Model Comparison
 
-Model Comparison загружает два prediction runs для одного COCO dataset и сравнивает per-class precision/recall и image-level behavior. Изображения группируются как fixed, broken, improved, regressed, still correct или still wrong.
+Model Comparison загружает два prediction runs для одного COCO dataset и сравнивает per-class precision/recall и image-level behavior. Изображения группируются как fixed, broken, improved, regressed, still correct или still wrong. Если у обеих моделей есть COCO AP metrics, на экране сравнения также показывается AP diff.
+
+## COCO AP Metrics
+
+CV Model Lab умеет считать стандартные pycocotools-совместимые COCO average precision/recall: AP@[.5:.95], AP50, AP75, AP/AR для small/medium/large объектов, AR1/AR10/AR100 и per-class AP/AR.
+
+- **Desktop:** приложение запускает встроенный Python sidecar (`tools/ap_evaluator/ap_eval.py`) поверх `pycocotools.COCOeval`. Sidecar работает через [uv](https://docs.astral.sh/uv/), если он установлен (зависимости ставятся автоматически), либо через `python3` с установленным `pycocotools`. Кнопка "Run COCO AP evaluation" доступна на dashboard.
+- **Web/PWA:** браузер не может запускать Python, поэтому в web build AP evaluation недоступен. Вместо этого используйте **Import AP metrics JSON** для загрузки заранее посчитанного результата (например, из desktop-приложения или из ручного запуска sidecar). Импортированные AP metrics используются в тех же карточках dashboard, per-class таблице, AP diff и секциях отчетов.
+
+AP metrics включаются в HTML, CSV (`ap_metrics.csv`, `per_class_ap.csv`), XLSX и PDF export, когда доступны, и сохраняются в desktop project files.
+
+Использование sidecar и формат AP JSON: [tools/ap_evaluator/README.md](tools/ap_evaluator/README.md).
 
 ## Экспорт
 
 CV Model Lab поддерживает:
 
 - HTML report export.
-- CSV export для per-class metrics, image errors, matches, small-object stats, confusion matrix, confusion pairs, dataset health и worst cases.
+- CSV export для per-class metrics, image errors, matches, small-object stats, confusion matrix, confusion pairs, dataset health, worst cases, AP metrics и per-class AP.
+- CSV export для rule-based recommendations.
+- XLSX workbook export для metrics, errors, matches, health issues, worst cases, recommendations, AP metrics и comparison tables.
+- PDF report export с overall metrics, per-class таблицами, confusion matrix, recommendations, AP metrics и comparison summaries.
 - Annotated Image Export с overlay images.
 
 ## Архитектура
@@ -159,7 +192,7 @@ flutter analyze
 flutter test
 ```
 
-Тесты покрывают IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV generation, Dataset Health Check, Worst Cases и annotated export selection.
+Тесты покрывают IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV/XLSX/PDF generation, Dataset Health Check, Worst Cases, annotated export selection, AP result parsing, AP export, AP project serialization и guard встроенного sidecar-скрипта.
 
 ## Сборка
 
@@ -175,13 +208,11 @@ Build scripts находятся в [scripts](scripts/). Desktop builds запу
 ## Roadmap
 
 - Release screenshots и sample exported reports.
-- PDF/XLSX export.
-- pycocotools-compatible AP metrics.
-- Python analyzer sidecar.
-- Rule-based и optional LLM recommendations.
+- Optional LLM recommendations.
 - ONNX inference integration.
 - Video/frame sequence support.
 - Thumbnail cache и recent projects.
+- Desktop installers и macOS signing/notarization.
 
 ## Лицензия
 

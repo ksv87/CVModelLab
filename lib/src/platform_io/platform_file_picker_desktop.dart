@@ -27,6 +27,11 @@ class DesktopPlatformFilePicker implements PlatformFilePicker {
   }
 
   @override
+  Future<PickedDataFile?> pickApMetricsJson() {
+    return _pickJsonFile('Pick AP metrics JSON');
+  }
+
+  @override
   Future<ImageSource?> pickImages() async {
     final String? directoryPath = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Pick images directory',

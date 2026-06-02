@@ -12,18 +12,35 @@ class ExportReportRequest {
   final ReportScope scope;
 }
 
+/// Which context data is available to conditionally enable PDF options.
+class ExportReportContext {
+  const ExportReportContext({
+    this.smallObjectStatsAvailable = false,
+    this.confusionMatrixAvailable = false,
+    this.filteredViewAvailable = false,
+    this.comparisonAvailable = false,
+  });
+
+  final bool smallObjectStatsAvailable;
+  final bool confusionMatrixAvailable;
+  final bool filteredViewAvailable;
+  final bool comparisonAvailable;
+}
+
 /// Lets the user choose which artifacts to export and over which scope.
 class ExportReportDialog extends StatefulWidget {
   const ExportReportDialog({
     required this.smallObjectStatsAvailable,
     required this.confusionMatrixAvailable,
     required this.filteredViewAvailable,
+    this.comparisonAvailable = false,
     super.key,
   });
 
   final bool smallObjectStatsAvailable;
   final bool confusionMatrixAvailable;
   final bool filteredViewAvailable;
+  final bool comparisonAvailable;
 
   @override
   State<ExportReportDialog> createState() => _ExportReportDialogState();
@@ -31,14 +48,22 @@ class ExportReportDialog extends StatefulWidget {
 
 class _ExportReportDialogState extends State<ExportReportDialog> {
   bool _html = true;
-  bool _perClass = true;
-  bool _imageErrors = true;
-  bool _matches = true;
+  bool _perClass = false;
+  bool _imageErrors = false;
+  bool _matches = false;
   bool _smallObject = false;
-  bool _confusion = true;
-  bool _confusionPairs = true;
-  bool _datasetHealth = true;
-  bool _worstCases = true;
+  bool _confusion = false;
+  bool _confusionPairs = false;
+  bool _datasetHealth = false;
+  bool _worstCases = false;
+  bool _recommendations = false;
+  bool _xlsx = false;
+  bool _pdf = false;
+  bool _pdfRecs = true;
+  bool _pdfWorstCases = true;
+  bool _pdfComparison = true;
+  bool _pdfHealth = true;
+  bool _pdfConfusion = true;
   ReportScope _scope = ReportScope.fullEvaluation;
 
   bool get _anySelected =>
@@ -50,7 +75,10 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
       (_confusion && widget.confusionMatrixAvailable) ||
       (_confusionPairs && widget.confusionMatrixAvailable) ||
       _datasetHealth ||
-      _worstCases;
+      _worstCases ||
+      _recommendations ||
+      _xlsx ||
+      _pdf;
 
   @override
   Widget build(BuildContext context) {
@@ -68,47 +96,101 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               onChanged: (bool v) => setState(() => _html = v),
             ),
             _checkbox(
-              label: 'CSV: per-class metrics',
+              label: 'PDF report',
+              value: _pdf,
+              onChanged: (bool v) => setState(() => _pdf = v),
+            ),
+            if (_pdf) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _checkbox(
+                      label: 'Include recommendations',
+                      value: _pdfRecs,
+                      onChanged: (bool v) => setState(() => _pdfRecs = v),
+                    ),
+                    _checkbox(
+                      label: 'Include worst cases',
+                      value: _pdfWorstCases,
+                      onChanged: (bool v) => setState(() => _pdfWorstCases = v),
+                    ),
+                    _checkbox(
+                      label: 'Include model comparison',
+                      value: _pdfComparison,
+                      enabled: widget.comparisonAvailable,
+                      onChanged: (bool v) => setState(() => _pdfComparison = v),
+                    ),
+                    _checkbox(
+                      label: 'Include dataset health',
+                      value: _pdfHealth,
+                      onChanged: (bool v) => setState(() => _pdfHealth = v),
+                    ),
+                    _checkbox(
+                      label: 'Include confusion summary',
+                      value: _pdfConfusion,
+                      enabled: widget.confusionMatrixAvailable,
+                      onChanged: (bool v) => setState(() => _pdfConfusion = v),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            _checkbox(
+              label: 'XLSX workbook',
+              value: _xlsx,
+              onChanged: (bool v) => setState(() => _xlsx = v),
+            ),
+            const Divider(),
+            Text('CSV exports:', style: Theme.of(context).textTheme.titleSmall),
+            _checkbox(
+              label: 'per-class metrics',
               value: _perClass,
               onChanged: (bool v) => setState(() => _perClass = v),
             ),
             _checkbox(
-              label: 'CSV: image errors',
+              label: 'image errors',
               value: _imageErrors,
               onChanged: (bool v) => setState(() => _imageErrors = v),
             ),
             _checkbox(
-              label: 'CSV: matches',
+              label: 'matches',
               value: _matches,
               onChanged: (bool v) => setState(() => _matches = v),
             ),
             _checkbox(
-              label: 'CSV: small object stats',
+              label: 'small object stats',
               value: _smallObject && widget.smallObjectStatsAvailable,
               enabled: widget.smallObjectStatsAvailable,
               onChanged: (bool v) => setState(() => _smallObject = v),
             ),
             _checkbox(
-              label: 'CSV: confusion matrix',
+              label: 'confusion matrix',
               value: _confusion && widget.confusionMatrixAvailable,
               enabled: widget.confusionMatrixAvailable,
               onChanged: (bool v) => setState(() => _confusion = v),
             ),
             _checkbox(
-              label: 'CSV: confusion pairs',
+              label: 'confusion pairs',
               value: _confusionPairs && widget.confusionMatrixAvailable,
               enabled: widget.confusionMatrixAvailable,
               onChanged: (bool v) => setState(() => _confusionPairs = v),
             ),
             _checkbox(
-              label: 'CSV: dataset health',
+              label: 'dataset health',
               value: _datasetHealth,
               onChanged: (bool v) => setState(() => _datasetHealth = v),
             ),
             _checkbox(
-              label: 'CSV: worst cases',
+              label: 'worst cases',
               value: _worstCases,
               onChanged: (bool v) => setState(() => _worstCases = v),
+            ),
+            _checkbox(
+              label: 'recommendations',
+              value: _recommendations,
+              onChanged: (bool v) => setState(() => _recommendations = v),
             ),
             const Divider(),
             Text('Scope:', style: Theme.of(context).textTheme.titleSmall),
@@ -168,6 +250,17 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               _confusionPairs && widget.confusionMatrixAvailable,
           includeDatasetHealthCsv: _datasetHealth,
           includeWorstCasesCsv: _worstCases,
+          includeRecommendationsCsv: _recommendations,
+          includeXlsxWorkbook: _xlsx,
+          includePdfReport: _pdf,
+          pdfOptions: PdfReportOptions(
+            includeRecommendations: _pdfRecs,
+            includeWorstCases: _pdfWorstCases,
+            includeComparison: _pdfComparison && widget.comparisonAvailable,
+            includeHealth: _pdfHealth,
+            includeConfusion:
+                _pdfConfusion && widget.confusionMatrixAvailable,
+          ),
         ),
         scope: _scope,
       ),

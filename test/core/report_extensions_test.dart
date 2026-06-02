@@ -29,8 +29,8 @@ void main() {
     );
   });
 
-  test('report bundle can include health, worst-case and confusion CSVs', () {
-    final ReportBundle bundle = const ReportBundleBuilder().build(
+  test('report bundle can include health, worst-case and confusion CSVs', () async {
+    final ReportBundle bundle = await const ReportBundleBuilder().build(
       dataset: dataset,
       modelRun: run,
       evalConfig: const EvalConfig(),
@@ -39,6 +39,7 @@ void main() {
         includeConfusionPairsCsv: true,
         includeDatasetHealthCsv: true,
         includeWorstCasesCsv: true,
+        includeRecommendationsCsv: true,
       ),
       projectName: 'mini',
       modelRunName: 'Run 1',
@@ -47,11 +48,16 @@ void main() {
     expect(bundle.csvFiles.containsKey(ReportFileNames.confusionPairs), isTrue);
     expect(bundle.csvFiles.containsKey(ReportFileNames.datasetHealth), isTrue);
     expect(bundle.csvFiles.containsKey(ReportFileNames.worstCases), isTrue);
+    expect(
+      bundle.csvFiles.containsKey(ReportFileNames.recommendations),
+      isTrue,
+    );
 
     // HTML report carries the new sections.
     expect(bundle.htmlReport.contains('Dataset health check'), isTrue);
     expect(bundle.htmlReport.contains('Worst cases'), isTrue);
     expect(bundle.htmlReport.contains('Confusion matrix'), isTrue);
+    expect(bundle.htmlReport.contains('Recommendations'), isTrue);
 
     // CSV headers are present.
     expect(
@@ -66,6 +72,11 @@ void main() {
     expect(
       bundle.csvFiles[ReportFileNames.worstCases]!.startsWith('category,'),
       isTrue,
+    );
+    expect(
+      bundle.csvFiles[ReportFileNames.recommendations]!.split('\n').first,
+      'severity,category,title,message,action,related_image_ids,'
+      'related_category_ids,evidence_json',
     );
   });
 }

@@ -15,6 +15,7 @@ class ModelCompareScreen extends StatefulWidget {
     required this.imageSource,
     required this.evalConfig,
     required this.projectName,
+    this.apEvalResults = const {},
     super.key,
   });
 
@@ -23,6 +24,7 @@ class ModelCompareScreen extends StatefulWidget {
   final ImageSource imageSource;
   final EvalConfig evalConfig;
   final String projectName;
+  final Map<String, ApEvalResult> apEvalResults;
 
   @override
   State<ModelCompareScreen> createState() => _ModelCompareScreenState();
@@ -47,6 +49,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     'Per Class',
     'Images',
     'Compare Viewer',
+    'AP Diff',
   ];
 
   @override
@@ -55,6 +58,11 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     _tabController = TabController(length: _tabLabels.length, vsync: this);
     _compute();
   }
+
+  ApEvalResult? get _baseApEval =>
+      widget.apEvalResults[widget.modelRunEntries[_baseIndex].modelRun.id];
+  ApEvalResult? get _candidateApEval =>
+      widget.apEvalResults[widget.modelRunEntries[_candidateIndex].modelRun.id];
 
   @override
   void dispose() {
@@ -123,6 +131,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                 _buildPerClassTab(),
                 _buildImagesTab(),
                 _buildCompareViewerTab(),
+                _buildApDiffTab(),
               ],
             ),
           ),
@@ -495,6 +504,210 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
+  // ---- AP Diff Tab ----
+
+  Widget _buildApDiffTab() {
+    final ApEvalResult? baseAp = _baseApEval;
+    final ApEvalResult? candidateAp = _candidateApEval;
+    final String baseName = widget.modelRunEntries[_baseIndex].modelRun.name;
+    final String candidateName =
+        widget.modelRunEntries[_candidateIndex].modelRun.name;
+
+    if (baseAp == null && candidateAp == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No AP metrics available for either model.\n'
+            'Run COCO AP evaluation from the Dashboard.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    if (baseAp == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'AP metrics available for $candidateName only.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    if (candidateAp == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'AP metrics available for $baseName only.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    String fmt(double? v) => v == null ? '-' : v.toStringAsFixed(3);
+    String delta(double? b, double? c) {
+      if (b == null || c == null) {
+        return '-';
+      }
+      final double d = c - b;
+      return d >= 0 ? '+${d.toStringAsFixed(3)}' : d.toStringAsFixed(3);
+    }
+
+    Color deltaColor(double? b, double? c) {
+      if (b == null || c == null) {
+        return Colors.black87;
+      }
+      final double d = c - b;
+      if (d > 0) return Colors.green.shade700;
+      if (d < 0) return Colors.red.shade700;
+      return Colors.black87;
+    }
+
+    final List<({String metric, double? base, double? candidate})> rows = [
+      (metric: 'AP@[.5:.95]', base: baseAp.ap, candidate: candidateAp.ap),
+      (metric: 'AP50', base: baseAp.ap50, candidate: candidateAp.ap50),
+      (metric: 'AP75', base: baseAp.ap75, candidate: candidateAp.ap75),
+      (metric: 'APsmall', base: baseAp.apSmall, candidate: candidateAp.apSmall),
+      (metric: 'APmedium', base: baseAp.apMedium, candidate: candidateAp.apMedium),
+      (metric: 'APlarge', base: baseAp.apLarge, candidate: candidateAp.apLarge),
+      (metric: 'AR1', base: baseAp.ar1, candidate: candidateAp.ar1),
+      (metric: 'AR10', base: baseAp.ar10, candidate: candidateAp.ar10),
+      (metric: 'AR100', base: baseAp.ar100, candidate: candidateAp.ar100),
+      (metric: 'ARsmall', base: baseAp.arSmall, candidate: candidateAp.arSmall),
+      (metric: 'ARmedium', base: baseAp.arMedium, candidate: candidateAp.arMedium),
+      (metric: 'ARlarge', base: baseAp.arLarge, candidate: candidateAp.arLarge),
+    ];
+
+    final hasPerClass =
+        baseAp.perClass.isNotEmpty && candidateAp.perClass.isNotEmpty;
+    final Map<int, ClassApMetric> baseMap = {
+      for (final c in baseAp.perClass) c.categoryId: c,
+    };
+    final Map<int, ClassApMetric> candidateMap = {
+      for (final c in candidateAp.perClass) c.categoryId: c,
+    };
+    final Set<int> allCatIds = {...baseMap.keys, ...candidateMap.keys};
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'AP Metrics Diff',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text(
+            'Base: $baseName   Candidate: $candidateName',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: [
+                const DataColumn(label: Text('Metric')),
+                DataColumn(label: Text(baseName)),
+                DataColumn(label: Text(candidateName)),
+                const DataColumn(label: Text('Delta')),
+              ],
+              rows: [
+                for (final row in rows)
+                  DataRow(
+                    cells: [
+                      DataCell(Text(row.metric)),
+                      DataCell(Text(fmt(row.base))),
+                      DataCell(Text(fmt(row.candidate))),
+                      DataCell(
+                        Text(
+                          delta(row.base, row.candidate),
+                          style: TextStyle(
+                            color: deltaColor(row.base, row.candidate),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          if (hasPerClass) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Per-class AP diff',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: [
+                  const DataColumn(label: Text('Class')),
+                  const DataColumn(label: Text('AP base')),
+                  const DataColumn(label: Text('AP cand')),
+                  const DataColumn(label: Text('dAP')),
+                  const DataColumn(label: Text('AP50 base')),
+                  const DataColumn(label: Text('AP50 cand')),
+                  const DataColumn(label: Text('dAP50')),
+                ],
+                rows: [
+                  for (final int catId in allCatIds.toList()..sort())
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            baseMap[catId]?.categoryName ??
+                                candidateMap[catId]?.categoryName ??
+                                '$catId',
+                          ),
+                        ),
+                        DataCell(Text(fmt(baseMap[catId]?.ap))),
+                        DataCell(Text(fmt(candidateMap[catId]?.ap))),
+                        DataCell(
+                          Text(
+                            delta(baseMap[catId]?.ap, candidateMap[catId]?.ap),
+                            style: TextStyle(
+                              color: deltaColor(
+                                baseMap[catId]?.ap,
+                                candidateMap[catId]?.ap,
+                              ),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataCell(Text(fmt(baseMap[catId]?.ap50))),
+                        DataCell(Text(fmt(candidateMap[catId]?.ap50))),
+                        DataCell(
+                          Text(
+                            delta(
+                              baseMap[catId]?.ap50,
+                              candidateMap[catId]?.ap50,
+                            ),
+                            style: TextStyle(
+                              color: deltaColor(
+                                baseMap[catId]?.ap50,
+                                candidateMap[catId]?.ap50,
+                              ),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _openInCompareViewer(int imageId) {
     _tabController.animateTo(3);
     _selectCompareImage(imageId);
@@ -632,6 +845,7 @@ class _ComparisonReportBundleAdapter extends ReportBundle {
           evalConfig: const EvalConfig(),
           htmlReport: bundle.htmlReport,
           csvFiles: bundle.csvFiles,
+          binaryFiles: const <String, List<int>>{},
         );
 }
 

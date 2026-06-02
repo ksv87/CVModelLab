@@ -10,6 +10,8 @@ abstract interface class PlatformFilePicker {
 
   Future<PickedDataFile?> pickPredictionsJson();
 
+  Future<PickedDataFile?> pickApMetricsJson();
+
   Future<ImageSource?> pickImages();
 }
 
@@ -18,6 +20,11 @@ class UnsupportedPlatformFilePicker implements PlatformFilePicker {
 
   @override
   Future<PickedDataFile?> pickAnnotationsJson() {
+    throw UnsupportedError('File picking is not available on this platform.');
+  }
+
+  @override
+  Future<PickedDataFile?> pickApMetricsJson() {
     throw UnsupportedError('File picking is not available on this platform.');
   }
 

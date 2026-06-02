@@ -1,9 +1,12 @@
+import 'dart:convert' as dart_convert;
 import 'dart:typed_data';
 
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../../platform_io/annotated_image_saver.dart';
+import '../../core/parser/coco_serializer.dart';
+import '../../platform_io/ap_evaluator.dart';
 import '../../platform_io/file_pick_result.dart';
 import '../../platform_io/image_source.dart';
 import '../../platform_io/platform_file_picker.dart';
@@ -18,6 +21,7 @@ import '../widgets/image_browser_panel.dart';
 import 'confusion_matrix_screen.dart';
 import 'dataset_health_screen.dart';
 import 'model_compare_screen.dart';
+import 'recommendations_screen.dart';
 import 'worst_cases_screen.dart';
 
 /// A single loaded model run together with its evaluation result.
@@ -46,6 +50,7 @@ class WorkspaceScreen extends StatefulWidget {
     this.annotationsPath,
     this.imagesRootPath,
     this.initialActiveRunIndex = 0,
+    this.initialApEvalResults = const {},
     super.key,
   });
 
@@ -67,6 +72,9 @@ class WorkspaceScreen extends StatefulWidget {
   /// Which model run to show as active when the workspace first opens.
   final int initialActiveRunIndex;
 
+  /// AP eval results loaded from a saved project.
+  final Map<String, ApEvalResult> initialApEvalResults;
+
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -76,7 +84,8 @@ enum _WorkspacePage {
   errorBrowser,
   datasetHealth,
   confusionMatrix,
-  worstCases
+  worstCases,
+  recommendations,
 }
 
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
@@ -103,6 +112,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final ReportSaver _reportSaver = createReportSaver();
   final AnnotatedImageSaver _annotatedImageSaver = createAnnotatedImageSaver();
   final PlatformFilePicker _filePicker = createPlatformFilePicker();
+  final ApEvaluator _apEvaluator = createApEvaluator();
+
+  final Map<String, ApEvalResult> _apEvalResults = {};
+  bool _runningApEval = false;
+  String? _apEvalError;
 
   late EvalResult _evalResult;
   late Set<String> _missingImageFileNames;
@@ -126,6 +140,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     _selectedImageId = widget.dataset.imagesById.keys.isEmpty
         ? null
         : (widget.dataset.imagesById.keys.toList()..sort()).first;
+    _apEvalResults.addAll(widget.initialApEvalResults);
     _loadSelectedImage();
   }
 
@@ -204,6 +219,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                           selectedIcon: Icon(Icons.list),
                           label: Text('Worst'),
                         ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.tips_and_updates),
+                          selectedIcon: Icon(Icons.tips_and_updates),
+                          label: Text('Advice'),
+                        ),
                       ],
                     ),
                     const VerticalDivider(width: 1),
@@ -240,6 +260,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           selectedMatches: const <DetectionMatch>[],
           selectedMatch: null,
           issues: widget.issues,
+          apEvalResult: _apEvalResults[_activeModelRun.id],
+          canRunApEval: _canRunApEval(),
+          runningApEval: _runningApEval,
+          onRunApEval: _canRunApEval() ? _runApEval : null,
+          onImportApMetrics: _importApMetrics,
+          apEvalUnavailableReason: _apEvalError,
         ),
       _WorkspacePage.errorBrowser => Row(
           children: [
@@ -267,6 +293,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 selectedMatches: selectedMatches,
                 selectedMatch: _selectedMatch,
                 issues: widget.issues,
+                apEvalResult: _apEvalResults[_activeModelRun.id],
+                canRunApEval: _canRunApEval(),
+                runningApEval: _runningApEval,
+                onRunApEval: _canRunApEval() ? _runApEval : null,
+                onImportApMetrics: _importApMetrics,
+                apEvalUnavailableReason: _apEvalError,
               ),
             ),
           ],
@@ -292,6 +324,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           loadImageBytes: widget.imageSource.readImageBytes,
           onImageSelected: _openImageInBrowser,
           onExportAnnotated: _exportAnnotatedImageIds,
+        ),
+      _WorkspacePage.recommendations => RecommendationsScreen(
+          recommendations: _buildRecommendations(),
+          dataset: widget.dataset,
+          onImageSelected: _openImageInBrowser,
+          onCategorySelected: _openCategoryInBrowser,
         ),
     };
   }
@@ -337,6 +375,42 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       modelRun: _activeModelRun,
       evalResult: _evalResult,
       evalConfig: _evalConfig,
+    );
+  }
+
+  ModelComparisonResult? _buildRecommendationComparison() {
+    if (_modelRunEntries.length < 2) {
+      return null;
+    }
+    final int baseIndex = _activeRunIndex == 0 ? 0 : 0;
+    final int candidateIndex = _activeRunIndex == 0 ? 1 : _activeRunIndex;
+    if (baseIndex == candidateIndex) {
+      return null;
+    }
+    final ModelRunEntry base = _modelRunEntries[baseIndex];
+    final ModelRunEntry candidate = _modelRunEntries[candidateIndex];
+    return const ModelComparator().compare(
+      dataset: widget.dataset,
+      baseRun: base.modelRun,
+      baseEval: base.evalResult,
+      candidateRun: candidate.modelRun,
+      candidateEval: candidate.evalResult,
+      evalConfig: _evalConfig,
+    );
+  }
+
+  List<Recommendation> _buildRecommendations() {
+    final DatasetHealthReport healthReport = _buildHealthReport();
+    final WorstCasesResult worstCases = _buildWorstCases();
+    return const RuleBasedRecommendationEngine().build(
+      dataset: widget.dataset,
+      modelRun: _activeModelRun,
+      evalResult: _evalResult,
+      evalConfig: _evalConfig,
+      healthReport: healthReport,
+      worstCases: worstCases,
+      comparison: _buildRecommendationComparison(),
+      apEvalResult: _apEvalResults[_activeModelRun.id],
     );
   }
 
@@ -496,6 +570,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   void _openImageInBrowser(int imageId) {
     setState(() => _page = _WorkspacePage.errorBrowser);
     _selectImage(imageId);
+  }
+
+  void _openCategoryInBrowser(int categoryId) {
+    _updateViewFilter(
+      _viewFilter.copyWith(
+        selectedClassIds: {categoryId},
+        imageFilter: EvalImageFilter.all,
+      ),
+    );
+    setState(() => _page = _WorkspacePage.errorBrowser);
   }
 
   void _updateViewFilter(EvalViewFilter filter) {
@@ -659,6 +743,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           imageSource: widget.imageSource,
           evalConfig: _evalConfig,
           projectName: widget.projectName,
+          apEvalResults: Map<String, ApEvalResult>.of(_apEvalResults),
         ),
       ),
     );
@@ -737,6 +822,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   ? e.predictionsPath!.split('/').last
                   : null,
               addedAt: now,
+              apEvalResult: _apEvalResults[e.modelRun.id],
             ),
           )
           .toList(),
@@ -793,6 +879,95 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       }
     }
     return '$name (${DateTime.now().millisecondsSinceEpoch})';
+  }
+
+  // The button is always enabled — availability is checked lazily on click.
+  bool _canRunApEval() => !_runningApEval;
+
+  Future<void> _runApEval() async {
+    final String? unavailable = await _apEvaluator.checkAvailability();
+    if (unavailable != null) {
+      if (mounted) {
+        setState(() => _apEvalError = unavailable);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(unavailable)),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _runningApEval = true;
+      _apEvalError = null;
+    });
+
+    try {
+      final String? annotationsPath = widget.annotationsPath;
+      final String? predictionsPath = _activeEntry.predictionsPath;
+
+      final ApEvalResult result;
+      if (annotationsPath != null && predictionsPath != null) {
+        result = await _apEvaluator.evaluate(
+          annotationsPath: annotationsPath,
+          predictionsPath: predictionsPath,
+        );
+      } else {
+        // No on-disk paths (e.g. demo project) — serialize in-memory data.
+        const CocoSerializer serializer = CocoSerializer();
+        result = await _apEvaluator.evaluateFromJson(
+          annotationsJson: serializer.annotationsJson(widget.dataset),
+          predictionsJson:
+              serializer.predictionsJson(_activeEntry.modelRun.predictions),
+        );
+      }
+      if (mounted) {
+        setState(() {
+          _apEvalResults[_activeModelRun.id] = result;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _apEvalError = error.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AP evaluation failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _runningApEval = false);
+      }
+    }
+  }
+
+  Future<void> _importApMetrics() async {
+    try {
+      final PickedDataFile? file = await _filePicker.pickApMetricsJson();
+      if (file == null || !mounted) {
+        return;
+      }
+      final dynamic decoded = dart_convert.jsonDecode(file.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid AP metrics JSON: expected an object.')),
+          );
+        }
+        return;
+      }
+      final ApEvalResult result =
+          const ApEvalResultParser().fromJson(decoded);
+      if (mounted) {
+        setState(() {
+          _apEvalResults[_activeModelRun.id] = result;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to import AP metrics: $error')),
+        );
+      }
+    }
   }
 
   Future<void> _reevaluate(EvalConfig config) async {
@@ -903,7 +1078,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     setState(() => _exporting = true);
     await Future<void>.delayed(Duration.zero);
     try {
-      final ReportBundle bundle = const ReportBundleBuilder().build(
+      final ReportBundle bundle = await const ReportBundleBuilder().build(
         dataset: widget.dataset,
         modelRun: _activeModelRun,
         evalConfig: _evalConfig,
@@ -919,6 +1094,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           missingFileNames: _missingImageFileNames,
           available: true,
         ),
+        comparison: _buildRecommendationComparison(),
       );
       final ReportSaveResult result = await _reportSaver.save(bundle);
       if (!mounted) {

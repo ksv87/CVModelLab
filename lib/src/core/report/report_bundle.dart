@@ -1,5 +1,7 @@
+import '../ap_eval/ap_eval_models.dart';
 import '../eval/confusion_details.dart';
 import '../eval/eval_result_filter.dart';
+import '../comparison/comparison_models.dart';
 import '../health/dataset_health_checker.dart';
 import '../health/dataset_health_models.dart';
 import '../model/coco_dataset.dart';
@@ -7,11 +9,15 @@ import '../model/eval_config.dart';
 import '../model/eval_result.dart';
 import '../model/eval_view_filter.dart';
 import '../model/model_run.dart';
+import '../recommendation/recommendation_models.dart';
+import '../recommendation/rule_based_recommendation_engine.dart';
 import '../worst_cases/worst_case_miner.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'csv_exporter.dart';
 import 'html_report_builder.dart';
+import 'pdf_report_builder.dart';
 import 'report_models.dart';
+import 'xlsx_report_builder.dart';
 
 /// Canonical file names used when persisting a [ReportBundle].
 class ReportFileNames {
@@ -24,6 +30,11 @@ class ReportFileNames {
   static const String confusionPairs = 'confusion_pairs.csv';
   static const String datasetHealth = 'dataset_health_report.csv';
   static const String worstCases = 'worst_cases.csv';
+  static const String recommendations = 'recommendations.csv';
+  static const String apMetrics = 'ap_metrics.csv';
+  static const String perClassAp = 'per_class_ap.csv';
+  static const String xlsx = 'cv_model_lab_report.xlsx';
+  static const String pdf = 'cv_model_lab_report.pdf';
 }
 
 /// An in-memory, platform-agnostic export result. Platform savers turn this
@@ -36,6 +47,7 @@ class ReportBundle {
     required this.evalConfig,
     required this.htmlReport,
     required this.csvFiles,
+    required this.binaryFiles,
   });
 
   final String projectName;
@@ -49,12 +61,16 @@ class ReportBundle {
   /// CSV files keyed by file name.
   final Map<String, String> csvFiles;
 
+  /// Binary files keyed by file name.
+  final Map<String, List<int>> binaryFiles;
+
   bool get hasHtml => htmlReport.isNotEmpty;
 
   /// File names in the order they should be presented to the user.
   List<String> get fileNames => [
         if (hasHtml) ReportFileNames.html,
         ...csvFiles.keys,
+        ...binaryFiles.keys,
       ];
 }
 
@@ -64,12 +80,16 @@ class ReportBundleBuilder {
   const ReportBundleBuilder({
     this.htmlBuilder = const HtmlReportBuilder(),
     this.csvExporter = const CsvExporter(),
+    this.xlsxBuilder = const XlsxReportBuilder(),
+    this.pdfBuilder = const PdfReportBuilder(),
   });
 
   final HtmlReportBuilder htmlBuilder;
   final CsvExporter csvExporter;
+  final XlsxReportBuilder xlsxBuilder;
+  final PdfReportBuilder pdfBuilder;
 
-  ReportBundle build({
+  Future<ReportBundle> build({
     required CocoDataset dataset,
     required ModelRun modelRun,
     required EvalConfig evalConfig,
@@ -82,9 +102,14 @@ class ReportBundleBuilder {
     String? modelRunName,
     Set<String> missingImageFileNames = const <String>{},
     DatasetImageAvailability? imageAvailability,
+    ModelComparisonResult? comparison,
     DateTime? generatedAt,
-  }) {
+    ApEvalResult? apEvalResult,
+  }) async {
     final DateTime timestamp = generatedAt ?? DateTime.now();
+    final String resolvedProject = projectName ?? 'Untitled project';
+    final String resolvedRun = modelRunName ?? modelRun.name;
+
     final List<int> imageIds = imageIdsForScope(
       dataset: dataset,
       scope: scope,
@@ -100,12 +125,42 @@ class ReportBundleBuilder {
       ),
     );
 
-    // Optional derived analytics, computed once and shared by HTML + CSV.
-    final bool needsHealth = components.includeDatasetHealthCsv;
-    final bool needsWorst = components.includeWorstCasesCsv;
-    final bool needsConfusionPairs = components.includeConfusionPairsCsv;
+    // Determine which optional analytics need to be computed.
+    // Separate "needs computation" from "export as CSV" — fixes the bug where
+    // enabling XLSX caused health/worst/confusion CSVs to be added silently.
+    final bool pdfNeedsHealth =
+        components.includePdfReport && components.pdfOptions.includeHealth;
+    final bool pdfNeedsWorst =
+        components.includePdfReport && components.pdfOptions.includeWorstCases;
+    final bool pdfNeedsConfusion =
+        components.includePdfReport && components.pdfOptions.includeConfusion;
+    final bool pdfNeedsRecs =
+        components.includePdfReport && components.pdfOptions.includeRecommendations;
 
-    final DatasetHealthReport? healthReport = needsHealth
+    final bool computeHealth = components.includeDatasetHealthCsv ||
+        components.includeXlsxWorkbook ||
+        components.includeHtml ||
+        components.includeRecommendationsCsv ||
+        pdfNeedsHealth ||
+        pdfNeedsRecs;
+    final bool computeWorst = components.includeWorstCasesCsv ||
+        components.includeXlsxWorkbook ||
+        components.includeHtml ||
+        components.includeRecommendationsCsv ||
+        pdfNeedsWorst ||
+        pdfNeedsRecs;
+    final bool computeConfusion = components.includeConfusionPairsCsv ||
+        components.includeXlsxWorkbook ||
+        components.includeHtml ||
+        components.includeRecommendationsCsv ||
+        pdfNeedsConfusion ||
+        pdfNeedsRecs;
+    final bool computeRecs = components.includeHtml ||
+        components.includeRecommendationsCsv ||
+        components.includeXlsxWorkbook ||
+        pdfNeedsRecs;
+
+    final DatasetHealthReport? healthReport = computeHealth
         ? const DatasetHealthChecker().check(
             dataset: dataset,
             predictions: modelRun.predictions,
@@ -117,7 +172,7 @@ class ReportBundleBuilder {
             generatedAt: timestamp,
           )
         : null;
-    final WorstCasesResult? worstCases = needsWorst
+    final WorstCasesResult? worstCases = computeWorst
         ? const WorstCaseMiner().mine(
             dataset: dataset,
             modelRun: modelRun,
@@ -125,14 +180,26 @@ class ReportBundleBuilder {
             evalConfig: evalConfig,
           )
         : null;
-    final ConfusionMatrixDetails? confusionDetails = needsConfusionPairs
+    final ConfusionMatrixDetails? confusionDetails = computeConfusion
         ? const ConfusionMatrixDetailBuilder().build(
             dataset: dataset,
             modelRun: modelRun,
             config: evalConfig,
           )
         : null;
+    final List<Recommendation> recommendations = computeRecs
+        ? const RuleBasedRecommendationEngine().build(
+            dataset: dataset,
+            modelRun: modelRun,
+            evalResult: evalResult,
+            evalConfig: evalConfig,
+            healthReport: healthReport,
+            worstCases: worstCases,
+            comparison: comparison,
+          )
+        : const <Recommendation>[];
 
+    // ── HTML ──────────────────────────────────────────────────────────────────
     final String html = components.includeHtml
         ? htmlBuilder.build(
             dataset: dataset,
@@ -149,9 +216,12 @@ class ReportBundleBuilder {
             healthReport: healthReport,
             worstCases: worstCases,
             confusionDetails: confusionDetails,
+            recommendations: recommendations,
+            apEvalResult: apEvalResult,
           )
         : '';
 
+    // ── CSV (each flag is independent) ───────────────────────────────────────
     final Map<String, String> csvFiles = {};
     if (components.includePerClassMetricsCsv) {
       csvFiles[ReportFileNames.perClassMetrics] =
@@ -184,26 +254,89 @@ class ReportBundleBuilder {
       csvFiles[ReportFileNames.confusionMatrix] =
           csvExporter.buildConfusionMatrixCsv(evalResult.confusionMatrix);
     }
-    if (needsConfusionPairs && confusionDetails != null) {
+    if (components.includeConfusionPairsCsv && confusionDetails != null) {
       csvFiles[ReportFileNames.confusionPairs] =
           csvExporter.buildConfusionPairsCsv(confusionDetails);
     }
-    if (needsHealth && healthReport != null) {
+    if (components.includeDatasetHealthCsv && healthReport != null) {
       csvFiles[ReportFileNames.datasetHealth] =
           csvExporter.buildDatasetHealthCsv(healthReport);
     }
-    if (needsWorst && worstCases != null) {
+    if (components.includeWorstCasesCsv && worstCases != null) {
       csvFiles[ReportFileNames.worstCases] =
           csvExporter.buildWorstCasesCsv(worstCases);
     }
+    if (components.includeRecommendationsCsv) {
+      csvFiles[ReportFileNames.recommendations] =
+          csvExporter.buildRecommendationsCsv(recommendations);
+    }
+    if (components.includeApMetricsCsv && apEvalResult != null) {
+      csvFiles[ReportFileNames.apMetrics] =
+          csvExporter.buildApMetricsCsv(apEvalResult);
+    }
+    if (components.includePerClassApCsv &&
+        apEvalResult != null &&
+        apEvalResult.perClass.isNotEmpty) {
+      csvFiles[ReportFileNames.perClassAp] =
+          csvExporter.buildPerClassApCsv(apEvalResult);
+    }
+
+    // ── binary (XLSX, PDF) ────────────────────────────────────────────────────
+    final Map<String, List<int>> binaryFiles = {};
+    if (components.includeXlsxWorkbook) {
+      binaryFiles[ReportFileNames.xlsx] = xlsxBuilder.buildWorkbook(
+        xlsxBuilder.buildData(
+          dataset: dataset,
+          modelRun: modelRun,
+          evalConfig: evalConfig,
+          evalResult: evalResult,
+          projectName: resolvedProject,
+          modelRunName: resolvedRun,
+          generatedAt: timestamp,
+          matchRows: matchRows,
+          imageIds: imageIds,
+          missingImageFileNames: missingImageFileNames,
+          healthReport: healthReport,
+          worstCases: worstCases,
+          recommendations: recommendations,
+          confusionDetails: confusionDetails,
+          comparison: comparison,
+          apEvalResult: apEvalResult,
+        ),
+      );
+    }
+    if (components.includePdfReport) {
+      final pdfData = pdfBuilder.buildData(
+        dataset: dataset,
+        modelRun: modelRun,
+        evalConfig: evalConfig,
+        evalResult: evalResult,
+        projectName: resolvedProject,
+        modelRunName: resolvedRun,
+        generatedAt: timestamp,
+        matchRows: matchRows,
+        missingImageFileNames: missingImageFileNames,
+        healthReport: pdfNeedsHealth ? healthReport : null,
+        worstCases: pdfNeedsWorst ? worstCases : null,
+        confusionDetails: pdfNeedsConfusion ? confusionDetails : null,
+        comparison: pdfNeedsRecs || components.pdfOptions.includeComparison
+            ? comparison
+            : null,
+        recommendations:
+            pdfNeedsRecs ? recommendations : const <Recommendation>[],
+        apEvalResult: apEvalResult,
+      );
+      binaryFiles[ReportFileNames.pdf] = await pdfBuilder.buildPdf(pdfData);
+    }
 
     return ReportBundle(
-      projectName: projectName ?? 'Untitled project',
-      modelRunName: modelRunName ?? modelRun.name,
+      projectName: resolvedProject,
+      modelRunName: resolvedRun,
       generatedAt: timestamp,
       evalConfig: evalConfig,
       htmlReport: html,
       csvFiles: csvFiles,
+      binaryFiles: binaryFiles,
     );
   }
 }

@@ -27,6 +27,11 @@ class WebPlatformFilePicker implements PlatformFilePicker {
   }
 
   @override
+  Future<PickedDataFile?> pickApMetricsJson() {
+    return _pickJsonFile();
+  }
+
+  @override
   Future<ImageSource?> pickImages() async {
     final html.FileUploadInputElement input = html.FileUploadInputElement()
       ..accept = 'image/*'

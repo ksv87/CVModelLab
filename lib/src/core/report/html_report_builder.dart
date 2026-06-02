@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../ap_eval/ap_eval_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../eval/confusion_matrix.dart';
@@ -12,6 +13,7 @@ import '../model/eval_result.dart';
 import '../model/eval_view_filter.dart';
 import '../model/model_run.dart';
 import '../eval/eval_result_filter.dart';
+import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
 
@@ -37,6 +39,8 @@ class HtmlReportBuilder {
     DatasetHealthReport? healthReport,
     WorstCasesResult? worstCases,
     ConfusionMatrixDetails? confusionDetails,
+    List<Recommendation> recommendations = const <Recommendation>[],
+    ApEvalResult? apEvalResult,
   }) {
     final EvalViewFilter filter = activeFilter ?? const EvalViewFilter();
     final List<DetectionMatch> matches = matchesForScope(
@@ -72,9 +76,13 @@ class HtmlReportBuilder {
     _writeConfigSection(html, evalConfig, dataset, scope, activeFilter);
     _writeDatasetSummary(html, dataset, evalResult, missingImageFileNames);
     _writeOverallMetrics(html, evalResult);
+    if (apEvalResult != null) {
+      _writeApMetrics(html, apEvalResult);
+    }
     _writePerClassTable(html, evalResult);
     _writeClassImbalanceTable(html, evalResult);
     _writeSmallObjectTable(html, dataset, evalResult);
+    _writeRecommendations(html, recommendations, dataset);
     if (confusionDetails != null) {
       _writeConfusionMatrix(html, confusionDetails);
     }
@@ -89,6 +97,43 @@ class HtmlReportBuilder {
     html.writeln('</body>');
     html.writeln('</html>');
     return html.toString();
+  }
+
+  void _writeRecommendations(
+    StringBuffer html,
+    List<Recommendation> recommendations,
+    CocoDataset dataset,
+  ) {
+    html.writeln('<section>');
+    html.writeln('<h2>Recommendations</h2>');
+    if (recommendations.isEmpty) {
+      html.writeln('<p class="empty">No rule-based recommendations.</p>');
+      html.writeln('</section>');
+      return;
+    }
+    html.writeln('<table>');
+    html.writeln(
+      '<thead><tr><th>Severity</th><th>Category</th><th>Title</th>'
+      '<th>Message</th><th>Action</th><th>Related classes</th>'
+      '<th>Related images</th></tr></thead>',
+    );
+    html.writeln('<tbody>');
+    for (final Recommendation recommendation in recommendations) {
+      final String classNames = recommendation.relatedCategoryIds
+          .map((int id) => dataset.categoriesById[id]?.name ?? '$id')
+          .join(', ');
+      html.writeln('<tr>');
+      html.writeln('<td>${_esc(recommendation.severity.name)}</td>');
+      html.writeln('<td>${_esc(recommendation.category.name)}</td>');
+      html.writeln('<td>${_esc(recommendation.title)}</td>');
+      html.writeln('<td>${_esc(recommendation.message)}</td>');
+      html.writeln('<td>${_esc(recommendation.action)}</td>');
+      html.writeln('<td>${_esc(classNames)}</td>');
+      html.writeln('<td>${recommendation.relatedImageIds.length}</td>');
+      html.writeln('</tr>');
+    }
+    html.writeln('</tbody></table>');
+    html.writeln('</section>');
   }
 
   void _writeHeader(
@@ -246,6 +291,77 @@ class HtmlReportBuilder {
     html.writeln(_metricCell(recall));
     html.writeln(_metricCell(f1));
     html.writeln('</tr>');
+  }
+
+  void _writeApMetrics(StringBuffer html, ApEvalResult result) {
+    html.writeln('<section>');
+    html.writeln('<h2>COCO AP Metrics</h2>');
+    _keyValueTable(html, [
+      ['Evaluator', result.evaluatorName],
+      ['Generated at', result.generatedAt.toIso8601String()],
+    ]);
+    html.writeln('<table>');
+    html.writeln('<thead><tr><th>Metric</th><th>Value</th></tr></thead>');
+    html.writeln('<tbody>');
+    void apRow(String label, double? value) {
+      html.writeln('<tr>');
+      html.writeln('<td>${_esc(label)}</td>');
+      html.writeln(
+        '<td>${value == null ? '-' : value.toStringAsFixed(3)}</td>',
+      );
+      html.writeln('</tr>');
+    }
+
+    apRow('AP@[.5:.95]', result.ap);
+    apRow('AP50', result.ap50);
+    apRow('AP75', result.ap75);
+    apRow('APsmall', result.apSmall);
+    apRow('APmedium', result.apMedium);
+    apRow('APlarge', result.apLarge);
+    apRow('AR1', result.ar1);
+    apRow('AR10', result.ar10);
+    apRow('AR100', result.ar100);
+    apRow('ARsmall', result.arSmall);
+    apRow('ARmedium', result.arMedium);
+    apRow('ARlarge', result.arLarge);
+    html.writeln('</tbody></table>');
+
+    if (result.perClass.isNotEmpty) {
+      html.writeln('<h3>Per-class AP</h3>');
+      html.writeln('<table>');
+      html.writeln(
+        '<thead><tr><th>Class</th><th>AP</th><th>AP50</th><th>AP75</th><th>AR</th></tr></thead>',
+      );
+      html.writeln('<tbody>');
+      for (final ClassApMetric cls in result.perClass) {
+        html.writeln('<tr>');
+        html.writeln('<td>${_esc(cls.categoryName)}</td>');
+        html.writeln(
+          '<td>${cls.ap == null ? '-' : cls.ap!.toStringAsFixed(3)}</td>',
+        );
+        html.writeln(
+          '<td>${cls.ap50 == null ? '-' : cls.ap50!.toStringAsFixed(3)}</td>',
+        );
+        html.writeln(
+          '<td>${cls.ap75 == null ? '-' : cls.ap75!.toStringAsFixed(3)}</td>',
+        );
+        html.writeln(
+          '<td>${cls.ar == null ? '-' : cls.ar!.toStringAsFixed(3)}</td>',
+        );
+        html.writeln('</tr>');
+      }
+      html.writeln('</tbody></table>');
+    }
+
+    if (result.warnings.isNotEmpty) {
+      html.writeln('<ul>');
+      for (final String w in result.warnings) {
+        html.writeln('<li>${_esc(w)}</li>');
+      }
+      html.writeln('</ul>');
+    }
+
+    html.writeln('</section>');
   }
 
   void _writePerClassTable(StringBuffer html, EvalResult evalResult) {

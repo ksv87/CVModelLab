@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../ap_eval/ap_eval_models.dart';
 import '../model/eval_config.dart';
 import '../model/project.dart';
 
@@ -149,6 +150,8 @@ class ProjectSerializer {
       if (run.predictionsFileName != null)
         'predictions_file_name': run.predictionsFileName,
       'added_at': run.addedAt.toUtc().toIso8601String(),
+      if (run.apEvalResult != null)
+        'ap_eval_result': const ApEvalResultParser().toJson(run.apEvalResult!),
     };
   }
 
@@ -156,12 +159,17 @@ class ProjectSerializer {
     final String id = _requireString(map, 'id');
     final String name = _requireString(map, 'name');
     final DateTime addedAt = _requireDateTime(map, 'added_at');
+    final Object? apRaw = map['ap_eval_result'];
+    final ApEvalResult? apEvalResult = apRaw is Map<String, dynamic>
+        ? const ApEvalResultParser().fromJson(apRaw)
+        : null;
     return ProjectModelRunSource(
       id: id,
       name: name,
       predictionsPath: map['predictions_path'] as String?,
       predictionsFileName: map['predictions_file_name'] as String?,
       addedAt: addedAt,
+      apEvalResult: apEvalResult,
     );
   }
 

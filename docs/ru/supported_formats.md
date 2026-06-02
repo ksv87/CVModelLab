@@ -54,4 +54,4 @@ CV Model Lab поддерживает стандартный COCO detection anno
 - Invalid boxes попадают в parser issues.
 - Scores вне `0..1` могут давать warnings, но не всегда останавливают загрузку.
 - Web/PWA не может читать произвольные локальные paths; пользователь должен выбрать файлы.
-- AP/mAP metrics и pycocotools compatibility находятся в roadmap, не в текущем release.
+- COCO AP/mAP metrics (pycocotools) считаются через Python sidecar на desktop. Web build не может запускать Python, поэтому там AP metrics нужно импортировать как заранее посчитанный JSON.

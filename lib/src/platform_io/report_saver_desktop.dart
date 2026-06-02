@@ -32,6 +32,11 @@ class DesktopReportSaver implements ReportSaver {
       await File(_join(directoryPath, entry.key)).writeAsString(entry.value);
       written.add(entry.key);
     }
+    for (final MapEntry<String, List<int>> entry
+        in bundle.binaryFiles.entries) {
+      await File(_join(directoryPath, entry.key)).writeAsBytes(entry.value);
+      written.add(entry.key);
+    }
 
     return ReportSaveResult(
       status: ReportSaveStatus.savedToDirectory,

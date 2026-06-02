@@ -1,0 +1,9 @@
+[project]
+name = "cv-model-lab-ap-evaluator"
+version = "0.1.0"
+requires-python = ">=3.8"
+dependencies = ["pycocotools>=2.0"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"

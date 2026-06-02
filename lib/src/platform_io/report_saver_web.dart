@@ -30,6 +30,10 @@ class WebReportSaver implements ReportSaver {
       addFile(ReportFileNames.html, bundle.htmlReport);
     }
     bundle.csvFiles.forEach(addFile);
+    for (final MapEntry<String, List<int>> entry
+        in bundle.binaryFiles.entries) {
+      archive.addFile(ArchiveFile(entry.key, entry.value.length, entry.value));
+    }
 
     final List<int> zipBytes = ZipEncoder().encode(archive);
 

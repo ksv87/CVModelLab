@@ -13,6 +13,39 @@ enum ReportScope {
   filteredView,
 }
 
+/// Section options for the PDF executive report.
+class PdfReportOptions {
+  const PdfReportOptions({
+    this.includeRecommendations = true,
+    this.includeWorstCases = true,
+    this.includeComparison = true,
+    this.includeHealth = true,
+    this.includeConfusion = true,
+  });
+
+  final bool includeRecommendations;
+  final bool includeWorstCases;
+  final bool includeComparison;
+  final bool includeHealth;
+  final bool includeConfusion;
+
+  PdfReportOptions copyWith({
+    bool? includeRecommendations,
+    bool? includeWorstCases,
+    bool? includeComparison,
+    bool? includeHealth,
+    bool? includeConfusion,
+  }) {
+    return PdfReportOptions(
+      includeRecommendations: includeRecommendations ?? this.includeRecommendations,
+      includeWorstCases: includeWorstCases ?? this.includeWorstCases,
+      includeComparison: includeComparison ?? this.includeComparison,
+      includeHealth: includeHealth ?? this.includeHealth,
+      includeConfusion: includeConfusion ?? this.includeConfusion,
+    );
+  }
+}
+
 /// Which artifacts to include in a [ReportBundle].
 class ReportComponents {
   const ReportComponents({
@@ -25,6 +58,12 @@ class ReportComponents {
     this.includeConfusionPairsCsv = false,
     this.includeDatasetHealthCsv = false,
     this.includeWorstCasesCsv = false,
+    this.includeRecommendationsCsv = false,
+    this.includeXlsxWorkbook = false,
+    this.includePdfReport = false,
+    this.pdfOptions = const PdfReportOptions(),
+    this.includeApMetricsCsv = false,
+    this.includePerClassApCsv = false,
   });
 
   final bool includeHtml;
@@ -36,6 +75,12 @@ class ReportComponents {
   final bool includeConfusionPairsCsv;
   final bool includeDatasetHealthCsv;
   final bool includeWorstCasesCsv;
+  final bool includeRecommendationsCsv;
+  final bool includeXlsxWorkbook;
+  final bool includePdfReport;
+  final PdfReportOptions pdfOptions;
+  final bool includeApMetricsCsv;
+  final bool includePerClassApCsv;
 
   ReportComponents copyWith({
     bool? includeHtml,
@@ -47,6 +92,12 @@ class ReportComponents {
     bool? includeConfusionPairsCsv,
     bool? includeDatasetHealthCsv,
     bool? includeWorstCasesCsv,
+    bool? includeRecommendationsCsv,
+    bool? includeXlsxWorkbook,
+    bool? includePdfReport,
+    PdfReportOptions? pdfOptions,
+    bool? includeApMetricsCsv,
+    bool? includePerClassApCsv,
   }) {
     return ReportComponents(
       includeHtml: includeHtml ?? this.includeHtml,
@@ -64,6 +115,13 @@ class ReportComponents {
       includeDatasetHealthCsv:
           includeDatasetHealthCsv ?? this.includeDatasetHealthCsv,
       includeWorstCasesCsv: includeWorstCasesCsv ?? this.includeWorstCasesCsv,
+      includeRecommendationsCsv:
+          includeRecommendationsCsv ?? this.includeRecommendationsCsv,
+      includeXlsxWorkbook: includeXlsxWorkbook ?? this.includeXlsxWorkbook,
+      includePdfReport: includePdfReport ?? this.includePdfReport,
+      pdfOptions: pdfOptions ?? this.pdfOptions,
+      includeApMetricsCsv: includeApMetricsCsv ?? this.includeApMetricsCsv,
+      includePerClassApCsv: includePerClassApCsv ?? this.includePerClassApCsv,
     );
   }
 }

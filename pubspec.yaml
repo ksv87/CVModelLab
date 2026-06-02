@@ -1,7 +1,7 @@
 name: cv_model_lab
 description: Cross-platform Flutter Desktop and PWA tool for COCO object detection dataset and model error analysis.
 publish_to: none
-version: 0.2.1+1
+version: 0.4.0+1
 
 environment:
   sdk: ^3.0.0
@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   file_picker: ^8.1.7
   archive: ^4.0.9
+  pdf: ^3.10.8
 
 dev_dependencies:
   flutter_test:

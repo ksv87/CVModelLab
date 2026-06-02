@@ -399,6 +399,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     try {
       final List<ModelRunEntry> entries = [];
       final List<ParseIssue> allIssues = [];
+      final Map<String, ApEvalResult> apEvalResults = {};
       CocoDataset? dataset;
 
       for (int i = 0; i < project.modelRuns.length; i++) {
@@ -426,6 +427,9 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
               evalResult: result.evalResult!,
             ),
           );
+          if (runSource.apEvalResult != null) {
+            apEvalResults[result.modelRun!.id] = runSource.apEvalResult!;
+          }
         }
       }
 
@@ -457,6 +461,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
             annotationsPath: annotationsFile.path,
             imagesRootPath: _pendingImagesRootPath,
             initialActiveRunIndex: initialActiveIndex,
+            initialApEvalResults: apEvalResults,
           ),
         ),
       );

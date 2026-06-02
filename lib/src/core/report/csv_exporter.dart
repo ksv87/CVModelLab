@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../ap_eval/ap_eval_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../eval/confusion_matrix.dart';
@@ -11,6 +12,7 @@ import '../model/eval_config.dart';
 import '../model/eval_result.dart';
 import '../model/model_run.dart';
 import '../model/prediction.dart';
+import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
 
@@ -323,6 +325,72 @@ class CsvExporter {
           item.severityScore,
         ]);
       }
+    }
+    return _render(rows);
+  }
+
+  String buildApMetricsCsv(ApEvalResult result) {
+    final List<List<Object?>> rows = [
+      const ['metric', 'value'],
+      ['AP@[.5:.95]', result.ap],
+      ['AP50', result.ap50],
+      ['AP75', result.ap75],
+      ['APsmall', result.apSmall],
+      ['APmedium', result.apMedium],
+      ['APlarge', result.apLarge],
+      ['AR1', result.ar1],
+      ['AR10', result.ar10],
+      ['AR100', result.ar100],
+      ['ARsmall', result.arSmall],
+      ['ARmedium', result.arMedium],
+      ['ARlarge', result.arLarge],
+    ];
+    return _render(rows);
+  }
+
+  String buildPerClassApCsv(ApEvalResult result) {
+    final List<List<Object?>> rows = [
+      const ['class_id', 'class_name', 'ap', 'ap50', 'ap75', 'ar'],
+    ];
+    for (final ClassApMetric cls in result.perClass) {
+      rows.add([
+        cls.categoryId,
+        cls.categoryName,
+        cls.ap,
+        cls.ap50,
+        cls.ap75,
+        cls.ar,
+      ]);
+    }
+    return _render(rows);
+  }
+
+  String buildRecommendationsCsv(List<Recommendation> recommendations) {
+    final List<List<Object?>> rows = [
+      const [
+        'severity',
+        'category',
+        'title',
+        'message',
+        'action',
+        'related_image_ids',
+        'related_category_ids',
+        'evidence_json',
+      ],
+    ];
+    for (final Recommendation recommendation in recommendations) {
+      rows.add([
+        recommendation.severity.name,
+        recommendation.category.name,
+        recommendation.title,
+        recommendation.message,
+        recommendation.action,
+        recommendation.relatedImageIds.join(' '),
+        recommendation.relatedCategoryIds.join(' '),
+        recommendation.evidence.isEmpty
+            ? ''
+            : jsonEncode(recommendation.evidence),
+      ]);
     }
     return _render(rows);
   }

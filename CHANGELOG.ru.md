@@ -4,6 +4,12 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Рекомендации и экспорт отчётов
+
+- Добавлены rule-based recommendations с deterministic evidence и ссылками навигации.
+- Добавлены XLSX и PDF reports alongside HTML и CSV exports.
+- Добавлены COCO AP metrics через desktop Python sidecar и импорт AP metrics для non-desktop workflows.
+
 ## Рабочее пространство анализа и проекты
 
 - Добавлен Flutter workspace для загрузки annotations, predictions и изображений.
