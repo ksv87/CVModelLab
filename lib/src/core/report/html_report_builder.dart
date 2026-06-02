@@ -1,7 +1,10 @@
 import 'dart:convert';
 
 import '../eval/class_stats.dart';
+import '../eval/confusion_details.dart';
+import '../eval/confusion_matrix.dart';
 import '../eval/small_object_stats.dart';
+import '../health/dataset_health_models.dart';
 import '../model/coco_dataset.dart';
 import '../model/detection_match.dart';
 import '../model/eval_config.dart';
@@ -9,6 +12,7 @@ import '../model/eval_result.dart';
 import '../model/eval_view_filter.dart';
 import '../model/model_run.dart';
 import '../eval/eval_result_filter.dart';
+import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
 
 /// Builds a self-contained HTML report (inline CSS, no external assets, no JS).
@@ -30,6 +34,9 @@ class HtmlReportBuilder {
     String? modelRunName,
     DateTime? generatedAt,
     Set<String> missingImageFileNames = const <String>{},
+    DatasetHealthReport? healthReport,
+    WorstCasesResult? worstCases,
+    ConfusionMatrixDetails? confusionDetails,
   }) {
     final EvalViewFilter filter = activeFilter ?? const EvalViewFilter();
     final List<DetectionMatch> matches = matchesForScope(
@@ -68,7 +75,16 @@ class HtmlReportBuilder {
     _writePerClassTable(html, evalResult);
     _writeClassImbalanceTable(html, evalResult);
     _writeSmallObjectTable(html, dataset, evalResult);
+    if (confusionDetails != null) {
+      _writeConfusionMatrix(html, confusionDetails);
+    }
     _writeErrorExamples(html, evalResult, matchRows, imageIds, dataset, filter);
+    if (worstCases != null) {
+      _writeWorstCases(html, worstCases);
+    }
+    if (healthReport != null) {
+      _writeDatasetHealth(html, healthReport, dataset);
+    }
 
     html.writeln('</body>');
     html.writeln('</html>');
@@ -451,6 +467,125 @@ class HtmlReportBuilder {
       html.writeln('</tr>');
     }
     html.writeln('</tbody></table>');
+  }
+
+  void _writeConfusionMatrix(
+    StringBuffer html,
+    ConfusionMatrixDetails details,
+  ) {
+    final List<ConfusionPair> pairs = details.pairs();
+    html.writeln('<section>');
+    html.writeln('<h2>Confusion matrix</h2>');
+    html.writeln('<h3>Top confused pairs</h3>');
+    if (pairs.isEmpty) {
+      html.writeln('<p class="empty">No confusions found.</p>');
+      html.writeln('</section>');
+      return;
+    }
+    html.writeln('<table>');
+    html.writeln(
+      '<thead><tr><th>GT class</th><th>Pred class</th><th>Count</th>'
+      '<th>Row %</th></tr></thead>',
+    );
+    html.writeln('<tbody>');
+    for (final ConfusionPair pair in pairs.take(errorExampleLimit)) {
+      html.writeln('<tr>');
+      html.writeln('<td>${_esc(_cellLabel(pair.gtClass))}</td>');
+      html.writeln('<td>${_esc(_cellLabel(pair.predClass))}</td>');
+      html.writeln('<td>${pair.count}</td>');
+      html.writeln('<td>${(pair.rowPercent * 100).toStringAsFixed(1)}%</td>');
+      html.writeln('</tr>');
+    }
+    html.writeln('</tbody></table>');
+    html.writeln('</section>');
+  }
+
+  String _cellLabel(String raw) {
+    if (raw == missedColumn) {
+      return 'missed';
+    }
+    if (raw == backgroundFpRow) {
+      return 'background FP';
+    }
+    return raw;
+  }
+
+  void _writeWorstCases(StringBuffer html, WorstCasesResult worstCases) {
+    html.writeln('<section>');
+    html.writeln('<h2>Worst cases</h2>');
+    for (final ({String key, String label, List<WorstCaseItem> items}) group
+        in worstCases.categories) {
+      if (group.items.isEmpty) {
+        continue;
+      }
+      html.writeln('<h3>${_esc(group.label)}</h3>');
+      html.writeln('<table>');
+      html.writeln(
+        '<thead><tr><th>file_name</th><th>image_id</th><th>reason</th>'
+        '<th>TP</th><th>FP</th><th>FN</th></tr></thead>',
+      );
+      html.writeln('<tbody>');
+      for (final WorstCaseItem item in group.items.take(20)) {
+        html.writeln('<tr>');
+        html.writeln('<td>${_esc(item.fileName)}</td>');
+        html.writeln('<td>${item.imageId}</td>');
+        html.writeln('<td>${_esc(item.reason)}</td>');
+        html.writeln('<td>${item.tp}</td>');
+        html.writeln('<td>${item.fp}</td>');
+        html.writeln('<td>${item.fn}</td>');
+        html.writeln('</tr>');
+      }
+      html.writeln('</tbody></table>');
+    }
+    html.writeln('</section>');
+  }
+
+  void _writeDatasetHealth(
+    StringBuffer html,
+    DatasetHealthReport report,
+    CocoDataset dataset,
+  ) {
+    html.writeln('<section>');
+    html.writeln('<h2>Dataset health check</h2>');
+    _keyValueTable(html, [
+      ['Errors', '${report.errorCount}'],
+      ['Warnings', '${report.warningCount}'],
+      ['Info', '${report.infoCount}'],
+      ['Missing images', '${report.missingImageCount}'],
+      ['Invalid annotations', '${report.invalidAnnotationCount}'],
+      ['Invalid predictions', '${report.invalidPredictionCount}'],
+      ['Images without GT', '${report.imageWithoutGtCount}'],
+      ['Rare classes', '${report.rareClassCount}'],
+      ['Unused files', '${report.unusedImageFileCount}'],
+    ]);
+    if (report.issues.isEmpty) {
+      html.writeln('<p class="empty">No issues found.</p>');
+      html.writeln('</section>');
+      return;
+    }
+    html.writeln('<h3>Top issues</h3>');
+    html.writeln('<table>');
+    html.writeln(
+      '<thead><tr><th>Severity</th><th>Type</th><th>Image / File</th>'
+      '<th>Class</th><th>Message</th></tr></thead>',
+    );
+    html.writeln('<tbody>');
+    // Errors first (highest severity index), then warnings, then info.
+    final List<DatasetHealthIssue> ordered = [...report.issues]..sort(
+        (DatasetHealthIssue a, DatasetHealthIssue b) =>
+            b.severity.index.compareTo(a.severity.index),
+      );
+    for (final DatasetHealthIssue issue in ordered.take(errorExampleLimit)) {
+      html.writeln('<tr>');
+      html.writeln('<td>${_esc(issue.severity.name)}</td>');
+      html.writeln('<td>${_esc(issue.type.name)}</td>');
+      html.writeln('<td>${_esc(issue.fileName ?? (issue.imageId?.toString() ?? ''))}</td>');
+      html.writeln('<td>${_esc(issue.categoryName ?? '')}</td>');
+      html.writeln('<td>${_esc(issue.message)}</td>');
+      html.writeln('</tr>');
+    }
+    html.writeln('</tbody></table>');
+    html.writeln('</section>');
   }
 
   void _keyValueTable(StringBuffer html, List<List<String>> rows) {

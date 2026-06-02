@@ -1,0 +1,21 @@
+{
+  "images": [
+    {"id": 1, "file_name": "image_001.png", "width": 240, "height": 180},
+    {"id": 2, "file_name": "image_002.png", "width": 240, "height": 180},
+    {"id": 3, "file_name": "image_003.png", "width": 240, "height": 180},
+    {"id": 4, "file_name": "nested/image_004.png", "width": 240, "height": 180}
+  ],
+  "annotations": [
+    {"id": 101, "image_id": 1, "category_id": 1, "bbox": [20, 30, 70, 60], "area": 4200, "iscrowd": 0},
+    {"id": 102, "image_id": 1, "category_id": 2, "bbox": [150, 40, 18, 18], "area": 324, "iscrowd": 0},
+    {"id": 103, "image_id": 2, "category_id": 2, "bbox": [70, 55, 80, 70], "area": 5600, "iscrowd": 0},
+    {"id": 104, "image_id": 3, "category_id": 3, "bbox": [115, 70, 60, 50], "area": 3000, "iscrowd": 0},
+    {"id": 105, "image_id": 4, "category_id": 1, "bbox": [35, 95, 50, 40], "area": 2000, "iscrowd": 0},
+    {"id": 106, "image_id": 4, "category_id": 3, "bbox": [165, 105, 14, 14], "area": 196, "iscrowd": 0}
+  ],
+  "categories": [
+    {"id": 1, "name": "red"},
+    {"id": 2, "name": "yellow"},
+    {"id": 3, "name": "green"}
+  ]
+}

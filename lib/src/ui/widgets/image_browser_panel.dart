@@ -44,7 +44,7 @@ class ImageBrowserPanel extends StatelessWidget {
                   Tooltip(
                     message: 'Reset filters',
                     child: IconButton(
-                      icon: const Icon(Icons.restart_alt),
+                      icon: const Icon(Icons.refresh),
                       onPressed: onResetFilters,
                     ),
                   ),

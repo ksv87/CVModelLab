@@ -1,12 +1,12 @@
 {
-    "name": "cv_model_lab",
-    "short_name": "cv_model_lab",
+    "name": "CV Model Lab",
+    "short_name": "CV Model Lab",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "Cross-platform tool for COCO object detection dataset and model error analysis.",
+    "orientation": "landscape-primary",
     "prefer_related_applications": false,
     "icons": [
         {

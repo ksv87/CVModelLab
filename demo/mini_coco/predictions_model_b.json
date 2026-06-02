@@ -1,0 +1,9 @@
+[
+  {"image_id": 1, "category_id": 1, "bbox": [20, 30, 70, 60], "score": 0.96},
+  {"image_id": 1, "category_id": 2, "bbox": [150, 40, 18, 18], "score": 0.84},
+  {"image_id": 2, "category_id": 2, "bbox": [70, 55, 80, 70], "score": 0.93},
+  {"image_id": 2, "category_id": 1, "bbox": [170, 25, 35, 35], "score": 0.67},
+  {"image_id": 3, "category_id": 3, "bbox": [115, 70, 45, 38], "score": 0.86},
+  {"file_name": "nested/image_004.png", "category_id": 2, "bbox": [35, 95, 50, 40], "score": 0.81},
+  {"image_id": 4, "category_id": 3, "bbox": [165, 105, 14, 14], "score": 0.78}
+]

@@ -1,12 +1,17 @@
+import 'dart:convert';
+
 import '../eval/class_stats.dart';
+import '../eval/confusion_details.dart';
 import '../eval/confusion_matrix.dart';
 import '../eval/small_object_stats.dart';
+import '../health/dataset_health_models.dart';
 import '../model/annotation.dart';
 import '../model/coco_dataset.dart';
 import '../model/eval_config.dart';
 import '../model/eval_result.dart';
 import '../model/model_run.dart';
 import '../model/prediction.dart';
+import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
 
 /// Escapes a single CSV field.
@@ -220,6 +225,103 @@ class CsvExporter {
       final List<String> predClasses = columns.keys.toList()..sort();
       for (final String predClass in predClasses) {
         rows.add([gtClass, predClass, columns[predClass] ?? 0]);
+      }
+    }
+    return _render(rows);
+  }
+
+  String buildConfusionPairsCsv(ConfusionMatrixDetails details) {
+    final List<List<Object?>> rows = [
+      const [
+        'gt_class_id',
+        'gt_class_name',
+        'pred_class_id',
+        'pred_class_name',
+        'count',
+        'row_percent',
+        'example_image_ids',
+      ],
+    ];
+    for (final ConfusionPair pair in details.pairs(includeDiagonal: true)) {
+      rows.add([
+        pair.gtCategoryId,
+        pair.gtClass,
+        pair.predCategoryId,
+        pair.predClass,
+        pair.count,
+        pair.rowPercent,
+        pair.exampleImageIds.take(20).join(' '),
+      ]);
+    }
+    return _render(rows);
+  }
+
+  String buildDatasetHealthCsv(DatasetHealthReport report) {
+    final List<List<Object?>> rows = [
+      const [
+        'severity',
+        'type',
+        'image_id',
+        'file_name',
+        'annotation_id',
+        'category_id',
+        'category_name',
+        'title',
+        'message',
+        'recommendation',
+        'details_json',
+      ],
+    ];
+    for (final DatasetHealthIssue issue in report.issues) {
+      rows.add([
+        issue.severity.name,
+        issue.type.name,
+        issue.imageId,
+        issue.fileName,
+        issue.annotationId,
+        issue.categoryId,
+        issue.categoryName,
+        issue.title,
+        issue.message,
+        issue.recommendation,
+        issue.details.isEmpty ? '' : jsonEncode(issue.details),
+      ]);
+    }
+    return _render(rows);
+  }
+
+  String buildWorstCasesCsv(WorstCasesResult worstCases) {
+    final List<List<Object?>> rows = [
+      const [
+        'category',
+        'image_id',
+        'file_name',
+        'title',
+        'reason',
+        'tp',
+        'fp',
+        'fn',
+        'score',
+        'iou',
+        'severity_score',
+      ],
+    ];
+    for (final ({String key, String label, List<WorstCaseItem> items}) group
+        in worstCases.categories) {
+      for (final WorstCaseItem item in group.items) {
+        rows.add([
+          group.key,
+          item.imageId,
+          item.fileName,
+          item.title,
+          item.reason,
+          item.tp,
+          item.fp,
+          item.fn,
+          item.score,
+          item.iou,
+          item.severityScore,
+        ]);
       }
     }
     return _render(rows);

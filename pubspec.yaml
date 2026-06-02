@@ -1,7 +1,7 @@
 name: cv_model_lab
-description: Core evaluation logic for CV Model Lab.
+description: Cross-platform Flutter Desktop and PWA tool for COCO object detection dataset and model error analysis.
 publish_to: none
-version: 0.1.0
+version: 0.2.1+1
 
 environment:
   sdk: ^3.0.0
@@ -16,3 +16,5 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+flutter:
+  uses-material-design: true

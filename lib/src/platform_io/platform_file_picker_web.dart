@@ -33,9 +33,7 @@ class WebPlatformFilePicker implements PlatformFilePicker {
       ..multiple = true;
     input.setAttribute('webkitdirectory', '');
     input.setAttribute('directory', '');
-    input.click();
-    await input.onChange.first;
-    final List<html.File> files = input.files ?? const <html.File>[];
+    final List<html.File> files = await _pickFiles(input);
     if (files.isEmpty) {
       return null;
     }
@@ -45,10 +43,8 @@ class WebPlatformFilePicker implements PlatformFilePicker {
   Future<PickedDataFile?> _pickJsonFile() async {
     final html.FileUploadInputElement input = html.FileUploadInputElement()
       ..accept = 'application/json,.json';
-    input.click();
-    await input.onChange.first;
-    final html.File? file =
-        input.files?.isEmpty ?? true ? null : input.files!.first;
+    final List<html.File> files = await _pickFiles(input);
+    final html.File? file = files.isEmpty ? null : files.first;
     if (file == null) {
       return null;
     }
@@ -105,6 +101,33 @@ class WebSelectedFilesImageSource implements ImageSource {
     }
     return _readFileAsBytes(file);
   }
+}
+
+Future<List<html.File>> _pickFiles(html.FileUploadInputElement input) async {
+  final Completer<List<html.File>> completer = Completer<List<html.File>>();
+  input.style.display = 'none';
+  html.document.body?.append(input);
+
+  void completeWithCurrentFiles() {
+    if (completer.isCompleted) {
+      return;
+    }
+    completer.complete(input.files ?? const <html.File>[]);
+  }
+
+  late final StreamSubscription<html.Event> changeSub;
+  late final StreamSubscription<html.Event> focusSub;
+  changeSub = input.onChange.listen((_) => completeWithCurrentFiles());
+  focusSub = html.window.onFocus.listen((_) {
+    Timer(const Duration(milliseconds: 250), completeWithCurrentFiles);
+  });
+
+  input.click();
+  final List<html.File> files = await completer.future;
+  await changeSub.cancel();
+  await focusSub.cancel();
+  input.remove();
+  return files;
 }
 
 Future<Uint8List> _readFileAsBytes(html.File file) {

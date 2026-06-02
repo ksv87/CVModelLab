@@ -35,7 +35,10 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
   bool _imageErrors = true;
   bool _matches = true;
   bool _smallObject = false;
-  bool _confusion = false;
+  bool _confusion = true;
+  bool _confusionPairs = true;
+  bool _datasetHealth = true;
+  bool _worstCases = true;
   ReportScope _scope = ReportScope.fullEvaluation;
 
   bool get _anySelected =>
@@ -44,7 +47,10 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
       _imageErrors ||
       _matches ||
       (_smallObject && widget.smallObjectStatsAvailable) ||
-      (_confusion && widget.confusionMatrixAvailable);
+      (_confusion && widget.confusionMatrixAvailable) ||
+      (_confusionPairs && widget.confusionMatrixAvailable) ||
+      _datasetHealth ||
+      _worstCases;
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +93,22 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               value: _confusion && widget.confusionMatrixAvailable,
               enabled: widget.confusionMatrixAvailable,
               onChanged: (bool v) => setState(() => _confusion = v),
+            ),
+            _checkbox(
+              label: 'CSV: confusion pairs',
+              value: _confusionPairs && widget.confusionMatrixAvailable,
+              enabled: widget.confusionMatrixAvailable,
+              onChanged: (bool v) => setState(() => _confusionPairs = v),
+            ),
+            _checkbox(
+              label: 'CSV: dataset health',
+              value: _datasetHealth,
+              onChanged: (bool v) => setState(() => _datasetHealth = v),
+            ),
+            _checkbox(
+              label: 'CSV: worst cases',
+              value: _worstCases,
+              onChanged: (bool v) => setState(() => _worstCases = v),
             ),
             const Divider(),
             Text('Scope:', style: Theme.of(context).textTheme.titleSmall),
@@ -142,6 +164,10 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               _smallObject && widget.smallObjectStatsAvailable,
           includeConfusionMatrixCsv:
               _confusion && widget.confusionMatrixAvailable,
+          includeConfusionPairsCsv:
+              _confusionPairs && widget.confusionMatrixAvailable,
+          includeDatasetHealthCsv: _datasetHealth,
+          includeWorstCasesCsv: _worstCases,
         ),
         scope: _scope,
       ),

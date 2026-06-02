@@ -1,6 +1,14 @@
 # Changelog
 
+[Русская версия](CHANGELOG.ru.md)
+
 This changelog lists project changes available up to the current commit.
+
+## Analysis workspace and project workflow
+
+- Added the Flutter analysis workspace for loading annotations, predictions, and images.
+- Added image overlays, filtering, HTML/CSV export, model comparison, project save/load, restore mode, Dataset Health, Worst Cases, and annotated image export.
+- Added project documentation, platform folders, demo data, scripts, and publishing metadata without bundled CI artifacts.
 
 ## COCO evaluation core
 

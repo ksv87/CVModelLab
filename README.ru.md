@@ -1,0 +1,200 @@
+# CV Model Lab
+
+[English version](README.md)
+
+Кроссплатформенный Flutter Desktop + PWA инструмент для анализа COCO-датасетов object detection и ошибок inference моделей.
+
+CV Model Lab помогает разбирать качество датасета и результаты модели без backend. Приложение загружает COCO annotations, predictions и локальные изображения, считает TP/FP/FN, показывает ошибки, confusion matrix, worst cases, dataset health, сравнение моделей и экспортируемые отчеты.
+
+## Зачем нужен CV Model Lab
+
+Ошибки object detection сложно понять только по агрегированным метрикам. CV Model Lab закрывает практический цикл анализа после inference:
+
+- найти false positives, false negatives, duplicate predictions и wrong-class predictions;
+- сравнить две модели и увидеть, что было исправлено или сломано;
+- понять, связаны ли ошибки с моделью, class imbalance, missing images, suspicious boxes или small objects;
+- экспортировать отчеты для ревью датасета и модели.
+
+## Возможности
+
+- Загрузка COCO annotations.
+- Загрузка COCO predictions по `image_id` и `file_name`.
+- Детерминированный TP/FP/FN matching с настраиваемыми IoU и confidence thresholds.
+- Error Browser с фильтрами по классу, типу match, confidence, IoU, размеру объекта и missing images.
+- Image viewer с GT и prediction overlays.
+- Dataset Health Check для missing images, suspicious boxes, rare classes и imbalance.
+- Confusion Matrix с GT rows, prediction columns, missed objects и background false positives.
+- Worst Cases для приоритизации ручного анализа.
+- Model Comparison со статусами fixed, broken, improved и regressed.
+- HTML и CSV export.
+- Annotated Image Export для визуальных overlays.
+- Desktop project save/load.
+- Web/PWA restore mode для браузерных сценариев.
+- Desktop + PWA support из одного Flutter UI и pure Dart evaluation core.
+
+## Скриншоты
+
+Скриншоты пока не добавлены. Папка-заготовка: [docs/screenshots](docs/screenshots/).
+
+<!-- TODO: add screenshot: Dashboard -->
+<!-- TODO: add screenshot: Error Browser -->
+<!-- TODO: add screenshot: Model Compare -->
+<!-- TODO: add screenshot: Dataset Health -->
+<!-- TODO: add screenshot: Confusion Matrix -->
+
+## Поддерживаемые платформы
+
+- Linux desktop.
+- Windows desktop.
+- macOS desktop.
+- Web/PWA в браузере.
+
+Desktop builds требуют соответствующий Flutter desktop toolchain на целевой ОС. Web build работает без backend и использует browser file selection APIs.
+
+## Поддерживаемые форматы
+
+- COCO detection annotations JSON.
+- COCO predictions/results JSON с `image_id`.
+- COCO predictions/results JSON с `file_name`, который сопоставляется с COCO image records.
+- Локальные директории или выбранные image files, сопоставление по relative path и basename fallback.
+
+Подробнее: [Форматы данных](docs/ru/supported_formats.md) / [Supported Formats](docs/supported_formats.md).
+
+## Быстрый старт
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+Desktop для текущей ОС:
+
+```bash
+flutter run -d linux
+flutter run -d macos
+flutter run -d windows
+```
+
+Используйте команду, которая соответствует вашей ОС и установленной поддержке Flutter desktop.
+
+## Типичный workflow
+
+1. Открыть COCO annotations JSON.
+2. Открыть один или несколько COCO prediction JSON.
+3. Выбрать images directory или набор image files.
+4. Проверить parser warnings и image matching status.
+5. Посмотреть overall и per-class metrics на dashboard.
+6. Использовать Error Browser filters для анализа FP/FN/TP.
+7. Проверить Dataset Health.
+8. Открыть Confusion Matrix и Worst Cases.
+9. Сравнить model runs.
+10. Экспортировать HTML/CSV reports или annotated images.
+11. Сохранить проект на desktop или использовать Web/PWA restore mode.
+
+Руководство: [Руководство пользователя](docs/ru/user_guide.md) / [User Guide](docs/user_guide.md).
+
+## Метрики
+
+CV Model Lab считает:
+
+- TP, FP и FN matches;
+- precision, recall и F1;
+- micro и macro averages;
+- per-class statistics;
+- image-level error flags;
+- small, medium и large object statistics;
+- confusion matrix для correct classes, wrong classes, missed GT и background FP;
+- model comparison statuses: fixed, broken, improved и regressed.
+
+Подробнее: [Метрики](docs/ru/metrics.md) / [Metrics](docs/metrics.md).
+
+## Dataset Health Check
+
+Dataset Health Check анализирует качество входных данных, а не качество модели. Он показывает missing image files, unused selected files, unknown references, invalid или suspicious boxes, images without GT, rare classes, classes without GT и class imbalance.
+
+## Error Browser
+
+Error Browser - основной экран debugging. Он объединяет image-level filters, match-type filters, class filters, confidence threshold, IoU threshold, object-size filters и missing-image status. Viewer показывает GT boxes и predictions поверх изображения.
+
+## Confusion Matrix
+
+Confusion Matrix использует GT categories как строки и predicted categories как колонки. Также есть специальные buckets для missed-object и background-false-positive, чтобы видеть wrong-class predictions и background hallucinations.
+
+## Worst Cases
+
+Worst Cases ранжирует изображения, которые стоит проверить первыми: много false positives, много false negatives, сильная class confusion, high-confidence false positives, low-IoU true positives или missing local image files.
+
+## Model Comparison
+
+Model Comparison загружает два prediction runs для одного COCO dataset и сравнивает per-class precision/recall и image-level behavior. Изображения группируются как fixed, broken, improved, regressed, still correct или still wrong.
+
+## Экспорт
+
+CV Model Lab поддерживает:
+
+- HTML report export.
+- CSV export для per-class metrics, image errors, matches, small-object stats, confusion matrix, confusion pairs, dataset health и worst cases.
+- Annotated Image Export с overlay images.
+
+## Архитектура
+
+```text
+Pure Dart core
+  ↓
+Platform I/O adapters
+  ↓
+Flutter UI
+```
+
+Core не импортирует `dart:io`, `dart:html` или Flutter UI. Parsing, evaluation, matching, metrics, comparison, health checks, worst-case mining и report generation находятся в тестируемых pure Dart modules. Platform-specific file picking, image loading, project save/load, report saving, browser downloads и annotated image saving находятся за adapters.
+
+Подробнее: [Архитектура](docs/ru/architecture.md) / [Architecture](docs/architecture.md).
+
+## Тестирование
+
+```bash
+flutter analyze
+flutter test
+```
+
+Тесты покрывают IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV generation, Dataset Health Check, Worst Cases и annotated export selection.
+
+## Сборка
+
+```bash
+flutter build web
+flutter build linux
+flutter build windows
+flutter build macos
+```
+
+Build scripts находятся в [scripts](scripts/). Desktop builds запускаются на host OS, которая поддерживает нужный target.
+
+## Roadmap
+
+- Release screenshots и sample exported reports.
+- PDF/XLSX export.
+- pycocotools-compatible AP metrics.
+- Python analyzer sidecar.
+- Rule-based и optional LLM recommendations.
+- ONNX inference integration.
+- Video/frame sequence support.
+- Thumbnail cache и recent projects.
+
+## Лицензия
+
+Этот проект распространяется по лицензии MIT. Подробности см. в [LICENSE](LICENSE).
+
+Эта лицензия применяется только к исходному коду CV Model Lab.
+
+Синтетические demo и test datasets в каталогах `demo/` и `test_data/` распространяются по CC0 1.0 Universal, если в README конкретного датасета явно не указано иное.
+
+## Сторонние компоненты и данные
+
+Репозиторий может ссылаться на сторонние модели, датасеты, runtimes, SDK и зависимости или интегрироваться с ними. На них распространяются их собственные лицензии.
+
+Лицензия MIT в этом репозитории применяется только к исходному коду CV Model Lab, если явно не указано иное.
+
+Пользователи отвечают за наличие необходимых прав на использование датасетов, моделей, весов и артефактов, обрабатываемых этим программным обеспечением.

@@ -60,13 +60,150 @@ class DashboardPanel extends StatelessWidget {
                 (issue) => ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.warning_amber),
+                  leading: const Icon(Icons.warning),
                   title: Text(issue.message),
                   subtitle: issue.path == null ? null : Text(issue.path!),
                 ),
               ),
           if (issues.length > 8) Text('+${issues.length - 8} more'),
         ],
+      ],
+    );
+  }
+}
+
+class BrowserDashboardTabs extends StatelessWidget {
+  const BrowserDashboardTabs({
+    required this.dataset,
+    required this.evalResult,
+    required this.selectedImage,
+    required this.selectedMatches,
+    required this.selectedMatch,
+    required this.issues,
+    super.key,
+  });
+
+  final CocoDataset dataset;
+  final EvalResult evalResult;
+  final ImageRecord? selectedImage;
+  final List<DetectionMatch> selectedMatches;
+  final DetectionMatch? selectedMatch;
+  final List<ParseIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const TabBar(
+            tabs: [
+              Tab(text: 'Общее'),
+              Tab(text: 'Selected'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _DashboardOverview(
+                  evalResult: evalResult,
+                  issues: issues,
+                ),
+                _SelectedDetailsView(
+                  dataset: dataset,
+                  selectedImage: selectedImage,
+                  selectedMatches: selectedMatches,
+                  selectedMatch: selectedMatch,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardOverview extends StatelessWidget {
+  const _DashboardOverview({
+    required this.evalResult,
+    required this.issues,
+  });
+
+  final EvalResult evalResult;
+  final List<ParseIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Text(
+          'Dashboard',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        _MetricsGrid(overall: evalResult.overall),
+        const SizedBox(height: 16),
+        Text(
+          'Per Class',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        _ClassStatsTable(stats: evalResult.perClassStats.values.toList()),
+        if (issues.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Load Warnings',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          ...issues.take(8).map(
+                (issue) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.warning),
+                  title: Text(issue.message),
+                  subtitle: issue.path == null ? null : Text(issue.path!),
+                ),
+              ),
+          if (issues.length > 8) Text('+${issues.length - 8} more'),
+        ],
+      ],
+    );
+  }
+}
+
+class _SelectedDetailsView extends StatelessWidget {
+  const _SelectedDetailsView({
+    required this.dataset,
+    required this.selectedImage,
+    required this.selectedMatches,
+    required this.selectedMatch,
+  });
+
+  final CocoDataset dataset;
+  final ImageRecord? selectedImage;
+  final List<DetectionMatch> selectedMatches;
+  final DetectionMatch? selectedMatch;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Text(
+          'Selected Image',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        _SelectedImageDetails(
+          image: selectedImage,
+          matches: selectedMatches,
+          categoriesById: dataset.categoriesById,
+          selectedMatch: selectedMatch,
+        ),
       ],
     );
   }

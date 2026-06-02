@@ -22,6 +22,9 @@ class ReportComponents {
     this.includeMatchesCsv = true,
     this.includeSmallObjectStatsCsv = false,
     this.includeConfusionMatrixCsv = false,
+    this.includeConfusionPairsCsv = false,
+    this.includeDatasetHealthCsv = false,
+    this.includeWorstCasesCsv = false,
   });
 
   final bool includeHtml;
@@ -30,6 +33,9 @@ class ReportComponents {
   final bool includeMatchesCsv;
   final bool includeSmallObjectStatsCsv;
   final bool includeConfusionMatrixCsv;
+  final bool includeConfusionPairsCsv;
+  final bool includeDatasetHealthCsv;
+  final bool includeWorstCasesCsv;
 
   ReportComponents copyWith({
     bool? includeHtml,
@@ -38,6 +44,9 @@ class ReportComponents {
     bool? includeMatchesCsv,
     bool? includeSmallObjectStatsCsv,
     bool? includeConfusionMatrixCsv,
+    bool? includeConfusionPairsCsv,
+    bool? includeDatasetHealthCsv,
+    bool? includeWorstCasesCsv,
   }) {
     return ReportComponents(
       includeHtml: includeHtml ?? this.includeHtml,
@@ -50,6 +59,11 @@ class ReportComponents {
           includeSmallObjectStatsCsv ?? this.includeSmallObjectStatsCsv,
       includeConfusionMatrixCsv:
           includeConfusionMatrixCsv ?? this.includeConfusionMatrixCsv,
+      includeConfusionPairsCsv:
+          includeConfusionPairsCsv ?? this.includeConfusionPairsCsv,
+      includeDatasetHealthCsv:
+          includeDatasetHealthCsv ?? this.includeDatasetHealthCsv,
+      includeWorstCasesCsv: includeWorstCasesCsv ?? this.includeWorstCasesCsv,
     );
   }
 }
