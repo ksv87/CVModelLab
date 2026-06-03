@@ -1,0 +1,33 @@
+[project]
+name = "cvmlab-server"
+version = "0.7.1"
+description = "Optional FastAPI backend for CV Model Lab (server mode)."
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.5",
+    "pyyaml>=6.0",
+    "orjson>=3.9",
+    "pillow>=10.0",
+    "pycocotools>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+cvmlab-server = "cvmlab_server.main:run_cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["cvmlab_server*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

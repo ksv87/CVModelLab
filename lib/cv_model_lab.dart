@@ -8,6 +8,7 @@ export 'src/core/eval/confusion_details.dart';
 export 'src/core/eval/confusion_matrix.dart';
 export 'src/core/eval/detection_matcher.dart';
 export 'src/core/eval/eval_result_filter.dart';
+export 'src/core/eval/eval_result_json.dart';
 export 'src/core/eval/iou.dart';
 export 'src/core/eval/small_object_stats.dart';
 export 'src/core/export/annotated_export_models.dart';

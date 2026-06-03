@@ -1,0 +1,19 @@
+{
+  "id": "example-project",
+  "name": "Example COCO Project",
+  "annotations_path": "/data/datasets/example/annotations/instances_val.json",
+  "images_root_path": "/data/datasets/example/images",
+  "model_runs": [
+    {
+      "id": "baseline",
+      "name": "Baseline detector",
+      "predictions_path": "/data/experiments/example/baseline_predictions.json",
+      "ap_metrics_path": "/data/experiments/example/baseline_ap_metrics.json"
+    },
+    {
+      "id": "candidate",
+      "name": "Candidate detector",
+      "predictions_path": "/data/experiments/example/candidate_predictions.json"
+    }
+  ]
+}

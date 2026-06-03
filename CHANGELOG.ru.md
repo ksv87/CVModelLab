@@ -4,6 +4,12 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Серверный режим и remote projects
+
+- Добавлен optional FastAPI server mode с allowed-root browsing, server-side COCO parsing/evaluation, image/thumbnails APIs, cache management, AP metrics и static PWA serving.
+- Добавлены desktop и PWA remote project workflows для manifest projects и custom server paths.
+- Добавлены API key authentication coverage, saved-key handling, stale-connection clearing и route-auth regression tests.
+
 ## Синтетический showcase и доработка export
 
 - Добавлен synthetic Showcase COCO dataset со сгенерированными images, annotations, predictions, AP metrics, saved project file и sample reports.

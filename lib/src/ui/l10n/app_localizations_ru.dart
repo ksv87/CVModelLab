@@ -8,6 +8,36 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String? lookup(MessageKey key, MessageParams p) {
     return switch (key) {
+      MessageKey.remoteOpenRemoteProject => 'Открыть удалённый проект',
+      MessageKey.remoteConnectToServer => 'Подключиться к серверу',
+      MessageKey.remoteServerUrl => 'Адрес сервера',
+      MessageKey.remoteApiKey => 'API-ключ',
+      MessageKey.remoteSaveApiKey => 'Сохранить API-ключ для этого сервера',
+      MessageKey.remoteTestConnection => 'Проверить подключение',
+      MessageKey.remoteConnected => 'Подключено',
+      MessageKey.remoteConnectionFailed =>
+        'Ошибка подключения: ${p['error'] ?? ''}',
+      MessageKey.remoteServerManifests => 'Проекты сервера',
+      MessageKey.remoteCustomPaths => 'Произвольные пути на сервере',
+      MessageKey.remoteOpenManifestProject => 'Открыть проект-манифест сервера',
+      MessageKey.remoteCreateFromServerPaths =>
+        'Создать удалённый проект из путей сервера',
+      MessageKey.remoteSelectAnnotations => 'Выберите JSON с аннотациями',
+      MessageKey.remoteSelectImagesRoot => 'Выберите каталог с изображениями',
+      MessageKey.remoteSelectPredictions => 'Выберите JSON с предсказаниями',
+      MessageKey.remoteOpenProject => 'Открыть проект',
+      MessageKey.remoteLoadingProject => 'Загрузка удалённого проекта…',
+      MessageKey.remoteNoManifests => 'На сервере не настроены проекты.',
+      MessageKey.remoteImagesRoot => 'Каталог изображений',
+      MessageKey.remoteAnnotations => 'Аннотации',
+      MessageKey.remotePredictions => 'Предсказания',
+      MessageKey.remoteSaveRemoteProject => 'Сохранить файл удалённого проекта',
+      MessageKey.remoteApiKeyRequired => 'Этот сервер требует API-ключ.',
+      MessageKey.remoteBrowseServer => 'Обзор сервера',
+      MessageKey.remoteUp => 'Вверх',
+      MessageKey.remoteForgetApiKey => 'Забыть сохранённый ключ',
+      MessageKey.remoteApiKeyCleared => 'Сохранённый API-ключ удалён',
+      MessageKey.remoteApiKeyInvalid => 'Неверный API-ключ.',
       MessageKey.parseInvalidJson => 'Некорректный JSON: ${p['error'] ?? ''}',
       MessageKey.parseAnnotationsRootMustBeObject =>
         'Корень COCO annotations должен быть объектом',

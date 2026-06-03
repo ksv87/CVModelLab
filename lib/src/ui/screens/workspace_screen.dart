@@ -14,6 +14,9 @@ import '../../platform_io/platform_file_picker.dart';
 import '../../platform_io/project_file_io.dart';
 import '../../platform_io/recent_projects_io.dart';
 import '../../platform_io/report_saver.dart';
+import '../../platform_io/remote/remote_connection.dart';
+import '../../platform_io/remote/remote_models.dart';
+import '../../platform_io/remote/remote_workspace.dart';
 import '../../platform_io/thumbnail_cache.dart';
 import '../../platform_io/user_preferences.dart';
 import '../export/annotated_image_renderer.dart';
@@ -29,6 +32,7 @@ import 'confusion_matrix_screen.dart';
 import 'dataset_health_screen.dart';
 import 'model_compare_screen.dart';
 import 'recommendations_screen.dart';
+import 'remote_server_browser.dart';
 import 'worst_cases_screen.dart';
 
 /// A single loaded model run together with its evaluation result.
@@ -46,6 +50,36 @@ class ModelRunEntry {
   final String? predictionsPath;
 }
 
+class RemoteWorkspaceContext {
+  const RemoteWorkspaceContext({
+    required this.connection,
+    required this.sessionId,
+    required this.projectId,
+    required this.server,
+    required this.descriptor,
+  });
+
+  final RemoteServerConnection connection;
+  final String sessionId;
+  final String projectId;
+  final RemoteServerRef server;
+  final RemoteProjectDescriptor descriptor;
+
+  RemoteWorkspaceContext copyWith({
+    String? sessionId,
+    String? projectId,
+    RemoteProjectDescriptor? descriptor,
+  }) {
+    return RemoteWorkspaceContext(
+      connection: connection,
+      sessionId: sessionId ?? this.sessionId,
+      projectId: projectId ?? this.projectId,
+      server: server,
+      descriptor: descriptor ?? this.descriptor,
+    );
+  }
+}
+
 class WorkspaceScreen extends StatefulWidget {
   const WorkspaceScreen({
     required this.projectName,
@@ -58,6 +92,7 @@ class WorkspaceScreen extends StatefulWidget {
     this.imagesRootPath,
     this.initialActiveRunIndex = 0,
     this.initialApEvalResults = const {},
+    this.remoteContext,
     super.key,
   });
 
@@ -82,6 +117,8 @@ class WorkspaceScreen extends StatefulWidget {
   /// AP eval results loaded from a saved project.
   final Map<String, ApEvalResult> initialApEvalResults;
 
+  final RemoteWorkspaceContext? remoteContext;
+
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -104,6 +141,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   int _activeRunIndex = 0;
   _WorkspacePage _page = _WorkspacePage.errorBrowser;
   String? _projectFilePath;
+  RemoteWorkspaceContext? _remoteContext;
 
   EvalConfig _evalConfig = _defaultEvalConfig;
   EvalViewFilter _viewFilter = _defaultViewFilter;
@@ -148,6 +186,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     _modelRunEntries = List<ModelRunEntry>.of(widget.modelRunEntries);
     _projectName = widget.projectName;
     _projectFilePath = widget.projectFilePath;
+    _remoteContext = widget.remoteContext;
     _activeRunIndex =
         widget.initialActiveRunIndex.clamp(0, _modelRunEntries.length - 1);
     _evalResult = _modelRunEntries[_activeRunIndex].evalResult;
@@ -680,6 +719,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Future<void> _addModelRun() async {
+    if (_remoteContext != null) {
+      await _addRemoteModelRun();
+      return;
+    }
     setState(() => _addingRun = true);
     try {
       final PickedDataFile? file = await _filePicker.pickPredictionsJson(
@@ -761,6 +804,119 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         setState(() => _addingRun = false);
       }
     }
+  }
+
+  Future<void> _addRemoteModelRun() async {
+    final RemoteWorkspaceContext contextData = _remoteContext!;
+    final RemoteProjectDescriptor descriptor = contextData.descriptor;
+    final RemoteProjectDescriptor currentDescriptor =
+        _remoteDescriptorForSave(descriptor);
+    if (!currentDescriptor.isManifest &&
+        currentDescriptor.annotationsPath != null &&
+        currentDescriptor.imagesRootPath != null) {
+      setState(() => _addingRun = true);
+      try {
+        final String? predictionsPath =
+            await RemoteServerBrowserDialog.pickJsonFile(
+          context: context,
+          connection: contextData.connection,
+        );
+        if (predictionsPath == null || !mounted) {
+          return;
+        }
+
+        final String defaultName =
+            predictionsPath.split('/').last.replaceAll('.json', '');
+        final String? name = await _showNameDialog(defaultName: defaultName);
+        if (name == null || !mounted) {
+          return;
+        }
+
+        final String runId = 'run-${DateTime.now().millisecondsSinceEpoch}';
+        final String runName = _deduplicateName(name);
+        final List<RemoteModelRunRef> nextRuns = [
+          ...currentDescriptor.modelRuns,
+          RemoteModelRunRef(
+            id: runId,
+            name: runName,
+            predictionsPath: predictionsPath,
+          ),
+        ];
+        final ServerSessionInfo session =
+            await contextData.connection.openCustomPaths(
+          name: _projectName,
+          annotationsPath: currentDescriptor.annotationsPath!,
+          imagesRootPath: currentDescriptor.imagesRootPath!,
+          modelRuns: [
+            for (final RemoteModelRunRef run in nextRuns)
+              <String, dynamic>{
+                'id': run.id,
+                'name': run.name,
+                'predictions_path': run.predictionsPath,
+                if (run.apMetricsPath != null)
+                  'ap_metrics_path': run.apMetricsPath,
+              },
+          ],
+        );
+        final RemoteWorkspaceData data =
+            await contextData.connection.loadWorkspace(
+          sessionId: session.sessionId,
+          modelRunId: runId,
+          modelRunName: runName,
+          config: _evalConfig,
+        );
+
+        if (!mounted) {
+          return;
+        }
+        final RemoteProjectDescriptor nextDescriptor = RemoteProjectDescriptor(
+          source: currentDescriptor.source,
+          annotationsPath: currentDescriptor.annotationsPath,
+          imagesRootPath: currentDescriptor.imagesRootPath,
+          modelRuns: nextRuns,
+        );
+        setState(() {
+          _remoteContext = contextData.copyWith(
+            sessionId: session.sessionId,
+            projectId: session.projectHash,
+            descriptor: nextDescriptor,
+          );
+          _modelRunEntries = [
+            ..._modelRunEntries,
+            ModelRunEntry(
+              modelRun: data.modelRun,
+              evalResult: data.evalResult,
+              predictionsPath: predictionsPath,
+            ),
+          ];
+          _activeRunIndex = _modelRunEntries.length - 1;
+          _evalResult = data.evalResult;
+          _selectedMatch = null;
+          _cachedView = null;
+          _cachedViewResult = null;
+          _cachedViewFilter = null;
+        });
+      } on Object catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add server model run: $error')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _addingRun = false);
+        }
+      }
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Server model runs can be added only for custom server paths projects.',
+        ),
+      ),
+    );
   }
 
   Future<void> _removeActiveModelRun() async {
@@ -936,6 +1092,23 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   CvmlProject _buildProject() {
     final DateTime now = DateTime.now();
+    final RemoteWorkspaceContext? remote = _remoteContext;
+    if (remote != null) {
+      return CvmlProject(
+        schemaVersion: '2',
+        id: remote.projectId,
+        name: _projectName,
+        createdAt: now,
+        updatedAt: now,
+        datasetSource: const ProjectDatasetSource(),
+        modelRuns: const <ProjectModelRunSource>[],
+        activeModelRunId: _activeModelRun.id,
+        defaultEvalConfig: _evalConfig,
+        mode: ProjectMode.remote,
+        server: remote.server,
+        remoteProject: _remoteDescriptorForSave(remote.descriptor),
+      );
+    }
     return CvmlProject(
       schemaVersion: '1',
       id: 'project-${_projectName.hashCode.abs()}',
@@ -968,6 +1141,32 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           .toList(),
       activeModelRunId: _activeModelRun.id,
       defaultEvalConfig: _evalConfig,
+    );
+  }
+
+  RemoteProjectDescriptor _remoteDescriptorForSave(
+    RemoteProjectDescriptor descriptor,
+  ) {
+    if (descriptor.isManifest) {
+      return descriptor;
+    }
+    final Map<String, RemoteModelRunRef> existingById = {
+      for (final RemoteModelRunRef run in descriptor.modelRuns) run.id: run,
+    };
+    return RemoteProjectDescriptor(
+      source: descriptor.source,
+      annotationsPath: descriptor.annotationsPath,
+      imagesRootPath: descriptor.imagesRootPath,
+      modelRuns: [
+        for (final ModelRunEntry entry in _modelRunEntries)
+          RemoteModelRunRef(
+            id: entry.modelRun.id,
+            name: entry.modelRun.name,
+            predictionsPath: entry.predictionsPath ??
+                existingById[entry.modelRun.id]?.predictionsPath,
+            apMetricsPath: existingById[entry.modelRun.id]?.apMetricsPath,
+          ),
+      ],
     );
   }
 
@@ -1025,6 +1224,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   bool _canRunApEval() => !_runningApEval;
 
   Future<void> _runApEval() async {
+    final RemoteWorkspaceContext? remote = _remoteContext;
+    if (remote != null) {
+      await _runRemoteApEval(remote);
+      return;
+    }
+
     final String? unavailable = await _apEvaluator.checkAvailability();
     if (unavailable != null) {
       if (mounted) {
@@ -1059,7 +1264,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           predictionsPath: predictionsPath,
         );
       } else {
-        // No on-disk paths (e.g. demo project) — serialize in-memory data.
+        // No on-disk paths (e.g. demo project) - serialize in-memory data.
         const CocoSerializer serializer = CocoSerializer();
         result = await _apEvaluator.evaluateFromJson(
           annotationsJson: serializer.annotationsJson(widget.dataset),
@@ -1077,6 +1282,50 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         final FriendlyError friendly = friendlyErrorFrom(
           error,
           fallbackTitle: 'AP evaluator unavailable',
+        );
+        setState(() => _apEvalError = friendly.message);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendly.message)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _runningApEval = false;
+          _taskProgress = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _runRemoteApEval(RemoteWorkspaceContext remote) async {
+    setState(() {
+      _runningApEval = true;
+      _apEvalError = null;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'ap-eval',
+        title: 'Running COCO AP evaluation',
+        message: 'Running AP evaluator on server',
+        progress: null,
+        canCancel: false,
+      );
+    });
+
+    try {
+      final ApEvalResult result = await remote.connection.runApMetrics(
+        remote.sessionId,
+        _activeModelRun.id,
+      );
+      if (mounted) {
+        setState(() {
+          _apEvalResults[_activeModelRun.id] = result;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        final FriendlyError friendly = friendlyErrorFrom(
+          error,
+          fallbackTitle: 'Server AP evaluator unavailable',
         );
         setState(() => _apEvalError = friendly.message);
         ScaffoldMessenger.of(context).showSnackBar(

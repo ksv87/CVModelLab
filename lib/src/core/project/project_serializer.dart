@@ -15,11 +15,16 @@ class ProjectSerializationException implements Exception {
 class ProjectSerializer {
   const ProjectSerializer();
 
-  static const String _currentSchemaVersion = '1';
+  static const String _localSchemaVersion = '1';
+  static const String _remoteSchemaVersion = '2';
+  static const Set<String> _supportedSchemaVersions = {'1', '2'};
 
   Map<String, dynamic> toJson(CvmlProject project) {
+    if (project.mode == ProjectMode.remote) {
+      return _remoteToJson(project);
+    }
     return <String, dynamic>{
-      'schema_version': project.schemaVersion,
+      'schema_version': _localSchemaVersion,
       'id': project.id,
       'name': project.name,
       'created_at': project.createdAt.toUtc().toIso8601String(),
@@ -30,6 +35,51 @@ class ProjectSerializer {
       if (project.activeModelRunId != null)
         'active_model_run_id': project.activeModelRunId,
       'default_eval_config': _evalConfigToJson(project.defaultEvalConfig),
+    };
+  }
+
+  Map<String, dynamic> _remoteToJson(CvmlProject project) {
+    final RemoteServerRef? server = project.server;
+    final RemoteProjectDescriptor? remote = project.remoteProject;
+    return <String, dynamic>{
+      'schema_version': _remoteSchemaVersion,
+      'mode': 'remote',
+      'id': project.id,
+      'name': project.name,
+      'created_at': project.createdAt.toUtc().toIso8601String(),
+      'updated_at': project.updatedAt.toUtc().toIso8601String(),
+      if (server != null)
+        'server': <String, dynamic>{
+          'url': server.url,
+          'api_key_saved': server.apiKeySaved,
+        },
+      if (remote != null) 'remote_project': _remoteProjectToJson(remote),
+      if (project.activeModelRunId != null)
+        'active_model_run_id': project.activeModelRunId,
+      'default_eval_config': _evalConfigToJson(project.defaultEvalConfig),
+    };
+  }
+
+  Map<String, dynamic> _remoteProjectToJson(RemoteProjectDescriptor remote) {
+    return <String, dynamic>{
+      'source': remote.source,
+      if (remote.manifestId != null) 'manifest_id': remote.manifestId,
+      if (remote.annotationsPath != null)
+        'annotations_path': remote.annotationsPath,
+      if (remote.imagesRootPath != null)
+        'images_root_path': remote.imagesRootPath,
+      if (remote.modelRuns.isNotEmpty)
+        'model_runs': [
+          for (final RemoteModelRunRef run in remote.modelRuns)
+            <String, dynamic>{
+              'id': run.id,
+              'name': run.name,
+              if (run.predictionsPath != null)
+                'predictions_path': run.predictionsPath,
+              if (run.apMetricsPath != null)
+                'ap_metrics_path': run.apMetricsPath,
+            },
+        ],
     };
   }
 
@@ -44,11 +94,18 @@ class ProjectSerializer {
         'Missing required field: schema_version',
       );
     }
-    if (schemaVersion != _currentSchemaVersion) {
+    if (schemaVersion is! String ||
+        !_supportedSchemaVersions.contains(schemaVersion)) {
       throw ProjectSerializationException(
         'Unknown schema_version: "$schemaVersion". '
-        'Only version "$_currentSchemaVersion" is supported.',
+        'Supported versions: ${_supportedSchemaVersions.join(', ')}.',
       );
+    }
+
+    // Projects without a "mode" field are legacy local projects.
+    final String modeRaw = (map['mode'] as String?) ?? 'local';
+    if (modeRaw == 'remote') {
+      return _remoteFromJson(map, schemaVersion);
     }
 
     final String id = _requireString(map, 'id');
@@ -91,7 +148,7 @@ class ProjectSerializer {
     final String? activeModelRunId = map['active_model_run_id'] as String?;
 
     return CvmlProject(
-      schemaVersion: schemaVersion as String,
+      schemaVersion: schemaVersion,
       id: id,
       name: name,
       createdAt: createdAt,
@@ -100,6 +157,73 @@ class ProjectSerializer {
       modelRuns: modelRuns,
       defaultEvalConfig: defaultEvalConfig,
       activeModelRunId: activeModelRunId,
+    );
+  }
+
+  CvmlProject _remoteFromJson(Map<String, dynamic> map, String schemaVersion) {
+    final String id = _requireString(map, 'id');
+    final String name = _requireString(map, 'name');
+    final DateTime createdAt = _requireDateTime(map, 'created_at');
+    final DateTime updatedAt = _requireDateTime(map, 'updated_at');
+
+    RemoteServerRef? server;
+    final Object? serverRaw = map['server'];
+    if (serverRaw is Map<String, dynamic>) {
+      server = RemoteServerRef(
+        url: (serverRaw['url'] as String?) ?? '',
+        apiKeySaved: serverRaw['api_key_saved'] as bool? ?? false,
+      );
+    }
+
+    RemoteProjectDescriptor? remote;
+    final Object? remoteRaw = map['remote_project'];
+    if (remoteRaw is Map<String, dynamic>) {
+      remote = _remoteProjectFromJson(remoteRaw);
+    }
+
+    final Object? defaultConfigRaw = map['default_eval_config'];
+    final EvalConfig defaultEvalConfig =
+        defaultConfigRaw is Map<String, dynamic>
+            ? _evalConfigFromJson(defaultConfigRaw)
+            : const EvalConfig();
+
+    return CvmlProject(
+      schemaVersion: schemaVersion,
+      id: id,
+      name: name,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      datasetSource: const ProjectDatasetSource(),
+      modelRuns: const <ProjectModelRunSource>[],
+      defaultEvalConfig: defaultEvalConfig,
+      activeModelRunId: map['active_model_run_id'] as String?,
+      mode: ProjectMode.remote,
+      server: server,
+      remoteProject: remote,
+    );
+  }
+
+  RemoteProjectDescriptor _remoteProjectFromJson(Map<String, dynamic> map) {
+    final Object? runsRaw = map['model_runs'];
+    final List<RemoteModelRunRef> runs = runsRaw is List<dynamic>
+        ? runsRaw
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (Map<String, dynamic> run) => RemoteModelRunRef(
+                id: (run['id'] as String?) ?? '',
+                name: (run['name'] as String?) ?? 'Model run',
+                predictionsPath: run['predictions_path'] as String?,
+                apMetricsPath: run['ap_metrics_path'] as String?,
+              ),
+            )
+            .toList()
+        : const <RemoteModelRunRef>[];
+    return RemoteProjectDescriptor(
+      source: (map['source'] as String?) ?? 'custom_paths',
+      manifestId: map['manifest_id'] as String?,
+      annotationsPath: map['annotations_path'] as String?,
+      imagesRootPath: map['images_root_path'] as String?,
+      modelRuns: runs,
     );
   }
 

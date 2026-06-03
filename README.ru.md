@@ -170,6 +170,27 @@ CV Model Lab поддерживает:
 - PDF report export с overall metrics, per-class таблицами, confusion matrix, recommendations, AP metrics и comparison summaries.
 - Annotated Image Export с overlay images.
 
+## Серверный режим (опционально)
+
+CV Model Lab может работать с бэкендом на Python (FastAPI), который просматривает
+датасеты в разрешённых корнях, выполняет оценку COCO на стороне сервера, отдаёт
+изображения, миниатюры и AP-метрики и раздаёт сборку Flutter Web/PWA. Локальный
+автономный режим продолжает работать без изменений. Сервер работает только для
+чтения по отношению к датасетам и записывает лишь собственный кэш и логи.
+
+```bash
+cd server
+uv venv && uv pip install -e ".[dev]"
+cp server.example.yaml server.yaml   # отредактируйте allowed_roots
+uv run python -m cvmlab_server.main --config server.yaml
+```
+
+Затем используйте **Подключиться к серверу** на экране открытия (десктоп) или
+откройте PWA, которую сервер раздаёт по своему адресу.
+
+Полное руководство: [Серверный режим](docs/ru/server_mode.md) /
+[Server Mode](docs/server_mode.md).
+
 ## Лицензия
 
 Этот проект распространяется по лицензии MIT. Подробности см. в [LICENSE](LICENSE).

@@ -1,0 +1,51 @@
+# CV Model Lab server configuration (example).
+# Copy to server.yaml and edit for your environment.
+
+host: 0.0.0.0
+port: 8080
+
+# Set an API key to require X-CVML-API-Key on every request.
+# Leave null for open access (only allowed with --allow-unauthenticated
+# or interactive confirmation).
+# Example: export CVMLAB_API_KEY=replace-with-a-long-random-secret
+api_key: replace-with-a-long-random-secret
+
+# Mandatory: the only directories the server is allowed to read.
+allowed_roots:
+  - id: datasets
+    path: /data/datasets
+    label: Datasets
+  - id: experiments
+    path: /data/experiments
+    label: Experiments
+
+# Optional admin-configured project manifests.
+# The directory is resolved relative to this config file when it is not absolute.
+# Manifest files are JSON; see manifests/example_project.json.
+project_manifests:
+  enabled: true
+  directory: manifests
+
+# Allow clients to pick files directly from allowed roots via the browser.
+custom_server_paths:
+  enabled: true
+
+cache:
+  enabled: true
+  directory: .cvmlab-server-cache
+  thumbnails: true
+  parsed_projects: true
+  max_size_mb: 4096
+
+logs:
+  directory: .cvmlab-server-logs
+
+# Serve the Flutter Web/PWA build from this directory.
+static_web:
+  enabled: true
+  root: ../build/web
+
+cors:
+  enabled: true
+  allowed_origins:
+    - http://localhost:*

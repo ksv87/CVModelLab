@@ -8,6 +8,38 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String? lookup(MessageKey key, MessageParams p) {
     return switch (key) {
+      MessageKey.remoteOpenRemoteProject => 'Open Remote Project',
+      MessageKey.remoteConnectToServer => 'Connect to Server',
+      MessageKey.remoteServerUrl => 'Server URL',
+      MessageKey.remoteApiKey => 'API key',
+      MessageKey.remoteSaveApiKey => 'Save API key for this server',
+      MessageKey.remoteTestConnection => 'Test connection',
+      MessageKey.remoteConnected => 'Connected',
+      MessageKey.remoteConnectionFailed =>
+        'Connection failed: ${p['error'] ?? ''}',
+      MessageKey.remoteServerManifests => 'Server projects',
+      MessageKey.remoteCustomPaths => 'Custom server paths',
+      MessageKey.remoteOpenManifestProject => 'Open server manifest project',
+      MessageKey.remoteCreateFromServerPaths =>
+        'Create remote project from server paths',
+      MessageKey.remoteSelectAnnotations => 'Select annotations JSON',
+      MessageKey.remoteSelectImagesRoot => 'Select images root directory',
+      MessageKey.remoteSelectPredictions => 'Select predictions JSON',
+      MessageKey.remoteOpenProject => 'Open project',
+      MessageKey.remoteLoadingProject => 'Loading remote project…',
+      MessageKey.remoteNoManifests =>
+        'No server projects are configured on this server.',
+      MessageKey.remoteImagesRoot => 'Images root',
+      MessageKey.remoteAnnotations => 'Annotations',
+      MessageKey.remotePredictions => 'Predictions',
+      MessageKey.remoteSaveRemoteProject => 'Save remote project file',
+      MessageKey.remoteApiKeyRequired =>
+        'This server requires an API key.',
+      MessageKey.remoteBrowseServer => 'Browse server',
+      MessageKey.remoteUp => 'Up',
+      MessageKey.remoteForgetApiKey => 'Forget saved key',
+      MessageKey.remoteApiKeyCleared => 'Saved API key removed',
+      MessageKey.remoteApiKeyInvalid => 'Invalid API key.',
       MessageKey.parseInvalidJson => 'Invalid JSON: ${p['error'] ?? ''}',
       MessageKey.parseAnnotationsRootMustBeObject =>
         'COCO annotations root must be an object',

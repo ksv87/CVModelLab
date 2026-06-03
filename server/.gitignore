@@ -1,0 +1,14 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Server runtime state (cache and logs are the only server writes)
+.cvmlab-server-cache/
+.cvmlab-server-logs/
+
+# Local config (copy from server.example.yaml)
+server.yaml
+manifests/streetstuff.json

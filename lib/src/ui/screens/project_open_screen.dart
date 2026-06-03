@@ -11,6 +11,7 @@ import '../../platform_io/user_preferences.dart';
 import '../widgets/status_views.dart';
 import '../widgets/language_selector.dart';
 import '../l10n/app_locale_scope.dart';
+import 'remote_connect_screen.dart';
 import 'workspace_screen.dart';
 
 class ProjectOpenScreen extends StatefulWidget {
@@ -164,6 +165,13 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
               onPressed: _loading ? null : _openSavedProject,
               icon: const Icon(Icons.folder_open),
               label: const Text('Open project'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _loading ? null : _connectToServer,
+              icon: const Icon(Icons.cloud_outlined),
+              label: Text(
+                AppLocaleScope.l10n(context).t(MessageKey.remoteConnectToServer),
+              ),
             ),
             if (_loadResult?.canOpen ?? false)
               OutlinedButton.icon(
@@ -676,6 +684,40 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     );
   }
 
+  void _connectToServer() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const RemoteConnectScreen(),
+      ),
+    );
+  }
+
+  void _openRemoteProject(CvmlProject project) {
+    final RemoteProjectDescriptor? descriptor = project.remoteProject;
+    final String? url = project.server?.url;
+    if (descriptor == null || url == null) {
+      setState(
+        () => _error = const FriendlyError(
+          title: 'Invalid remote project',
+          message: 'The remote project file is missing server information.',
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RemoteConnectScreen(
+          reopen: RemoteReopenRequest(
+            serverUrl: url,
+            descriptor: descriptor,
+            activeModelRunId: project.activeModelRunId,
+            defaultEvalConfig: project.defaultEvalConfig,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openSavedProject() async {
     setState(() {
       _loading = true;
@@ -715,6 +757,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
             details: e.message,
           ),
         );
+        return;
+      }
+
+      if (project.isRemote) {
+        _openRemoteProject(project);
         return;
       }
 

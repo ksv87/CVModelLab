@@ -4,6 +4,12 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Server mode and remote project access
+
+- Added the optional FastAPI server mode with allowed-root browsing, server-side COCO parsing/evaluation, image/thumbnails APIs, cache management, AP metrics, and static PWA serving.
+- Added desktop and PWA remote project workflows for manifest projects and custom server paths.
+- Added API key authentication coverage, saved-key handling, stale-connection clearing, and route-auth regression tests.
+
 ## Synthetic showcase data and export polish
 
 - Added the synthetic Showcase COCO dataset with generated images, annotations, predictions, AP metrics, saved project file, and sample reports.
