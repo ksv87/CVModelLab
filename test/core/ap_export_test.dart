@@ -78,7 +78,10 @@ void main() {
     test('produces correct header', () {
       final ApEvalResult result = _makeResult();
       final String csv = exporter.buildPerClassApCsv(result);
-      expect(csv.trim().split('\n').first, 'class_id,class_name,ap,ap50,ap75,ar');
+      expect(
+        csv.trim().split('\n').first,
+        'class_id,class_name,ap,ap50,ap75,ar',
+      );
     });
 
     test('has one row per class', () {
@@ -183,6 +186,47 @@ void main() {
         apEvalResult: apResult,
       );
       expect(bundle.csvFiles.containsKey(ReportFileNames.apMetrics), isFalse);
+      expect(bundle.csvFiles.containsKey(ReportFileNames.perClassAp), isFalse);
+    });
+
+    test('includeApInHtml false excludes AP section from HTML', () async {
+      final ApEvalResult apResult = _makeResult();
+      final ReportBundle bundle = await const ReportBundleBuilder().build(
+        dataset: _emptyDataset(),
+        modelRun: _emptyModelRun(),
+        evalConfig: const EvalConfig(),
+        evalResult: _emptyEvalResult(),
+        components: const ReportComponents(
+          includeHtml: true,
+          includePerClassMetricsCsv: false,
+          includeImageErrorsCsv: false,
+          includeMatchesCsv: false,
+          includeApInHtml: false,
+        ),
+        apEvalResult: apResult,
+      );
+      expect(bundle.htmlReport, isNot(contains('COCO AP Metrics')));
+    });
+
+    test('includePerClassAp false excludes per_class_ap.csv', () async {
+      final ApEvalResult apResult = _makeResult();
+      final ReportBundle bundle = await const ReportBundleBuilder().build(
+        dataset: _emptyDataset(),
+        modelRun: _emptyModelRun(),
+        evalConfig: const EvalConfig(),
+        evalResult: _emptyEvalResult(),
+        components: const ReportComponents(
+          includeHtml: false,
+          includePerClassMetricsCsv: false,
+          includeImageErrorsCsv: false,
+          includeMatchesCsv: false,
+          includeApMetricsCsv: true,
+          includePerClassApCsv: true,
+          includePerClassAp: false,
+        ),
+        apEvalResult: apResult,
+      );
+      expect(bundle.csvFiles.containsKey(ReportFileNames.apMetrics), isTrue);
       expect(bundle.csvFiles.containsKey(ReportFileNames.perClassAp), isFalse);
     });
   });

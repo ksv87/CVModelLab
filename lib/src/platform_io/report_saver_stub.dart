@@ -26,7 +26,10 @@ class ReportSaveResult {
 }
 
 abstract interface class ReportSaver {
-  Future<ReportSaveResult> save(ReportBundle bundle);
+  Future<ReportSaveResult> save(
+    ReportBundle bundle, {
+    String? initialDirectory,
+  });
 }
 
 ReportSaver createReportSaver() => const UnsupportedReportSaver();
@@ -35,7 +38,10 @@ class UnsupportedReportSaver implements ReportSaver {
   const UnsupportedReportSaver();
 
   @override
-  Future<ReportSaveResult> save(ReportBundle bundle) {
+  Future<ReportSaveResult> save(
+    ReportBundle bundle, {
+    String? initialDirectory,
+  }) {
     throw UnsupportedError('Report saving is not available on this platform.');
   }
 }

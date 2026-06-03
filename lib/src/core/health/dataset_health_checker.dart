@@ -18,8 +18,7 @@ class DatasetHealthChecker {
   DatasetHealthReport check({
     required CocoDataset dataset,
     required List<Prediction> predictions,
-    DatasetImageAvailability imageAvailability =
-        DatasetImageAvailability.none,
+    DatasetImageAvailability imageAvailability = DatasetImageAvailability.none,
     DatasetHealthConfig config = const DatasetHealthConfig(),
     DateTime? generatedAt,
   }) {
@@ -340,15 +339,12 @@ class DatasetHealthChecker {
       }
     }
 
-    final int errorCount = issues
-        .where((i) => i.severity == DatasetIssueSeverity.error)
-        .length;
-    final int warningCount = issues
-        .where((i) => i.severity == DatasetIssueSeverity.warning)
-        .length;
-    final int infoCount = issues
-        .where((i) => i.severity == DatasetIssueSeverity.info)
-        .length;
+    final int errorCount =
+        issues.where((i) => i.severity == DatasetIssueSeverity.error).length;
+    final int warningCount =
+        issues.where((i) => i.severity == DatasetIssueSeverity.warning).length;
+    final int infoCount =
+        issues.where((i) => i.severity == DatasetIssueSeverity.info).length;
     final int invalidAnnotationCount = issues
         .where(
           (i) =>
@@ -455,10 +451,8 @@ class DatasetHealthChecker {
       final double ih = image.height!.toDouble();
       final bool fullyOutside =
           bbox.x2 <= 0 || bbox.y2 <= 0 || bbox.x1 >= iw || bbox.y1 >= ih;
-      final bool partiallyOutside = bbox.x1 < 0 ||
-          bbox.y1 < 0 ||
-          bbox.x2 > iw ||
-          bbox.y2 > ih;
+      final bool partiallyOutside =
+          bbox.x1 < 0 || bbox.y1 < 0 || bbox.x2 > iw || bbox.y2 > ih;
       if (fullyOutside) {
         issues.add(
           DatasetHealthIssue(

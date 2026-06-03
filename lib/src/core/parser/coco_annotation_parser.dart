@@ -4,6 +4,7 @@ import '../model/annotation.dart';
 import '../model/category.dart';
 import '../model/coco_dataset.dart';
 import '../model/image_record.dart';
+import '../i18n/message_key.dart';
 import 'parse_result.dart';
 import 'parser_utils.dart';
 
@@ -24,6 +25,8 @@ class CocoAnnotationParser {
           ParseIssue(
             severity: ParseIssueSeverity.error,
             message: 'Invalid JSON: ${error.message}',
+            key: MessageKey.parseInvalidJson,
+            params: {'error': error.message},
           ),
         ],
       );
@@ -36,6 +39,7 @@ class CocoAnnotationParser {
           ParseIssue(
             severity: ParseIssueSeverity.error,
             message: 'COCO annotations root must be an object',
+            key: MessageKey.parseAnnotationsRootMustBeObject,
           ),
         ],
       );
@@ -53,6 +57,7 @@ class CocoAnnotationParser {
           ParseIssue(
             severity: ParseIssueSeverity.error,
             message: 'images, annotations and categories must be lists',
+            key: MessageKey.parseAnnotationsListsRequired,
           ),
         ],
       );
@@ -67,6 +72,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'image must be an object',
             path: 'images[$index]',
+            key: MessageKey.parseImageMustBeObject,
           ),
         );
         continue;
@@ -79,6 +85,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'image requires id and file_name',
             path: 'images[$index]',
+            key: MessageKey.parseImageRequiresIdAndFileName,
           ),
         );
         continue;
@@ -89,6 +96,8 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'duplicate image id $id skipped',
             path: 'images[$index]',
+            key: MessageKey.parseDuplicateImageIdSkipped,
+            params: {'id': id},
           ),
         );
         continue;
@@ -110,6 +119,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'category must be an object',
             path: 'categories[$index]',
+            key: MessageKey.parseCategoryMustBeObject,
           ),
         );
         continue;
@@ -122,6 +132,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'category requires id and name',
             path: 'categories[$index]',
+            key: MessageKey.parseCategoryRequiresIdAndName,
           ),
         );
         continue;
@@ -132,6 +143,8 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'duplicate category id $id skipped',
             path: 'categories[$index]',
+            key: MessageKey.parseDuplicateCategoryIdSkipped,
+            params: {'id': id},
           ),
         );
         continue;
@@ -148,6 +161,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'annotation must be an object',
             path: 'annotations[$index]',
+            key: MessageKey.parseAnnotationMustBeObject,
           ),
         );
         continue;
@@ -161,6 +175,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'annotation references unknown image_id',
             path: 'annotations[$index].image_id',
+            key: MessageKey.parseAnnotationUnknownImageId,
           ),
         );
         continue;
@@ -171,6 +186,7 @@ class CocoAnnotationParser {
             severity: ParseIssueSeverity.warning,
             message: 'annotation references unknown category_id',
             path: 'annotations[$index].category_id',
+            key: MessageKey.parseAnnotationUnknownCategoryId,
           ),
         );
         continue;

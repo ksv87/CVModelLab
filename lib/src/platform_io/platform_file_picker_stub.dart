@@ -6,35 +6,35 @@ PlatformFilePicker createPlatformFilePicker() {
 }
 
 abstract interface class PlatformFilePicker {
-  Future<PickedDataFile?> pickAnnotationsJson();
+  Future<PickedDataFile?> pickAnnotationsJson({String? initialDirectory});
 
-  Future<PickedDataFile?> pickPredictionsJson();
+  Future<PickedDataFile?> pickPredictionsJson({String? initialDirectory});
 
-  Future<PickedDataFile?> pickApMetricsJson();
+  Future<PickedDataFile?> pickApMetricsJson({String? initialDirectory});
 
-  Future<ImageSource?> pickImages();
+  Future<ImageSource?> pickImages({String? initialDirectory});
 }
 
 class UnsupportedPlatformFilePicker implements PlatformFilePicker {
   const UnsupportedPlatformFilePicker();
 
   @override
-  Future<PickedDataFile?> pickAnnotationsJson() {
+  Future<PickedDataFile?> pickAnnotationsJson({String? initialDirectory}) {
     throw UnsupportedError('File picking is not available on this platform.');
   }
 
   @override
-  Future<PickedDataFile?> pickApMetricsJson() {
+  Future<PickedDataFile?> pickApMetricsJson({String? initialDirectory}) {
     throw UnsupportedError('File picking is not available on this platform.');
   }
 
   @override
-  Future<ImageSource?> pickImages() {
+  Future<ImageSource?> pickImages({String? initialDirectory}) {
     throw UnsupportedError('File picking is not available on this platform.');
   }
 
   @override
-  Future<PickedDataFile?> pickPredictionsJson() {
+  Future<PickedDataFile?> pickPredictionsJson({String? initialDirectory}) {
     throw UnsupportedError('File picking is not available on this platform.');
   }
 }

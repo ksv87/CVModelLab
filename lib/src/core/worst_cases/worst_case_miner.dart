@@ -61,7 +61,9 @@ class WorstCaseMiner {
 
       final int gtCount = (dataset.annotationsByImageId[imageId] ??
               const <GroundTruthAnnotation>[])
-          .where((GroundTruthAnnotation a) => !(evalConfig.ignoreCrowd && a.isCrowd))
+          .where(
+            (GroundTruthAnnotation a) => !(evalConfig.ignoreCrowd && a.isCrowd),
+          )
           .length;
       final int predCount = (modelRun.predictionsByImageId[imageId] ??
               const <Prediction>[])
@@ -346,8 +348,8 @@ class WorstCaseMiner {
     String category,
     String title,
   ) {
-    final int errorDelta = (s.candidateFp + s.candidateFn) -
-        (s.baseFp + s.baseFn);
+    final int errorDelta =
+        (s.candidateFp + s.candidateFn) - (s.baseFp + s.baseFn);
     return WorstCaseItem(
       imageId: s.imageId,
       fileName: s.fileName,
@@ -368,15 +370,15 @@ class WorstCaseMiner {
     required int imageId,
     required EvalConfig config,
   }) {
-    final List<GroundTruthAnnotation> groundTruths =
-        (dataset.annotationsByImageId[imageId] ??
-                const <GroundTruthAnnotation>[])
-            .where((GroundTruthAnnotation a) => !(config.ignoreCrowd && a.isCrowd))
-            .toList();
-    final List<Prediction> predictions = (modelRun.predictionsByImageId[imageId] ??
-            const <Prediction>[])
-        .where((Prediction p) => p.score >= config.confidenceThreshold)
+    final List<GroundTruthAnnotation> groundTruths = (dataset
+                .annotationsByImageId[imageId] ??
+            const <GroundTruthAnnotation>[])
+        .where((GroundTruthAnnotation a) => !(config.ignoreCrowd && a.isCrowd))
         .toList();
+    final List<Prediction> predictions =
+        (modelRun.predictionsByImageId[imageId] ?? const <Prediction>[])
+            .where((Prediction p) => p.score >= config.confidenceThreshold)
+            .toList();
     int count = 0;
     for (final Prediction prediction in predictions) {
       for (final GroundTruthAnnotation gt in groundTruths) {

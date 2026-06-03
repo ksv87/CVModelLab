@@ -11,13 +11,19 @@ import '../../platform_io/file_pick_result.dart';
 import '../../platform_io/image_source.dart';
 import '../../platform_io/platform_file_picker.dart';
 import '../../platform_io/project_file_io.dart';
+import '../../platform_io/recent_projects_io.dart';
 import '../../platform_io/report_saver.dart';
+import '../../platform_io/thumbnail_cache.dart';
+import '../../platform_io/user_preferences.dart';
 import '../export/annotated_image_renderer.dart';
+import '../l10n/app_locale_scope.dart';
 import '../widgets/annotated_export_dialog.dart';
 import '../widgets/dashboard_panel.dart';
 import '../widgets/detection_image_viewer.dart';
 import '../widgets/export_report_dialog.dart';
 import '../widgets/image_browser_panel.dart';
+import '../widgets/language_selector.dart';
+import '../widgets/status_views.dart';
 import 'confusion_matrix_screen.dart';
 import 'dataset_health_screen.dart';
 import 'model_compare_screen.dart';
@@ -93,6 +99,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   static const EvalViewFilter _defaultViewFilter = EvalViewFilter();
 
   late List<ModelRunEntry> _modelRunEntries;
+  late String _projectName;
   int _activeRunIndex = 0;
   _WorkspacePage _page = _WorkspacePage.errorBrowser;
   String? _projectFilePath;
@@ -108,11 +115,17 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   bool _addingRun = false;
   bool _savingProject = false;
   int _evaluationRequestId = 0;
+  LongRunningTaskProgress? _taskProgress;
+  CancellationToken? _cancellationToken;
 
   final ReportSaver _reportSaver = createReportSaver();
   final AnnotatedImageSaver _annotatedImageSaver = createAnnotatedImageSaver();
   final PlatformFilePicker _filePicker = createPlatformFilePicker();
   final ApEvaluator _apEvaluator = createApEvaluator();
+  final UserPreferencesStore _preferences = createUserPreferencesStore();
+  late final RecentProjectsManager _recentProjectsManager =
+      createRecentProjectsManager(_preferences);
+  late final ThumbnailCache _thumbnailCache = createThumbnailCache();
 
   final Map<String, ApEvalResult> _apEvalResults = {};
   bool _runningApEval = false;
@@ -132,6 +145,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   void initState() {
     super.initState();
     _modelRunEntries = List<ModelRunEntry>.of(widget.modelRunEntries);
+    _projectName = widget.projectName;
     _projectFilePath = widget.projectFilePath;
     _activeRunIndex =
         widget.initialActiveRunIndex.clamp(0, _modelRunEntries.length - 1);
@@ -146,6 +160,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   ModelRunEntry get _activeEntry => _modelRunEntries[_activeRunIndex];
   ModelRun get _activeModelRun => _activeEntry.modelRun;
+  String get _projectCacheId =>
+      _projectFilePath ?? 'project-${_projectName.hashCode.abs()}';
 
   @override
   Widget build(BuildContext context) {
@@ -167,11 +183,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         : filteredView.visibleMatchesForImage(effectiveImageId);
 
     final String title =
-        widget.projectName + (_projectFilePath == null ? ' (unsaved)' : '');
+        _projectName + (_projectFilePath == null ? ' (unsaved)' : '');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: GestureDetector(
+          onDoubleTap: _evaluating ? null : _renameProject,
+          child: Text(title),
+        ),
         actions: _buildAppBarActions(context),
       ),
       body: Stack(
@@ -240,7 +259,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
               ),
             ],
           ),
-          if (_evaluating) const _EvaluationOverlay(),
+          if (_taskProgress != null)
+            TaskProgressOverlay(
+              progress: _taskProgress!,
+              onCancel: _taskProgress!.canCancel ? _cancelTask : null,
+            )
+          else if (_evaluating)
+            const _EvaluationOverlay(),
         ],
       ),
     );
@@ -276,6 +301,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 view: filteredView,
                 filter: _viewFilter,
                 selectedImageId: effectiveImageId,
+                thumbnailCache: _thumbnailCache,
+                projectId: _projectCacheId,
+                imageSource: widget.imageSource,
                 onFilterChanged: _updateViewFilter,
                 onResetFilters: () => _updateViewFilter(_defaultViewFilter),
                 onImageSelected: _selectImage,
@@ -439,6 +467,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           child: Center(child: Text(_activeModelRun.name)),
         ),
 
+      // Rename active model run.
+      Tooltip(
+        message: 'Rename model run',
+        child: IconButton(
+          onPressed: _evaluating || _addingRun ? null : _renameActiveModelRun,
+          icon: const Icon(Icons.edit),
+        ),
+      ),
+
       // Add Model Run button.
       if (!_addingRun)
         TextButton.icon(
@@ -480,6 +517,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         label: const Text('Export annotated'),
       ),
 
+      Tooltip(
+        message: 'Clear thumbnail cache',
+        child: IconButton(
+          onPressed: _evaluating ? null : _clearThumbnailCache,
+          icon: const Icon(Icons.cleaning_services_outlined),
+        ),
+      ),
+
       // Save project button.
       if (_savingProject)
         const Padding(
@@ -518,6 +563,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           label: const Text('Export report'),
         ),
       const SizedBox(width: 8),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8),
+        child: Center(child: LanguageSelector()),
+      ),
     ];
   }
 
@@ -617,10 +666,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Future<void> _addModelRun() async {
     setState(() => _addingRun = true);
     try {
-      final PickedDataFile? file = await _filePicker.pickPredictionsJson();
+      final PickedDataFile? file = await _filePicker.pickPredictionsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastPredictionsDirectory,
+        ),
+      );
       if (file == null || !mounted) {
         return;
       }
+      await _rememberDirectory(
+        PreferenceKeys.lastPredictionsDirectory,
+        file.path,
+      );
 
       final String defaultName = file.name.replaceAll('.json', '');
       final String? name = await _showNameDialog(defaultName: defaultName);
@@ -734,6 +791,38 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     });
   }
 
+  Future<void> _renameProject() async {
+    final String? newName = await _showNameDialog(defaultName: _projectName);
+    if (newName == null || newName.isEmpty || !mounted) {
+      return;
+    }
+    setState(() => _projectName = newName.trim());
+  }
+
+  Future<void> _renameActiveModelRun() async {
+    final String? newName = await _showNameDialog(
+      defaultName: _activeModelRun.name,
+    );
+    if (newName == null || newName.isEmpty || !mounted) {
+      return;
+    }
+    final String deduplicatedName = newName == _activeModelRun.name
+        ? newName
+        : _deduplicateName(newName);
+    final ModelRunEntry old = _modelRunEntries[_activeRunIndex];
+    setState(() {
+      _modelRunEntries = [
+        ..._modelRunEntries.sublist(0, _activeRunIndex),
+        ModelRunEntry(
+          modelRun: old.modelRun.withName(deduplicatedName),
+          evalResult: old.evalResult,
+          predictionsPath: old.predictionsPath,
+        ),
+        ..._modelRunEntries.sublist(_activeRunIndex + 1),
+      ];
+    });
+  }
+
   void _openCompareScreen() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -742,8 +831,24 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           modelRunEntries: List<ModelRunEntry>.of(_modelRunEntries),
           imageSource: widget.imageSource,
           evalConfig: _evalConfig,
-          projectName: widget.projectName,
+          projectName: _projectName,
           apEvalResults: Map<String, ApEvalResult>.of(_apEvalResults),
+          onActivateRun: (String runId) {
+            final int index = _modelRunEntries
+                .indexWhere((e) => e.modelRun.id == runId);
+            if (index >= 0) {
+              _switchActiveRun(index);
+              Navigator.of(context).pop();
+            }
+          },
+          onOpenCategory: (int categoryId) {
+            _openCategoryInBrowser(categoryId);
+            Navigator.of(context).pop();
+          },
+          onOpenImage: (int imageId) {
+            _openImageInBrowser(imageId);
+            Navigator.of(context).pop();
+          },
         ),
       ),
     );
@@ -761,6 +866,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         if (!mounted) {
           return;
         }
+        if (ok) {
+          await _recentProjectsManager.addOrUpdate(
+            projectPath: _projectFilePath!,
+            projectName: _projectName,
+          );
+          await _rememberDirectory(
+            PreferenceKeys.lastProjectDirectory,
+            _projectFilePath,
+          );
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -769,13 +884,23 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           ),
         );
       } else {
-        final String suggestedName = '${widget.projectName}.cvmlab.json';
-        final String? path = await io.saveProjectAs(json, suggestedName);
+        final String suggestedName = '${_projectName}.cvmlab.json';
+        final String? path = await io.saveProjectAs(
+          json,
+          suggestedName,
+          initialDirectory:
+              await _preferences.getString(PreferenceKeys.lastProjectDirectory),
+        );
         if (!mounted) {
           return;
         }
         if (path != null) {
           setState(() => _projectFilePath = path);
+          await _rememberDirectory(PreferenceKeys.lastProjectDirectory, path);
+          await _recentProjectsManager.addOrUpdate(
+            projectPath: path,
+            projectName: _projectName,
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Project saved.')),
           );
@@ -798,8 +923,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     final DateTime now = DateTime.now();
     return CvmlProject(
       schemaVersion: '1',
-      id: 'project-${widget.projectName.hashCode.abs()}',
-      name: widget.projectName,
+      id: 'project-${_projectName.hashCode.abs()}',
+      name: _projectName,
       createdAt: now,
       updatedAt: now,
       datasetSource: ProjectDatasetSource(
@@ -899,6 +1024,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     setState(() {
       _runningApEval = true;
       _apEvalError = null;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'ap-eval',
+        title: 'Running COCO AP evaluation',
+        message: 'Starting AP evaluator',
+        progress: null,
+        canCancel: false,
+      );
     });
 
     try {
@@ -927,35 +1059,53 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       }
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _apEvalError = error.toString());
+        final FriendlyError friendly = friendlyErrorFrom(
+          error,
+          fallbackTitle: 'AP evaluator unavailable',
+        );
+        setState(() => _apEvalError = friendly.message);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AP evaluation failed: $error')),
+          SnackBar(content: Text(friendly.message)),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _runningApEval = false);
+        setState(() {
+          _runningApEval = false;
+          _taskProgress = null;
+        });
       }
     }
   }
 
   Future<void> _importApMetrics() async {
     try {
-      final PickedDataFile? file = await _filePicker.pickApMetricsJson();
+      final PickedDataFile? file = await _filePicker.pickApMetricsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastApMetricsImportDirectory,
+        ),
+      );
       if (file == null || !mounted) {
         return;
       }
+      await _rememberDirectory(
+        PreferenceKeys.lastApMetricsImportDirectory,
+        file.path,
+      );
       final dynamic decoded = dart_convert.jsonDecode(file.readAsString());
       if (decoded is! Map<String, dynamic>) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid AP metrics JSON: expected an object.')),
+            const SnackBar(
+              content: Text(
+                'Invalid AP metrics JSON: expected a JSON object.',
+              ),
+            ),
           );
         }
         return;
       }
-      final ApEvalResult result =
-          const ApEvalResultParser().fromJson(decoded);
+      final ApEvalResult result = const ApEvalResultParser().fromJson(decoded);
       if (mounted) {
         setState(() {
           _apEvalResults[_activeModelRun.id] = result;
@@ -963,8 +1113,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       }
     } on Object catch (error) {
       if (mounted) {
+        final FriendlyError friendly = friendlyErrorFrom(
+          error,
+          fallbackTitle: 'Invalid AP metrics JSON',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to import AP metrics: $error')),
+          SnackBar(content: Text(friendly.message)),
         );
       }
     }
@@ -972,31 +1126,71 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Future<void> _reevaluate(EvalConfig config) async {
     final int requestId = ++_evaluationRequestId;
+    final CancellationToken token = CancellationToken();
     setState(() {
       _evalConfig = config;
       _evaluating = true;
       _selectedMatch = null;
+      _cancellationToken?.cancel();
+      _cancellationToken = token;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'threshold-recompute',
+        title: 'Recalculating metrics',
+        message: 'Applying threshold changes',
+        progress: null,
+        canCancel: true,
+      );
     });
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     // Re-evaluate all runs under the new config.
-    final List<ModelRunEntry> reevaluated = _modelRunEntries.map(
-      (ModelRunEntry e) {
-        final EvalResult newEval = const MetricsCalculator().evaluate(
-          dataset: widget.dataset,
-          modelRun: e.modelRun,
-          config: config,
-        );
-        return ModelRunEntry(
+    final List<ModelRunEntry> reevaluated = [];
+    for (int i = 0; i < _modelRunEntries.length; i++) {
+      if (token.isCancelled) {
+        if (mounted && identical(_cancellationToken, token)) {
+          setState(() {
+            _evaluating = false;
+            _taskProgress = null;
+            _cancellationToken = null;
+          });
+        }
+        return;
+      }
+      final ModelRunEntry e = _modelRunEntries[i];
+      setState(
+        () => _taskProgress = LongRunningTaskProgress(
+          taskId: 'threshold-recompute',
+          title: 'Recalculating metrics',
+          message: 'Evaluating ${e.modelRun.name}',
+          progress:
+              _modelRunEntries.isEmpty ? null : i / _modelRunEntries.length,
+          canCancel: true,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final EvalResult newEval = const MetricsCalculator().evaluate(
+        dataset: widget.dataset,
+        modelRun: e.modelRun,
+        config: config,
+      );
+      reevaluated.add(
+        ModelRunEntry(
           modelRun: e.modelRun,
           evalResult: newEval,
           predictionsPath: e.predictionsPath,
-        );
-      },
-    ).toList();
+        ),
+      );
+    }
 
-    if (!mounted || requestId != _evaluationRequestId) {
+    if (!mounted || requestId != _evaluationRequestId || token.isCancelled) {
+      if (mounted && identical(_cancellationToken, token)) {
+        setState(() {
+          _evaluating = false;
+          _taskProgress = null;
+          _cancellationToken = null;
+        });
+      }
       return;
     }
 
@@ -1017,6 +1211,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       _cachedView = null;
       _cachedViewResult = null;
       _cachedViewFilter = null;
+      _taskProgress = null;
+      _cancellationToken = null;
     });
     if (nextImageId != _selectedImageId) {
       _selectImage(nextImageId);
@@ -1066,6 +1262,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         smallObjectStatsAvailable: _evalResult.smallObjectStats.isNotEmpty,
         confusionMatrixAvailable: _evalResult.confusionMatrix.counts.isNotEmpty,
         filteredViewAvailable: true,
+        apMetricsAvailable: _apEvalResults[_activeModelRun.id] != null,
       ),
     );
     if (request == null || !mounted) {
@@ -1075,19 +1272,32 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Future<void> _exportReport(ExportReportRequest request) async {
-    setState(() => _exporting = true);
+    setState(() {
+      _exporting = true;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'report-export',
+        title: 'Exporting report',
+        message: 'Building selected report files',
+        progress: null,
+        canCancel: false,
+      );
+    });
     await Future<void>.delayed(Duration.zero);
     try {
+      final AppLocale reportLocale = request.locale == AppLocale.system
+          ? AppLocaleScope.of(context).locale
+          : request.locale;
       final ReportBundle bundle = await const ReportBundleBuilder().build(
         dataset: widget.dataset,
         modelRun: _activeModelRun,
         evalConfig: _evalConfig,
         evalResult: _evalResult,
         components: request.components,
+        locale: reportLocale,
         activeFilter: _viewFilter,
         filteredView: _buildFilteredView(),
         scope: request.scope,
-        projectName: widget.projectName,
+        projectName: _projectName,
         modelRunName: _activeModelRun.name,
         missingImageFileNames: _missingImageFileNames,
         imageAvailability: DatasetImageAvailability(
@@ -1095,8 +1305,29 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           available: true,
         ),
         comparison: _buildRecommendationComparison(),
+        apEvalResult: _apEvalResults[_activeModelRun.id],
       );
-      final ReportSaveResult result = await _reportSaver.save(bundle);
+      setState(
+        () => _taskProgress = const LongRunningTaskProgress(
+          taskId: 'report-export',
+          title: 'Exporting report',
+          message: 'Choosing export folder',
+          progress: null,
+          canCancel: false,
+        ),
+      );
+      final ReportSaveResult result = await _reportSaver.save(
+        bundle,
+        initialDirectory:
+            await _preferences.getString(PreferenceKeys.lastExportDirectory),
+      );
+      if (result.location != null &&
+          result.status == ReportSaveStatus.savedToDirectory) {
+        await _preferences.setString(
+          PreferenceKeys.lastExportDirectory,
+          result.location!,
+        );
+      }
       if (!mounted) {
         return;
       }
@@ -1104,12 +1335,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     } on Object catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $error')),
+          SnackBar(
+            content: Text(
+              friendlyErrorFrom(error, fallbackTitle: 'Export failed').message,
+            ),
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _exporting = false);
+        setState(() {
+          _exporting = false;
+          _taskProgress = null;
+        });
       }
     }
   }
@@ -1143,7 +1381,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     required AnnotatedImageExportConfig config,
     List<int>? explicitImageIds,
   }) async {
-    setState(() => _exporting = true);
+    final CancellationToken token = CancellationToken();
+    setState(() {
+      _exporting = true;
+      _cancellationToken = token;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'annotated-export',
+        title: 'Exporting annotated images',
+        message: 'Preparing image list',
+        progress: null,
+        canCancel: true,
+      );
+    });
     await Future<void>.delayed(Duration.zero);
     try {
       final FilteredEvalView view = _buildFilteredView();
@@ -1167,7 +1416,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       final Map<int, List<DetectionMatch>> matchesByImage = _matchesByImageId();
       final Map<String, Uint8List> pngFiles = {};
       final AnnotatedImageRenderer renderer = const AnnotatedImageRenderer();
-      for (final AnnotatedExportTarget target in targets) {
+      for (int i = 0; i < targets.length; i++) {
+        token.throwIfCancelled();
+        final AnnotatedExportTarget target = targets[i];
+        setState(
+          () => _taskProgress = LongRunningTaskProgress(
+            taskId: 'annotated-export',
+            title: 'Exporting annotated images',
+            message: 'Rendering ${target.outputFileName}',
+            progress: targets.isEmpty ? null : i / targets.length,
+            canCancel: true,
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
         final ImageRecord? image = widget.dataset.imagesById[target.imageId];
         if (image == null) {
           continue;
@@ -1184,12 +1445,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           modelName: _activeModelRun.name,
         );
       }
+      token.throwIfCancelled();
       final AnnotatedImageSaveResult result =
           await _annotatedImageSaver.save(pngFiles);
       if (!mounted) {
         return;
       }
       _showAnnotatedExportResult(result);
+    } on TaskCancelledException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Annotated export cancelled.')),
+        );
+      }
     } on Object catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1198,7 +1466,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() => _exporting = false);
+        setState(() {
+          _exporting = false;
+          if (identical(_cancellationToken, token)) {
+            _cancellationToken = null;
+          }
+          _taskProgress = null;
+        });
       }
     }
   }
@@ -1260,6 +1534,46 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         );
     }
   }
+
+  Future<void> _clearThumbnailCache() async {
+    await _thumbnailCache.clearProjectCache(_projectCacheId);
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Thumbnail cache cleared.')),
+    );
+  }
+
+  void _cancelTask() {
+    _cancellationToken?.cancel();
+    setState(() {
+      _taskProgress = _taskProgress?.copyWith(
+        message: 'Cancelling...',
+        clearProgress: true,
+        canCancel: false,
+      );
+    });
+  }
+
+  Future<void> _rememberDirectory(String key, String? path) async {
+    final String? directory = _directoryName(path);
+    if (directory != null && directory.isNotEmpty) {
+      await _preferences.setString(key, directory);
+    }
+  }
+}
+
+String? _directoryName(String? path) {
+  if (path == null || path.isEmpty) {
+    return null;
+  }
+  final String normalized = path.replaceAll('\\', '/');
+  final int index = normalized.lastIndexOf('/');
+  if (index <= 0) {
+    return null;
+  }
+  return normalized.substring(0, index);
 }
 
 class _EvaluationOverlay extends StatelessWidget {

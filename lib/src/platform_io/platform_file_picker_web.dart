@@ -17,22 +17,22 @@ class WebPlatformFilePicker implements PlatformFilePicker {
   const WebPlatformFilePicker();
 
   @override
-  Future<PickedDataFile?> pickAnnotationsJson() {
+  Future<PickedDataFile?> pickAnnotationsJson({String? initialDirectory}) {
     return _pickJsonFile();
   }
 
   @override
-  Future<PickedDataFile?> pickPredictionsJson() {
+  Future<PickedDataFile?> pickPredictionsJson({String? initialDirectory}) {
     return _pickJsonFile();
   }
 
   @override
-  Future<PickedDataFile?> pickApMetricsJson() {
+  Future<PickedDataFile?> pickApMetricsJson({String? initialDirectory}) {
     return _pickJsonFile();
   }
 
   @override
-  Future<ImageSource?> pickImages() async {
+  Future<ImageSource?> pickImages({String? initialDirectory}) async {
     final html.FileUploadInputElement input = html.FileUploadInputElement()
       ..accept = 'image/*'
       ..multiple = true;

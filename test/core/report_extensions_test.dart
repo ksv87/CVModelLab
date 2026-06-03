@@ -29,7 +29,8 @@ void main() {
     );
   });
 
-  test('report bundle can include health, worst-case and confusion CSVs', () async {
+  test('report bundle can include health, worst-case and confusion CSVs',
+      () async {
     final ReportBundle bundle = await const ReportBundleBuilder().build(
       dataset: dataset,
       modelRun: run,

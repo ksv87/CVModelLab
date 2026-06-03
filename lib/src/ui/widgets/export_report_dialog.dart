@@ -6,10 +6,12 @@ class ExportReportRequest {
   const ExportReportRequest({
     required this.components,
     required this.scope,
+    required this.locale,
   });
 
   final ReportComponents components;
   final ReportScope scope;
+  final AppLocale locale;
 }
 
 /// Which context data is available to conditionally enable PDF options.
@@ -19,12 +21,14 @@ class ExportReportContext {
     this.confusionMatrixAvailable = false,
     this.filteredViewAvailable = false,
     this.comparisonAvailable = false,
+    this.apMetricsAvailable = false,
   });
 
   final bool smallObjectStatsAvailable;
   final bool confusionMatrixAvailable;
   final bool filteredViewAvailable;
   final bool comparisonAvailable;
+  final bool apMetricsAvailable;
 }
 
 /// Lets the user choose which artifacts to export and over which scope.
@@ -33,6 +37,7 @@ class ExportReportDialog extends StatefulWidget {
     required this.smallObjectStatsAvailable,
     required this.confusionMatrixAvailable,
     required this.filteredViewAvailable,
+    required this.apMetricsAvailable,
     this.comparisonAvailable = false,
     super.key,
   });
@@ -41,6 +46,7 @@ class ExportReportDialog extends StatefulWidget {
   final bool confusionMatrixAvailable;
   final bool filteredViewAvailable;
   final bool comparisonAvailable;
+  final bool apMetricsAvailable;
 
   @override
   State<ExportReportDialog> createState() => _ExportReportDialogState();
@@ -64,6 +70,12 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
   bool _pdfComparison = true;
   bool _pdfHealth = true;
   bool _pdfConfusion = true;
+  bool _includeApMetrics = true;
+  bool _includePerClassAp = true;
+  bool _includeApCsv = false;
+  bool _includeApInXlsx = true;
+  bool _includeApInPdf = true;
+  AppLocale _locale = AppLocale.system;
   ReportScope _scope = ReportScope.fullEvaluation;
 
   bool get _anySelected =>
@@ -77,6 +89,7 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
       _datasetHealth ||
       _worstCases ||
       _recommendations ||
+      (_includeApCsv && widget.apMetricsAvailable) ||
       _xlsx ||
       _pdf;
 
@@ -94,6 +107,24 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               label: 'HTML report',
               value: _html,
               onChanged: (bool v) => setState(() => _html = v),
+            ),
+            _checkbox(
+              label: 'Include COCO AP metrics',
+              value: _includeApMetrics && widget.apMetricsAvailable,
+              enabled: widget.apMetricsAvailable,
+              tooltip: widget.apMetricsAvailable
+                  ? null
+                  : 'Run COCO AP evaluation or import AP metrics JSON first.',
+              onChanged: (bool v) => setState(() => _includeApMetrics = v),
+            ),
+            _checkbox(
+              label: 'Include per-class AP',
+              value: _includePerClassAp && widget.apMetricsAvailable,
+              enabled: widget.apMetricsAvailable,
+              tooltip: widget.apMetricsAvailable
+                  ? null
+                  : 'Run COCO AP evaluation or import AP metrics JSON first.',
+              onChanged: (bool v) => setState(() => _includePerClassAp = v),
             ),
             _checkbox(
               label: 'PDF report',
@@ -133,6 +164,16 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
                       enabled: widget.confusionMatrixAvailable,
                       onChanged: (bool v) => setState(() => _pdfConfusion = v),
                     ),
+                    _checkbox(
+                      label: 'Include AP in PDF',
+                      value: _includeApInPdf && widget.apMetricsAvailable,
+                      enabled: widget.apMetricsAvailable,
+                      tooltip: widget.apMetricsAvailable
+                          ? null
+                          : 'Run COCO AP evaluation or import AP metrics JSON first.',
+                      onChanged: (bool v) =>
+                          setState(() => _includeApInPdf = v),
+                    ),
                   ],
                 ),
               ),
@@ -142,6 +183,19 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               value: _xlsx,
               onChanged: (bool v) => setState(() => _xlsx = v),
             ),
+            if (_xlsx)
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: _checkbox(
+                  label: 'Include AP in XLSX',
+                  value: _includeApInXlsx && widget.apMetricsAvailable,
+                  enabled: widget.apMetricsAvailable,
+                  tooltip: widget.apMetricsAvailable
+                      ? null
+                      : 'Run COCO AP evaluation or import AP metrics JSON first.',
+                  onChanged: (bool v) => setState(() => _includeApInXlsx = v),
+                ),
+              ),
             const Divider(),
             Text('CSV exports:', style: Theme.of(context).textTheme.titleSmall),
             _checkbox(
@@ -191,6 +245,48 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
               label: 'recommendations',
               value: _recommendations,
               onChanged: (bool v) => setState(() => _recommendations = v),
+            ),
+            _checkbox(
+              label: 'AP CSV files',
+              value: _includeApCsv && widget.apMetricsAvailable,
+              enabled: widget.apMetricsAvailable,
+              tooltip: widget.apMetricsAvailable
+                  ? 'Exports ap_metrics.csv and per_class_ap.csv.'
+                  : 'Run COCO AP evaluation or import AP metrics JSON first.',
+              onChanged: (bool v) => setState(() => _includeApCsv = v),
+            ),
+            const Divider(),
+            Text(
+              'Report language:',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            RadioGroup<AppLocale>(
+              groupValue: _locale,
+              onChanged: (AppLocale? v) =>
+                  setState(() => _locale = v ?? AppLocale.system),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<AppLocale>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Current app language'),
+                    value: AppLocale.system,
+                  ),
+                  RadioListTile<AppLocale>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('English'),
+                    value: AppLocale.en,
+                  ),
+                  RadioListTile<AppLocale>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Русский'),
+                    value: AppLocale.ru,
+                  ),
+                ],
+              ),
             ),
             const Divider(),
             Text('Scope:', style: Theme.of(context).textTheme.titleSmall),
@@ -258,11 +354,20 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
             includeWorstCases: _pdfWorstCases,
             includeComparison: _pdfComparison && widget.comparisonAvailable,
             includeHealth: _pdfHealth,
-            includeConfusion:
-                _pdfConfusion && widget.confusionMatrixAvailable,
+            includeConfusion: _pdfConfusion && widget.confusionMatrixAvailable,
           ),
+          includeApInHtml:
+              _includeApMetrics && widget.apMetricsAvailable && _html,
+          includePerClassAp: _includePerClassAp && widget.apMetricsAvailable,
+          includeApInXlsx:
+              _includeApInXlsx && widget.apMetricsAvailable && _xlsx,
+          includeApInPdf: _includeApInPdf && widget.apMetricsAvailable && _pdf,
+          includeApMetricsCsv: _includeApCsv && widget.apMetricsAvailable,
+          includePerClassApCsv:
+              _includeApCsv && _includePerClassAp && widget.apMetricsAvailable,
         ),
         scope: _scope,
+        locale: _locale,
       ),
     );
   }
@@ -272,8 +377,9 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
     required bool value,
     required ValueChanged<bool> onChanged,
     bool enabled = true,
+    String? tooltip,
   }) {
-    return CheckboxListTile(
+    final Widget tile = CheckboxListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
@@ -281,5 +387,6 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
       value: value,
       onChanged: enabled ? (bool? v) => onChanged(v ?? false) : null,
     );
+    return tooltip == null ? tile : Tooltip(message: tooltip, child: tile);
   }
 }

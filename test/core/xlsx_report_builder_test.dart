@@ -131,14 +131,25 @@ void main() {
     final List<int> bytes = const XlsxReportBuilder().buildWorkbook(data);
 
     expect(bytes, isNotEmpty);
-    expect(data.sheets.map((XlsxSheetData sheet) => sheet.name), isNot(contains('Dataset Health')));
-    expect(data.sheets.map((XlsxSheetData sheet) => sheet.name), isNot(contains('Recommendations')));
+    expect(
+      data.sheets.map((XlsxSheetData sheet) => sheet.name),
+      isNot(contains('Dataset Health')),
+    );
+    expect(
+      data.sheets.map((XlsxSheetData sheet) => sheet.name),
+      isNot(contains('Recommendations')),
+    );
   });
 
   test('UTF-8 names do not crash', () {
     final CocoDataset utfDataset = CocoDataset(
       imagesById: const {
-        1: ImageRecord(id: 1, fileName: 'изображение.png', width: 100, height: 100),
+        1: ImageRecord(
+          id: 1,
+          fileName: 'изображение.png',
+          width: 100,
+          height: 100,
+        ),
       },
       categoriesById: const {
         1: CategoryRecord(id: 1, name: 'красный'),

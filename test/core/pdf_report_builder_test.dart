@@ -170,7 +170,12 @@ void main() {
   test('UTF-8 class names do not crash', () async {
     final utfDataset = CocoDataset(
       imagesById: const {
-        1: ImageRecord(id: 1, fileName: 'изображение.png', width: 100, height: 100),
+        1: ImageRecord(
+          id: 1,
+          fileName: 'изображение.png',
+          width: 100,
+          height: 100,
+        ),
       },
       categoriesById: const {
         1: CategoryRecord(id: 1, name: 'красный'),

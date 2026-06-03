@@ -134,8 +134,14 @@ void main() {
     expect(roundTripped.warnings, original.warnings);
     expect(roundTripped.perClass, hasLength(original.perClass.length));
     for (int i = 0; i < original.perClass.length; i++) {
-      expect(roundTripped.perClass[i].categoryId, original.perClass[i].categoryId);
-      expect(roundTripped.perClass[i].categoryName, original.perClass[i].categoryName);
+      expect(
+        roundTripped.perClass[i].categoryId,
+        original.perClass[i].categoryId,
+      );
+      expect(
+        roundTripped.perClass[i].categoryName,
+        original.perClass[i].categoryName,
+      );
       expect(roundTripped.perClass[i].ap, original.perClass[i].ap);
       expect(roundTripped.perClass[i].ap50, original.perClass[i].ap50);
     }
@@ -155,7 +161,8 @@ void main() {
   test('fromJson parses JSON string via jsonDecode', () {
     final String jsonStr = jsonEncode(_fullJson);
     final dynamic decoded = jsonDecode(jsonStr);
-    final ApEvalResult result = parser.fromJson(decoded as Map<String, dynamic>);
+    final ApEvalResult result =
+        parser.fromJson(decoded as Map<String, dynamic>);
     expect(result.ap, closeTo(0.458, 1e-6));
     expect(result.perClass, hasLength(2));
   });

@@ -1,24 +1,81 @@
 import 'package:flutter/material.dart';
 
+import '../platform_io/user_preferences.dart';
 import '../ui/screens/project_open_screen.dart';
+import '../ui/l10n/app_locale_scope.dart';
+import '../ui/l10n/app_localizations.dart';
+import 'package:cv_model_lab/cv_model_lab.dart';
 
-class CvModelLabApp extends StatelessWidget {
+class CvModelLabApp extends StatefulWidget {
   const CvModelLabApp({super.key});
 
   @override
+  State<CvModelLabApp> createState() => _CvModelLabAppState();
+}
+
+class _CvModelLabAppState extends State<CvModelLabApp> {
+  final UserPreferencesStore _preferences = createUserPreferencesStore();
+  AppLocale _locale = AppLocale.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocale();
+  }
+
+  Future<void> _loadLocale() async {
+    final String? saved =
+        await _preferences.getString(PreferenceKeys.appLocale);
+    final AppLocale locale = AppLocale.values.firstWhere(
+      (AppLocale value) => value.name == saved,
+      orElse: () => AppLocale.system,
+    );
+    if (mounted) {
+      setState(() => _locale = locale);
+    }
+  }
+
+  Future<void> _setLocale(AppLocale locale) async {
+    if (locale == AppLocale.system) {
+      await _preferences.remove(PreferenceKeys.appLocale);
+    } else {
+      await _preferences.setString(PreferenceKeys.appLocale, locale.name);
+    }
+    if (mounted) {
+      setState(() => _locale = locale);
+    }
+  }
+
+  AppLocale _effectiveLocale() {
+    if (_locale != AppLocale.system) {
+      return _locale;
+    }
+    final String code =
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    return code == 'ru' ? AppLocale.ru : AppLocale.en;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CV Model Lab',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xff2563eb),
-          brightness: Brightness.light,
+    final AppLocalizations localizations =
+        AppLocalizations.forLocale(_effectiveLocale());
+    return AppLocaleScope(
+      locale: _locale,
+      localizations: localizations,
+      setLocale: _setLocale,
+      child: MaterialApp(
+        title: 'CV Model Lab',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff2563eb),
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          visualDensity: VisualDensity.compact,
         ),
-        useMaterial3: true,
-        visualDensity: VisualDensity.compact,
+        home: const ProjectOpenScreen(),
       ),
-      home: const ProjectOpenScreen(),
     );
   }
 }

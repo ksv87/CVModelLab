@@ -67,7 +67,9 @@ class CsvExporter {
       ],
     ];
     final List<ClassStats> stats = perClassStats.values.toList()
-      ..sort((ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId));
+      ..sort(
+        (ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId),
+      );
     for (final ClassStats stat in stats) {
       rows.add([
         stat.categoryId,
@@ -195,7 +197,8 @@ class CsvExporter {
     ];
     final List<int> classIds = smallObjectStats.keys.toList()..sort();
     for (final int classId in classIds) {
-      final String className = dataset.categoriesById[classId]?.name ?? '$classId';
+      final String className =
+          dataset.categoriesById[classId]?.name ?? '$classId';
       final Map<ObjectSizeBucket, SmallObjectClassStats> buckets =
           smallObjectStats[classId]!;
       for (final ObjectSizeBucket bucket in ObjectSizeBucket.values) {
@@ -402,9 +405,7 @@ class CsvExporter {
     if (!config.ignoreCrowd) {
       return annotations.length;
     }
-    return annotations
-        .where((GroundTruthAnnotation a) => !a.isCrowd)
-        .length;
+    return annotations.where((GroundTruthAnnotation a) => !a.isCrowd).length;
   }
 
   int _predCount(ModelRun modelRun, EvalConfig config, int imageId) {

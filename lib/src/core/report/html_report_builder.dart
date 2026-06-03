@@ -6,6 +6,7 @@ import '../eval/confusion_details.dart';
 import '../eval/confusion_matrix.dart';
 import '../eval/small_object_stats.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/coco_dataset.dart';
 import '../model/detection_match.dart';
 import '../model/eval_config.dart';
@@ -16,6 +17,7 @@ import '../eval/eval_result_filter.dart';
 import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
+import '../../ui/l10n/app_localizations.dart';
 
 /// Builds a self-contained HTML report (inline CSS, no external assets, no JS).
 class HtmlReportBuilder {
@@ -41,7 +43,9 @@ class HtmlReportBuilder {
     ConfusionMatrixDetails? confusionDetails,
     List<Recommendation> recommendations = const <Recommendation>[],
     ApEvalResult? apEvalResult,
+    AppLocale locale = AppLocale.en,
   }) {
+    final AppLocalizations l10n = AppLocalizations.forLocale(locale);
     final EvalViewFilter filter = activeFilter ?? const EvalViewFilter();
     final List<DetectionMatch> matches = matchesForScope(
       evalResult: evalResult,
@@ -61,28 +65,40 @@ class HtmlReportBuilder {
 
     final StringBuffer html = StringBuffer();
     html.writeln('<!DOCTYPE html>');
-    html.writeln('<html lang="en">');
+    html.writeln('<html lang="${locale == AppLocale.ru ? 'ru' : 'en'}">');
     html.writeln('<head>');
     html.writeln('<meta charset="utf-8">');
     html.writeln(
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
     );
-    html.writeln('<title>CV Model Lab Report</title>');
+    html.writeln('<title>${_esc(l10n.t(MessageKey.reportTitle))}</title>');
     html.writeln('<style>${_css()}</style>');
     html.writeln('</head>');
     html.writeln('<body>');
 
-    _writeHeader(html, projectName, modelRunName, generatedAt ?? DateTime.now());
+    _writeHeader(
+      html,
+      projectName,
+      modelRunName,
+      generatedAt ?? DateTime.now(),
+      l10n,
+    );
     _writeConfigSection(html, evalConfig, dataset, scope, activeFilter);
-    _writeDatasetSummary(html, dataset, evalResult, missingImageFileNames);
-    _writeOverallMetrics(html, evalResult);
+    _writeDatasetSummary(
+      html,
+      dataset,
+      evalResult,
+      missingImageFileNames,
+      l10n,
+    );
+    _writeOverallMetrics(html, evalResult, l10n);
     if (apEvalResult != null) {
-      _writeApMetrics(html, apEvalResult);
+      _writeApMetrics(html, apEvalResult, l10n);
     }
-    _writePerClassTable(html, evalResult);
+    _writePerClassTable(html, evalResult, l10n);
     _writeClassImbalanceTable(html, evalResult);
     _writeSmallObjectTable(html, dataset, evalResult);
-    _writeRecommendations(html, recommendations, dataset);
+    _writeRecommendations(html, recommendations, dataset, l10n);
     if (confusionDetails != null) {
       _writeConfusionMatrix(html, confusionDetails);
     }
@@ -91,7 +107,7 @@ class HtmlReportBuilder {
       _writeWorstCases(html, worstCases);
     }
     if (healthReport != null) {
-      _writeDatasetHealth(html, healthReport, dataset);
+      _writeDatasetHealth(html, healthReport, dataset, l10n);
     }
 
     html.writeln('</body>');
@@ -103,9 +119,10 @@ class HtmlReportBuilder {
     StringBuffer html,
     List<Recommendation> recommendations,
     CocoDataset dataset,
+    AppLocalizations l10n,
   ) {
     html.writeln('<section>');
-    html.writeln('<h2>Recommendations</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportRecommendations))}</h2>');
     if (recommendations.isEmpty) {
       html.writeln('<p class="empty">No rule-based recommendations.</p>');
       html.writeln('</section>');
@@ -123,11 +140,19 @@ class HtmlReportBuilder {
           .map((int id) => dataset.categoriesById[id]?.name ?? '$id')
           .join(', ');
       html.writeln('<tr>');
-      html.writeln('<td>${_esc(recommendation.severity.name)}</td>');
-      html.writeln('<td>${_esc(recommendation.category.name)}</td>');
-      html.writeln('<td>${_esc(recommendation.title)}</td>');
-      html.writeln('<td>${_esc(recommendation.message)}</td>');
-      html.writeln('<td>${_esc(recommendation.action)}</td>');
+      html.writeln('<td>${_esc(l10n.severity(recommendation.severity))}</td>');
+      html.writeln(
+        '<td>${_esc(l10n.recommendationCategory(recommendation.category))}</td>',
+      );
+      html.writeln(
+        '<td>${_esc(l10n.recommendationTitle(recommendation))}</td>',
+      );
+      html.writeln(
+        '<td>${_esc(l10n.recommendationMessage(recommendation))}</td>',
+      );
+      html.writeln(
+        '<td>${_esc(l10n.recommendationAction(recommendation))}</td>',
+      );
       html.writeln('<td>${_esc(classNames)}</td>');
       html.writeln('<td>${recommendation.relatedImageIds.length}</td>');
       html.writeln('</tr>');
@@ -141,9 +166,10 @@ class HtmlReportBuilder {
     String? projectName,
     String? modelRunName,
     DateTime generatedAt,
+    AppLocalizations l10n,
   ) {
     html.writeln('<header>');
-    html.writeln('<h1>CV Model Lab Report</h1>');
+    html.writeln('<h1>${_esc(l10n.t(MessageKey.reportTitle))}</h1>');
     html.writeln(
       '<p><strong>Project:</strong> ${_esc(projectName ?? 'Untitled project')}</p>',
     );
@@ -225,10 +251,11 @@ class HtmlReportBuilder {
     CocoDataset dataset,
     EvalResult evalResult,
     Set<String> missingImageFileNames,
+    AppLocalizations l10n,
   ) {
     final OverallStats overall = evalResult.overall;
     html.writeln('<section>');
-    html.writeln('<h2>Dataset summary</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportDatasetSummary))}</h2>');
     final List<List<String>> rows = [
       ['Total images', '${dataset.imagesById.length}'],
       ['Total annotations / GT boxes', '${overall.totalGt}'],
@@ -249,13 +276,17 @@ class HtmlReportBuilder {
     html.writeln('</section>');
   }
 
-  void _writeOverallMetrics(StringBuffer html, EvalResult evalResult) {
+  void _writeOverallMetrics(
+    StringBuffer html,
+    EvalResult evalResult,
+    AppLocalizations l10n,
+  ) {
     final OverallStats o = evalResult.overall;
     final double precision = _ratio(o.totalTp, o.totalTp + o.totalFp);
     final double recall = _ratio(o.totalTp, o.totalTp + o.totalFn);
     final double f1 = _f1(precision, recall);
     html.writeln('<section>');
-    html.writeln('<h2>Overall metrics</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportOverallMetrics))}</h2>');
     _keyValueTable(html, [
       ['TP', '${o.totalTp}'],
       ['FP', '${o.totalFp}'],
@@ -293,9 +324,13 @@ class HtmlReportBuilder {
     html.writeln('</tr>');
   }
 
-  void _writeApMetrics(StringBuffer html, ApEvalResult result) {
+  void _writeApMetrics(
+    StringBuffer html,
+    ApEvalResult result,
+    AppLocalizations l10n,
+  ) {
     html.writeln('<section>');
-    html.writeln('<h2>COCO AP Metrics</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportCocoApMetrics))}</h2>');
     _keyValueTable(html, [
       ['Evaluator', result.evaluatorName],
       ['Generated at', result.generatedAt.toIso8601String()],
@@ -307,7 +342,7 @@ class HtmlReportBuilder {
       html.writeln('<tr>');
       html.writeln('<td>${_esc(label)}</td>');
       html.writeln(
-        '<td>${value == null ? '-' : value.toStringAsFixed(3)}</td>',
+        '<td>${value == null ? '-' : _pct(value)}</td>',
       );
       html.writeln('</tr>');
     }
@@ -337,16 +372,16 @@ class HtmlReportBuilder {
         html.writeln('<tr>');
         html.writeln('<td>${_esc(cls.categoryName)}</td>');
         html.writeln(
-          '<td>${cls.ap == null ? '-' : cls.ap!.toStringAsFixed(3)}</td>',
+          '<td>${cls.ap == null ? '-' : _pct(cls.ap!)}</td>',
         );
         html.writeln(
-          '<td>${cls.ap50 == null ? '-' : cls.ap50!.toStringAsFixed(3)}</td>',
+          '<td>${cls.ap50 == null ? '-' : _pct(cls.ap50!)}</td>',
         );
         html.writeln(
-          '<td>${cls.ap75 == null ? '-' : cls.ap75!.toStringAsFixed(3)}</td>',
+          '<td>${cls.ap75 == null ? '-' : _pct(cls.ap75!)}</td>',
         );
         html.writeln(
-          '<td>${cls.ar == null ? '-' : cls.ar!.toStringAsFixed(3)}</td>',
+          '<td>${cls.ar == null ? '-' : _pct(cls.ar!)}</td>',
         );
         html.writeln('</tr>');
       }
@@ -364,9 +399,13 @@ class HtmlReportBuilder {
     html.writeln('</section>');
   }
 
-  void _writePerClassTable(StringBuffer html, EvalResult evalResult) {
+  void _writePerClassTable(
+    StringBuffer html,
+    EvalResult evalResult,
+    AppLocalizations l10n,
+  ) {
     html.writeln('<section>');
-    html.writeln('<h2>Per-class metrics</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportPerClassMetrics))}</h2>');
     final List<ClassStats> stats = evalResult.perClassStats.values.toList()
       ..sort((ClassStats a, ClassStats b) {
         final int byRecall = a.recall.compareTo(b.recall);
@@ -446,7 +485,8 @@ class HtmlReportBuilder {
       '<th>TP</th><th>FN</th><th>Recall</th></tr></thead>',
     );
     html.writeln('<tbody>');
-    final List<int> classIds = evalResult.smallObjectStats.keys.toList()..sort();
+    final List<int> classIds = evalResult.smallObjectStats.keys.toList()
+      ..sort();
     for (final int classId in classIds) {
       final String className =
           dataset.categoriesById[classId]?.name ?? '$classId';
@@ -660,9 +700,10 @@ class HtmlReportBuilder {
     StringBuffer html,
     DatasetHealthReport report,
     CocoDataset dataset,
+    AppLocalizations l10n,
   ) {
     html.writeln('<section>');
-    html.writeln('<h2>Dataset health check</h2>');
+    html.writeln('<h2>${_esc(l10n.t(MessageKey.reportDatasetHealth))}</h2>');
     _keyValueTable(html, [
       ['Errors', '${report.errorCount}'],
       ['Warnings', '${report.warningCount}'],
@@ -693,11 +734,13 @@ class HtmlReportBuilder {
       );
     for (final DatasetHealthIssue issue in ordered.take(errorExampleLimit)) {
       html.writeln('<tr>');
-      html.writeln('<td>${_esc(issue.severity.name)}</td>');
+      html.writeln('<td>${_esc(l10n.severity(issue.severity))}</td>');
       html.writeln('<td>${_esc(issue.type.name)}</td>');
-      html.writeln('<td>${_esc(issue.fileName ?? (issue.imageId?.toString() ?? ''))}</td>');
+      html.writeln(
+        '<td>${_esc(issue.fileName ?? (issue.imageId?.toString() ?? ''))}</td>',
+      );
       html.writeln('<td>${_esc(issue.categoryName ?? '')}</td>');
-      html.writeln('<td>${_esc(issue.message)}</td>');
+      html.writeln('<td>${_esc(l10n.datasetIssueMessage(issue))}</td>');
       html.writeln('</tr>');
     }
     html.writeln('</tbody></table>');
@@ -715,7 +758,7 @@ class HtmlReportBuilder {
 
   String _metricCell(double value) {
     final String cls = value < 0.5 ? ' class="weak"' : '';
-    return '<td$cls>${_num(value)}</td>';
+    return '<td$cls>${_pct(value)}</td>';
   }
 
   String _bbox(ReportMatchRow row) {
@@ -744,6 +787,8 @@ class HtmlReportBuilder {
   static String _esc(String value) {
     return const HtmlEscape().convert(value);
   }
+
+  static String _pct(double value) => '${(value * 100).toStringAsFixed(1)}%';
 
   static String _num(double value) {
     if (value == value.roundToDouble() && value.abs() < 1e15) {

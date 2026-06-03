@@ -127,7 +127,8 @@ class _DesktopApEvaluator implements ApEvaluator {
     // binary and needs no on-disk packaging. PEP 723 metadata (read by uv) is
     // part of the script text, so it survives.
     final String ts = DateTime.now().millisecondsSinceEpoch.toString();
-    final String scriptPath = '${Directory.systemTemp.path}/cvml_ap_eval_$ts.py';
+    final String scriptPath =
+        '${Directory.systemTemp.path}/cvml_ap_eval_$ts.py';
     final String outputPath = '${Directory.systemTemp.path}/cvml_ap_$ts.json';
 
     try {
@@ -137,19 +138,26 @@ class _DesktopApEvaluator implements ApEvaluator {
         _Runner.uv => (
             _resolvedUv!,
             [
-              'run', scriptPath,
-              '--annotations', annotationsPath,
-              '--predictions', predictionsPath,
-              '--output', outputPath,
+              'run',
+              scriptPath,
+              '--annotations',
+              annotationsPath,
+              '--predictions',
+              predictionsPath,
+              '--output',
+              outputPath,
             ],
           ),
         _Runner.python3 => (
             _resolvedPython3!,
             [
               scriptPath,
-              '--annotations', annotationsPath,
-              '--predictions', predictionsPath,
-              '--output', outputPath,
+              '--annotations',
+              annotationsPath,
+              '--predictions',
+              predictionsPath,
+              '--output',
+              outputPath,
             ],
           ),
       };
@@ -195,10 +203,8 @@ class _DesktopApEvaluator implements ApEvaluator {
     ApEvalConfig config = const ApEvalConfig(),
   }) async {
     final String ts = DateTime.now().millisecondsSinceEpoch.toString();
-    final String annPath =
-        '${Directory.systemTemp.path}/cvmlab_ann_$ts.json';
-    final String predPath =
-        '${Directory.systemTemp.path}/cvmlab_pred_$ts.json';
+    final String annPath = '${Directory.systemTemp.path}/cvmlab_ann_$ts.json';
+    final String predPath = '${Directory.systemTemp.path}/cvmlab_pred_$ts.json';
     try {
       await File(annPath).writeAsString(annotationsJson);
       await File(predPath).writeAsString(predictionsJson);

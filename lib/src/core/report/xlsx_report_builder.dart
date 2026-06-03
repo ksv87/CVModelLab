@@ -9,6 +9,7 @@ import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../eval/small_object_stats.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/annotation.dart';
 import '../model/coco_dataset.dart';
 import '../model/eval_config.dart';
@@ -19,6 +20,7 @@ import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'report_models.dart';
 import 'xlsx_report_data.dart';
+import '../../ui/l10n/app_localizations.dart';
 
 class XlsxReportBuilder {
   const XlsxReportBuilder();
@@ -61,10 +63,17 @@ class XlsxReportBuilder {
     ConfusionMatrixDetails? confusionDetails,
     ModelComparisonResult? comparison,
     ApEvalResult? apEvalResult,
+    AppLocalizations? localizations,
   }) {
+    final AppLocalizations l10n =
+        localizations ?? AppLocalizations.forLocale(AppLocale.en);
     final List<XlsxSheetData> sheets = [
       XlsxSheetData(
-        name: 'Summary',
+        name: _localizedSheetName(
+          l10n,
+          MessageKey.reportDatasetSummary,
+          'Summary',
+        ),
         rows: _summaryRows(
           projectName: projectName,
           modelRunName: modelRunName,
@@ -73,11 +82,19 @@ class XlsxReportBuilder {
         ),
       ),
       XlsxSheetData(
-        name: 'Per-Class Metrics',
+        name: _localizedSheetName(
+          l10n,
+          MessageKey.reportPerClassMetrics,
+          'Per-Class Metrics',
+        ),
         rows: _perClassRows(evalResult),
       ),
       XlsxSheetData(
-        name: 'Image Errors',
+        name: _localizedSheetName(
+          l10n,
+          MessageKey.reportImageErrors,
+          'Image Errors',
+        ),
         rows: _imageErrorRows(
           dataset: dataset,
           modelRun: modelRun,
@@ -87,13 +104,20 @@ class XlsxReportBuilder {
           missingImageFileNames: missingImageFileNames,
         ),
       ),
-      XlsxSheetData(name: 'Matches', rows: _matchRows(matchRows)),
+      XlsxSheetData(
+        name: _localizedSheetName(l10n, MessageKey.reportMatches, 'Matches'),
+        rows: _matchRows(matchRows),
+      ),
     ];
 
     if (evalResult.smallObjectStats.isNotEmpty) {
       sheets.add(
         XlsxSheetData(
-          name: 'Small Object Stats',
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportSmallObjectStats,
+            'Small Object Stats',
+          ),
           rows: _smallObjectRows(dataset, evalResult),
         ),
       );
@@ -101,24 +125,49 @@ class XlsxReportBuilder {
     if (confusionDetails != null) {
       sheets.add(
         XlsxSheetData(
-          name: 'Confusion Matrix',
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportConfusionMatrix,
+            'Confusion Matrix',
+          ),
           rows: _confusionRows(confusionDetails),
         ),
       );
     }
-    if (worstCases != null && worstCases.categories.any((g) => g.items.isNotEmpty)) {
-      sheets.add(XlsxSheetData(name: 'Worst Cases', rows: _worstRows(worstCases)));
+    if (worstCases != null &&
+        worstCases.categories.any((g) => g.items.isNotEmpty)) {
+      sheets.add(
+        XlsxSheetData(
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportWorstCases,
+            'Worst Cases',
+          ),
+          rows: _worstRows(worstCases),
+        ),
+      );
     }
     if (healthReport != null) {
       sheets.add(
-        XlsxSheetData(name: 'Dataset Health', rows: _healthRows(healthReport)),
+        XlsxSheetData(
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportDatasetHealth,
+            'Dataset Health',
+          ),
+          rows: _healthRows(healthReport, l10n),
+        ),
       );
     }
     if (recommendations.isNotEmpty) {
       sheets.add(
         XlsxSheetData(
-          name: 'Recommendations',
-          rows: _recommendationRows(recommendations),
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportRecommendations,
+            'Recommendations',
+          ),
+          rows: _recommendationRows(recommendations, l10n),
         ),
       );
     }
@@ -126,13 +175,21 @@ class XlsxReportBuilder {
       sheets
         ..add(
           XlsxSheetData(
-            name: 'Comparison Per-Class',
+            name: l10n.locale == AppLocale.ru
+                ? _sheetName(
+                    '${l10n.t(MessageKey.reportModelComparison)} class',
+                  )
+                : 'Comparison Per-Class',
             rows: _comparisonPerClassRows(comparison),
           ),
         )
         ..add(
           XlsxSheetData(
-            name: 'Comparison Images',
+            name: l10n.locale == AppLocale.ru
+                ? _sheetName(
+                    '${l10n.t(MessageKey.reportModelComparison)} images',
+                  )
+                : 'Comparison Images',
             rows: _comparisonImageRows(comparison),
           ),
         );
@@ -140,7 +197,11 @@ class XlsxReportBuilder {
     if (apEvalResult != null) {
       sheets.add(
         XlsxSheetData(
-          name: 'AP Metrics',
+          name: _localizedSheetName(
+            l10n,
+            MessageKey.reportCocoApMetrics,
+            'AP Metrics',
+          ),
           rows: _apMetricsRows(apEvalResult),
         ),
       );
@@ -312,13 +373,26 @@ class XlsxReportBuilder {
     ];
   }
 
-  List<List<Object?>> _smallObjectRows(CocoDataset dataset, EvalResult evalResult) {
+  List<List<Object?>> _smallObjectRows(
+    CocoDataset dataset,
+    EvalResult evalResult,
+  ) {
     final List<List<Object?>> rows = [
-      const ['class_id', 'class_name', 'size_bucket', 'gt_count', 'tp', 'fn', 'recall'],
+      const [
+        'class_id',
+        'class_name',
+        'size_bucket',
+        'gt_count',
+        'tp',
+        'fn',
+        'recall',
+      ],
     ];
-    final List<int> classIds = evalResult.smallObjectStats.keys.toList()..sort();
+    final List<int> classIds = evalResult.smallObjectStats.keys.toList()
+      ..sort();
     for (final int classId in classIds) {
-      final String className = dataset.categoriesById[classId]?.name ?? '$classId';
+      final String className =
+          dataset.categoriesById[classId]?.name ?? '$classId';
       for (final ObjectSizeBucket bucket in ObjectSizeBucket.values) {
         final SmallObjectClassStats? stat =
             evalResult.smallObjectStats[classId]?[bucket];
@@ -397,7 +471,10 @@ class XlsxReportBuilder {
     return rows;
   }
 
-  List<List<Object?>> _healthRows(DatasetHealthReport report) {
+  List<List<Object?>> _healthRows(
+    DatasetHealthReport report,
+    AppLocalizations l10n,
+  ) {
     return [
       const [
         'severity',
@@ -421,15 +498,18 @@ class XlsxReportBuilder {
           issue.annotationId,
           issue.categoryId,
           issue.categoryName,
-          issue.title,
-          issue.message,
-          issue.recommendation,
+          l10n.datasetIssueTitle(issue),
+          l10n.datasetIssueMessage(issue),
+          l10n.datasetIssueRecommendation(issue),
           issue.details.isEmpty ? '' : jsonEncode(issue.details),
         ],
     ];
   }
 
-  List<List<Object?>> _recommendationRows(List<Recommendation> recommendations) {
+  List<List<Object?>> _recommendationRows(
+    List<Recommendation> recommendations,
+    AppLocalizations l10n,
+  ) {
     return [
       const [
         'severity',
@@ -445,9 +525,9 @@ class XlsxReportBuilder {
         [
           recommendation.severity.name,
           recommendation.category.name,
-          recommendation.title,
-          recommendation.message,
-          recommendation.action,
+          l10n.recommendationTitle(recommendation),
+          l10n.recommendationMessage(recommendation),
+          l10n.recommendationAction(recommendation),
           recommendation.relatedImageIds.join(' '),
           recommendation.relatedCategoryIds.join(' '),
           recommendation.evidence.isEmpty
@@ -457,7 +537,9 @@ class XlsxReportBuilder {
     ];
   }
 
-  List<List<Object?>> _comparisonPerClassRows(ModelComparisonResult comparison) {
+  List<List<Object?>> _comparisonPerClassRows(
+    ModelComparisonResult comparison,
+  ) {
     return [
       const [
         'class_id',
@@ -581,12 +663,20 @@ class XlsxReportBuilder {
     xml.write(
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
     );
-    xml.write('<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>');
+    xml.write(
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+    );
     xml.write('<Default Extension="xml" ContentType="application/xml"/>');
-    xml.write('<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>');
-    xml.write('<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>');
+    xml.write(
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+    );
+    xml.write(
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
+    );
     for (var i = 1; i <= sheetCount; i += 1) {
-      xml.write('<Override PartName="/xl/worksheets/sheet$i.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
+      xml.write(
+        '<Override PartName="/xl/worksheets/sheet$i.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
+      );
     }
     xml.write('</Types>');
     return xml.toString();
@@ -602,9 +692,13 @@ class XlsxReportBuilder {
   String _workbook(List<XlsxSheetData> sheets) {
     final StringBuffer xml = StringBuffer();
     xml.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
-    xml.write('<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>');
+    xml.write(
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>',
+    );
     for (var i = 0; i < sheets.length; i += 1) {
-      xml.write('<sheet name="${_xml(sheets[i].name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>');
+      xml.write(
+        '<sheet name="${_xml(sheets[i].name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>',
+      );
     }
     xml.write('</sheets></workbook>');
     return xml.toString();
@@ -613,11 +707,17 @@ class XlsxReportBuilder {
   String _workbookRels(int sheetCount) {
     final StringBuffer xml = StringBuffer();
     xml.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
-    xml.write('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">');
+    xml.write(
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    );
     for (var i = 1; i <= sheetCount; i += 1) {
-      xml.write('<Relationship Id="rId$i" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet$i.xml"/>');
+      xml.write(
+        '<Relationship Id="rId$i" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet$i.xml"/>',
+      );
     }
-    xml.write('<Relationship Id="rId${sheetCount + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>');
+    xml.write(
+      '<Relationship Id="rId${sheetCount + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
+    );
     xml.write('</Relationships>');
     return xml.toString();
   }
@@ -636,14 +736,24 @@ class XlsxReportBuilder {
   String _worksheet(XlsxSheetData sheet) {
     final StringBuffer xml = StringBuffer();
     xml.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
-    xml.write('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">');
-    xml.write('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>');
+    xml.write(
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    );
+    xml.write(
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>',
+    );
     xml.write('<sheetData>');
     for (var rowIndex = 0; rowIndex < sheet.rows.length; rowIndex += 1) {
       final List<Object?> row = sheet.rows[rowIndex];
       xml.write('<row r="${rowIndex + 1}">');
       for (var colIndex = 0; colIndex < row.length; colIndex += 1) {
-        xml.write(_cell(row[rowIndex >= 0 ? colIndex : colIndex], rowIndex, colIndex));
+        xml.write(
+          _cell(
+            row[rowIndex >= 0 ? colIndex : colIndex],
+            rowIndex,
+            colIndex,
+          ),
+        );
       }
       xml.write('</row>');
     }
@@ -716,6 +826,27 @@ class XlsxReportBuilder {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&apos;');
+  }
+
+  String _sheetName(String value) {
+    final sanitized = value
+        .replaceAll(RegExp(r'[:\\/?*\[\]]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (sanitized.isEmpty) {
+      return 'Sheet';
+    }
+    return sanitized.length <= 31 ? sanitized : sanitized.substring(0, 31);
+  }
+
+  String _localizedSheetName(
+    AppLocalizations l10n,
+    MessageKey key,
+    String englishFallback,
+  ) {
+    return l10n.locale == AppLocale.ru
+        ? _sheetName(l10n.t(key))
+        : englishFallback;
   }
 
   int _gtCount(CocoDataset dataset, EvalConfig config, int imageId) {

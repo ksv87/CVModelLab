@@ -35,8 +35,8 @@ class DatasetHealthIssue {
   const DatasetHealthIssue({
     required this.severity,
     required this.type,
-    required this.title,
-    required this.message,
+    this.title = '',
+    this.message = '',
     this.imageId,
     this.fileName,
     this.annotationId,
@@ -44,6 +44,7 @@ class DatasetHealthIssue {
     this.categoryName,
     this.recommendation,
     this.details = const <String, Object?>{},
+    this.technicalDetails,
   });
 
   final DatasetIssueSeverity severity;
@@ -60,6 +61,7 @@ class DatasetHealthIssue {
   final String? recommendation;
 
   final Map<String, Object?> details;
+  final String? technicalDetails;
 }
 
 /// Aggregated result of a [DatasetHealthChecker] run.

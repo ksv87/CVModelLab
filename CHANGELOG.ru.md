@@ -4,6 +4,12 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Локализация и multi-model comparison
+
+- Добавлена English/Russian localization для app text, warnings, recommendations, health issues, errors и report headings.
+- Добавлено multi-model comparison для 3+ model runs: leaderboard, per-class ranking, disagreement analysis, regression matrix и multi-model exports.
+- Улучшены metric formatting, recent project restore behavior, AP persistence, model/project renaming и comparison usability.
+
 ## Рекомендации и экспорт отчётов
 
 - Добавлены rule-based recommendations с deterministic evidence и ссылками навигации.

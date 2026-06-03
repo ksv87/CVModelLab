@@ -4,6 +4,7 @@ import '../eval/eval_result_filter.dart';
 import '../comparison/comparison_models.dart';
 import '../health/dataset_health_checker.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/coco_dataset.dart';
 import '../model/eval_config.dart';
 import '../model/eval_result.dart';
@@ -18,6 +19,7 @@ import 'html_report_builder.dart';
 import 'pdf_report_builder.dart';
 import 'report_models.dart';
 import 'xlsx_report_builder.dart';
+import '../../ui/l10n/app_localizations.dart';
 
 /// Canonical file names used when persisting a [ReportBundle].
 class ReportFileNames {
@@ -98,6 +100,7 @@ class ReportBundleBuilder {
     EvalViewFilter? activeFilter,
     FilteredEvalView? filteredView,
     ReportScope scope = ReportScope.fullEvaluation,
+    AppLocale locale = AppLocale.en,
     String? projectName,
     String? modelRunName,
     Set<String> missingImageFileNames = const <String>{},
@@ -109,6 +112,7 @@ class ReportBundleBuilder {
     final DateTime timestamp = generatedAt ?? DateTime.now();
     final String resolvedProject = projectName ?? 'Untitled project';
     final String resolvedRun = modelRunName ?? modelRun.name;
+    final AppLocalizations localizations = AppLocalizations.forLocale(locale);
 
     final List<int> imageIds = imageIdsForScope(
       dataset: dataset,
@@ -134,8 +138,8 @@ class ReportBundleBuilder {
         components.includePdfReport && components.pdfOptions.includeWorstCases;
     final bool pdfNeedsConfusion =
         components.includePdfReport && components.pdfOptions.includeConfusion;
-    final bool pdfNeedsRecs =
-        components.includePdfReport && components.pdfOptions.includeRecommendations;
+    final bool pdfNeedsRecs = components.includePdfReport &&
+        components.pdfOptions.includeRecommendations;
 
     final bool computeHealth = components.includeDatasetHealthCsv ||
         components.includeXlsxWorkbook ||
@@ -200,6 +204,13 @@ class ReportBundleBuilder {
         : const <Recommendation>[];
 
     // ── HTML ──────────────────────────────────────────────────────────────────
+    final ApEvalResult? htmlApEvalResult =
+        components.includeApInHtml ? apEvalResult : null;
+    final ApEvalResult? xlsxApEvalResult =
+        components.includeApInXlsx ? apEvalResult : null;
+    final ApEvalResult? pdfApEvalResult =
+        components.includeApInPdf ? apEvalResult : null;
+
     final String html = components.includeHtml
         ? htmlBuilder.build(
             dataset: dataset,
@@ -217,7 +228,8 @@ class ReportBundleBuilder {
             worstCases: worstCases,
             confusionDetails: confusionDetails,
             recommendations: recommendations,
-            apEvalResult: apEvalResult,
+            apEvalResult: htmlApEvalResult,
+            locale: locale,
           )
         : '';
 
@@ -275,6 +287,7 @@ class ReportBundleBuilder {
           csvExporter.buildApMetricsCsv(apEvalResult);
     }
     if (components.includePerClassApCsv &&
+        components.includePerClassAp &&
         apEvalResult != null &&
         apEvalResult.perClass.isNotEmpty) {
       csvFiles[ReportFileNames.perClassAp] =
@@ -301,7 +314,8 @@ class ReportBundleBuilder {
           recommendations: recommendations,
           confusionDetails: confusionDetails,
           comparison: comparison,
-          apEvalResult: apEvalResult,
+          apEvalResult: xlsxApEvalResult,
+          localizations: localizations,
         ),
       );
     }
@@ -324,7 +338,8 @@ class ReportBundleBuilder {
             : null,
         recommendations:
             pdfNeedsRecs ? recommendations : const <Recommendation>[],
-        apEvalResult: apEvalResult,
+        apEvalResult: pdfApEvalResult,
+        locale: locale,
       );
       binaryFiles[ReportFileNames.pdf] = await pdfBuilder.buildPdf(pdfData);
     }

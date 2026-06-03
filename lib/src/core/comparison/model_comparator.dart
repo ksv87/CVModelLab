@@ -135,8 +135,7 @@ class ModelComparator {
     final int candidateFp = candidateEval.overall.totalFp;
     final int candidateFn = candidateEval.overall.totalFn;
 
-    final double basePrecision =
-        _safeRatio(baseTp, baseTp + baseFp);
+    final double basePrecision = _safeRatio(baseTp, baseTp + baseFp);
     final double baseRecall = _safeRatio(baseTp, baseTp + baseFn);
     final double baseF1 = _f1(basePrecision, baseRecall);
     final double candidatePrecision =
@@ -187,7 +186,8 @@ class ModelComparator {
     final List<ClassMetricsDiff> diffs = [];
     for (final int categoryId in allCategoryIds) {
       final ClassStats? baseStats = baseEval.perClassStats[categoryId];
-      final ClassStats? candidateStats = candidateEval.perClassStats[categoryId];
+      final ClassStats? candidateStats =
+          candidateEval.perClassStats[categoryId];
 
       final int baseTp = baseStats?.tp ?? 0;
       final int baseFp = baseStats?.fp ?? 0;
@@ -201,17 +201,14 @@ class ModelComparator {
       final double baseRecall =
           baseStats?.recall ?? _safeRatio(baseTp, baseTp + baseFn);
       final double baseF1 = baseStats?.f1 ?? _f1(basePrecision, baseRecall);
-      final double candidatePrecision =
-          candidateStats?.precision ??
+      final double candidatePrecision = candidateStats?.precision ??
           _safeRatio(candidateTp, candidateTp + candidateFp);
-      final double candidateRecall =
-          candidateStats?.recall ??
+      final double candidateRecall = candidateStats?.recall ??
           _safeRatio(candidateTp, candidateTp + candidateFn);
       final double candidateF1 =
           candidateStats?.f1 ?? _f1(candidatePrecision, candidateRecall);
 
-      final String categoryName =
-          dataset.categoriesById[categoryId]?.name ??
+      final String categoryName = dataset.categoriesById[categoryId]?.name ??
           baseStats?.categoryName ??
           candidateStats?.categoryName ??
           '$categoryId';

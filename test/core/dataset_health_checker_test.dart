@@ -73,9 +73,7 @@ void main() {
       1,
     );
     expect(
-      report
-          .issuesOfType(DatasetIssueType.unknownAnnotationCategoryId)
-          .length,
+      report.issuesOfType(DatasetIssueType.unknownAnnotationCategoryId).length,
       1,
     );
   });
@@ -88,9 +86,7 @@ void main() {
     expect(report.issuesOfType(DatasetIssueType.invalidBbox).length, 1);
     expect(report.issuesOfType(DatasetIssueType.tinyBbox).length, 1);
     expect(
-      report
-          .issuesOfType(DatasetIssueType.bboxPartiallyOutsideImage)
-          .length,
+      report.issuesOfType(DatasetIssueType.bboxPartiallyOutsideImage).length,
       1,
     );
   });
@@ -149,9 +145,7 @@ void main() {
       1,
     );
     expect(
-      report
-          .issuesOfType(DatasetIssueType.unknownPredictionCategoryId)
-          .length,
+      report.issuesOfType(DatasetIssueType.unknownPredictionCategoryId).length,
       1,
     );
     expect(report.invalidPredictionCount, greaterThanOrEqualTo(2));
@@ -177,7 +171,10 @@ void main() {
     expect(withSource.missingImageCount, 1);
     expect(withSource.unusedImageFileCount, 1);
     expect(
-      withSource.issuesOfType(DatasetIssueType.missingImageFile).single.fileName,
+      withSource
+          .issuesOfType(DatasetIssueType.missingImageFile)
+          .single
+          .fileName,
       'a.jpg',
     );
   });

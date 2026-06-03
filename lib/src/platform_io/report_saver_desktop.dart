@@ -14,9 +14,13 @@ class DesktopReportSaver implements ReportSaver {
   const DesktopReportSaver();
 
   @override
-  Future<ReportSaveResult> save(ReportBundle bundle) async {
+  Future<ReportSaveResult> save(
+    ReportBundle bundle, {
+    String? initialDirectory,
+  }) async {
     final String? directoryPath = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Choose a folder to export the report',
+      initialDirectory: initialDirectory,
     );
     if (directoryPath == null) {
       return const ReportSaveResult.cancelled();

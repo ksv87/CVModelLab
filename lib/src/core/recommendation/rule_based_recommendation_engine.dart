@@ -4,6 +4,7 @@ import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../eval/small_object_stats.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/coco_dataset.dart';
 import '../model/detection_match.dart';
 import '../model/eval_config.dart';
@@ -29,7 +30,12 @@ class RuleBasedRecommendationEngine {
     final List<Recommendation> recommendations = [];
     _addClassMetricRecommendations(recommendations, evalResult, config);
     _addClassImbalanceRecommendation(recommendations, evalResult, config);
-    _addSmallObjectRecommendations(recommendations, dataset, evalResult, config);
+    _addSmallObjectRecommendations(
+      recommendations,
+      dataset,
+      evalResult,
+      config,
+    );
     _addHighConfidenceFpRecommendation(
       recommendations,
       evalResult,
@@ -60,17 +66,16 @@ class RuleBasedRecommendationEngine {
     RecommendationConfig config,
   ) {
     final List<ClassStats> stats = evalResult.perClassStats.values.toList()
-      ..sort((ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId));
+      ..sort(
+        (ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId),
+      );
     for (final ClassStats stat in stats) {
       if (stat.gtCount > 0 && stat.recall < config.lowRecallThreshold) {
         out.add(
           Recommendation(
             severity: _severityForCount(stat.fn, config),
             category: RecommendationCategory.falseNegatives,
-            title: 'Low recall for class "${stat.categoryName}"',
-            message: 'The model misses many objects of this class.',
-            action:
-                'Inspect false negatives, check annotation consistency, add more examples, and consider resolution/augmentation changes.',
+            messageKey: MessageKey.recLowRecallClass,
             relatedCategoryIds: [stat.categoryId],
             evidence: {
               'class_id': stat.categoryId,
@@ -82,16 +87,12 @@ class RuleBasedRecommendationEngine {
           ),
         );
       }
-      if (stat.predCount > 0 &&
-          stat.precision < config.lowPrecisionThreshold) {
+      if (stat.predCount > 0 && stat.precision < config.lowPrecisionThreshold) {
         out.add(
           Recommendation(
             severity: _severityForCount(stat.fp, config),
             category: RecommendationCategory.falsePositives,
-            title: 'Low precision for class "${stat.categoryName}"',
-            message: 'Many predictions for this class are false positives.',
-            action:
-                'Inspect false positives, add hard negatives, review class taxonomy and score threshold.',
+            messageKey: MessageKey.recLowPrecisionClass,
             relatedCategoryIds: [stat.categoryId],
             evidence: {
               'class_id': stat.categoryId,
@@ -108,10 +109,7 @@ class RuleBasedRecommendationEngine {
           Recommendation(
             severity: RecommendationSeverity.info,
             category: RecommendationCategory.dataCollection,
-            title: 'Rare class "${stat.categoryName}"',
-            message: 'This class has too few ground-truth examples.',
-            action:
-                'Collect more samples or avoid trusting metrics for this class.',
+            messageKey: MessageKey.recRareClass,
             relatedCategoryIds: [stat.categoryId],
             evidence: {
               'class_id': stat.categoryId,
@@ -144,7 +142,9 @@ class RuleBasedRecommendationEngine {
               stat.gtCount / totalGt < config.classImbalancePercentThreshold,
         )
         .toList()
-      ..sort((ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId));
+      ..sort(
+        (ClassStats a, ClassStats b) => a.categoryId.compareTo(b.categoryId),
+      );
     if (underrepresented.isEmpty) {
       return;
     }
@@ -152,10 +152,7 @@ class RuleBasedRecommendationEngine {
       Recommendation(
         severity: RecommendationSeverity.warning,
         category: RecommendationCategory.classImbalance,
-        title: 'Class imbalance detected',
-        message:
-            'Some classes have a very small share of the ground-truth objects.',
-        action: 'Collect or oversample underrepresented classes.',
+        messageKey: MessageKey.recClassImbalance,
         relatedCategoryIds: [
           for (final ClassStats stat in underrepresented) stat.categoryId,
         ],
@@ -192,31 +189,25 @@ class RuleBasedRecommendationEngine {
       if (small == null || small.gtCount == 0) {
         continue;
       }
-      final double mediumRecall =
-          buckets[ObjectSizeBucket.medium]?.gtCount == 0
-              ? 0
-              : buckets[ObjectSizeBucket.medium]?.recall ?? 0;
+      final double mediumRecall = buckets[ObjectSizeBucket.medium]?.gtCount == 0
+          ? 0
+          : buckets[ObjectSizeBucket.medium]?.recall ?? 0;
       final double largeRecall = buckets[ObjectSizeBucket.large]?.gtCount == 0
           ? 0
           : buckets[ObjectSizeBucket.large]?.recall ?? 0;
-      final double referenceRecall = mediumRecall > largeRecall
-          ? mediumRecall
-          : largeRecall;
+      final double referenceRecall =
+          mediumRecall > largeRecall ? mediumRecall : largeRecall;
       final double gap = referenceRecall - small.recall;
-      if (referenceRecall <= 0 ||
-          gap < config.smallObjectRecallGapThreshold) {
+      if (referenceRecall <= 0 || gap < config.smallObjectRecallGapThreshold) {
         continue;
       }
-      final String className = dataset.categoriesById[classId]?.name ?? '$classId';
+      final String className =
+          dataset.categoriesById[classId]?.name ?? '$classId';
       out.add(
         Recommendation(
           severity: _severityForCount(small.fn, config),
           category: RecommendationCategory.smallObjects,
-          title: 'Small object performance is weak',
-          message:
-              'Small objects for "$className" have much lower recall than larger objects.',
-          action:
-              'Consider higher input resolution, tiling, more small-object samples, or reviewing tiny annotations.',
+          messageKey: MessageKey.recSmallObjectRecallGap,
           relatedCategoryIds: [classId],
           evidence: {
             'class_id': classId,
@@ -242,8 +233,7 @@ class RuleBasedRecommendationEngine {
         .where(
           (DetectionMatch match) =>
               match.type == DetectionMatchType.falsePositive &&
-              (match.prediction?.score ?? 0) >
-                  config.highConfidenceFpThreshold,
+              (match.prediction?.score ?? 0) > config.highConfidenceFpThreshold,
         )
         .toList()
       ..sort((DetectionMatch a, DetectionMatch b) {
@@ -272,11 +262,7 @@ class RuleBasedRecommendationEngine {
       Recommendation(
         severity: _severityForCount(highConfidenceFp.length, config),
         category: RecommendationCategory.scoreCalibration,
-        title: 'High-confidence false positives',
-        message:
-            'Some false positives have high confidence scores, which makes thresholding less reliable.',
-        action:
-            'Inspect hard negatives, add background examples, check score calibration.',
+        messageKey: MessageKey.recHighConfidenceFalsePositives,
         relatedImageIds: imageIds.take(50).toList(),
         relatedCategoryIds: categoryIds.toList()..sort(),
         evidence: {
@@ -302,11 +288,7 @@ class RuleBasedRecommendationEngine {
       Recommendation(
         severity: _severityForCount(overall.totalFn, config),
         category: RecommendationCategory.falseNegatives,
-        title: 'Many missed objects',
-        message:
-            'False negatives are a major part of the current error profile.',
-        action:
-            'Inspect FN cases, annotation consistency, input resolution, augmentation and train/val distribution.',
+        messageKey: MessageKey.recManyFalseNegatives,
         relatedImageIds: evalResult.imageSummaries.values
             .where((ImageEvalSummary summary) => summary.hasFn)
             .map((ImageEvalSummary summary) => summary.imageId)
@@ -346,12 +328,7 @@ class RuleBasedRecommendationEngine {
         Recommendation(
           severity: _severityForCount(pair.count, config),
           category: RecommendationCategory.classConfusion,
-          title:
-              'Class confusion: "${pair.gtClass}" predicted as "${pair.predClass}"',
-          message:
-              'The model confuses these two classes in class-agnostic matching.',
-          action:
-              'Review annotation rules and visual similarity. Add discriminative examples.',
+          messageKey: MessageKey.recClassConfusion,
           relatedImageIds: pair.exampleImageIds.take(50).toList(),
           relatedCategoryIds: [
             if (pair.gtCategoryId != null) pair.gtCategoryId!,
@@ -386,10 +363,7 @@ class RuleBasedRecommendationEngine {
       Recommendation(
         severity: RecommendationSeverity.critical,
         category: RecommendationCategory.datasetHealth,
-        title: 'Dataset health errors detected',
-        message:
-            'Dataset health checks found errors that can make metrics unreliable.',
-        action: 'Fix dataset issues before trusting evaluation metrics.',
+        messageKey: MessageKey.recDatasetHealthErrors,
         relatedImageIds: healthReport.issues
             .where((DatasetHealthIssue issue) => issue.imageId != null)
             .map((DatasetHealthIssue issue) => issue.imageId!)
@@ -429,11 +403,7 @@ class RuleBasedRecommendationEngine {
       Recommendation(
         severity: _severityForCount(regressionCount, config),
         category: RecommendationCategory.modelComparison,
-        title: 'Candidate model regressed',
-        message:
-            'The candidate model introduced broken or regressed images compared with the base run.',
-        action:
-            'Inspect broken/regressed images before selecting candidate for production.',
+        messageKey: MessageKey.recCandidateRegression,
         relatedImageIds: [
           ...comparison.brokenImageIds,
           ...comparison.regressedImageIds,
@@ -461,10 +431,7 @@ class RuleBasedRecommendationEngine {
         Recommendation(
           severity: RecommendationSeverity.info,
           category: RecommendationCategory.thresholds,
-          title: 'Precision is low while recall is acceptable',
-          message:
-              'The current threshold keeps many detections but admits many false positives.',
-          action: 'Try increasing confidence threshold.',
+          messageKey: MessageKey.recThresholdLowPrecision,
           evidence: {
             'precision': overall.microPrecision,
             'recall': overall.microRecall,
@@ -479,11 +446,7 @@ class RuleBasedRecommendationEngine {
         Recommendation(
           severity: RecommendationSeverity.info,
           category: RecommendationCategory.thresholds,
-          title: 'Recall is low while precision is acceptable',
-          message:
-              'The current threshold may be too strict or the model may need stronger recall.',
-          action:
-              'Try lowering confidence threshold or improving data/model recall.',
+          messageKey: MessageKey.recThresholdLowRecall,
           evidence: {
             'precision': overall.microPrecision,
             'recall': overall.microRecall,
@@ -514,7 +477,7 @@ int _compareRecommendations(Recommendation a, Recommendation b) {
   if (byCategory != 0) {
     return byCategory;
   }
-  return a.title.compareTo(b.title);
+  return a.messageKey.name.compareTo(b.messageKey.name);
 }
 
 int _severityRank(RecommendationSeverity severity) {

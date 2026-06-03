@@ -16,7 +16,7 @@ class WebProjectFileIo implements ProjectFileIo {
   const WebProjectFileIo();
 
   @override
-  Future<PickedDataFile?> openProject() async {
+  Future<PickedDataFile?> openProject({String? initialDirectory}) async {
     final html.FileUploadInputElement input = html.FileUploadInputElement()
       ..accept = 'application/json,.json';
     input.click();
@@ -33,8 +33,9 @@ class WebProjectFileIo implements ProjectFileIo {
   @override
   Future<String?> saveProjectAs(
     String jsonContent,
-    String suggestedName,
-  ) async {
+    String suggestedName, {
+    String? initialDirectory,
+  }) async {
     final List<int> bytes = utf8.encode(jsonContent);
     final html.Blob blob =
         html.Blob(<Uint8List>[Uint8List.fromList(bytes)], 'application/json');

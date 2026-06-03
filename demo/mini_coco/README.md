@@ -1,5 +1,7 @@
 # Mini COCO Demo
 
+[Русская версия](README.ru.md)
+
 This synthetic dataset is intended for smoke tests, release checks, and product demos.
 
 - `annotations.json`: 4 images, 3 classes, 6 GT boxes.

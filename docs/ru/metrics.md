@@ -54,3 +54,24 @@ Image-level comparison statuses:
 - regressed: candidate увеличил error severity.
 - still correct: оба runs correct.
 - still wrong: оба runs имеют errors без явного improvement/regression.
+
+## COCO AP Metrics
+
+Стандартные pycocotools-совместимые метрики, вычисляемые через Python sidecar на desktop:
+
+- `AP@[.5:.95]` — mean average precision, усреднённый по IoU thresholds 0.50…0.95.
+- `AP50` / `AP75` — average precision при IoU 0.50 и 0.75.
+- `APsmall` / `APmedium` / `APlarge` — AP по размеру объекта (COCO area thresholds).
+- `AR1` / `AR10` / `AR100` — max recall при 1, 10 и 100 детекциях на изображение.
+- `ARsmall` / `ARmedium` / `ARlarge` — AR по размеру объекта.
+- Per-class AP, AP50, AP75, AR для каждой категории.
+
+Все AP-метрики хранятся как ratio в `[0, 1]` и отображаются как `xx.x%` в человекочитаемых отчётах.
+
+## Multi-model Comparison
+
+Multi-model comparison агрегирует заранее вычисленные `EvalResult` и `ApEvalResult` для трёх и более запусков без повторного detection matching.
+
+Метрики ранжирования leaderboard: `AP`, `AP50`, `AP75`, `precision`, `recall`, `F1`, `TP`, `FP`, `FN`, `imagesWithErrors`, `smallObjectRecall`.
+
+Типы расхождений по изображениям: `allCorrect`, `allWrong`, `onlyOneModelCorrect`, `onlyOneModelWrong`, `someModelsWrong`, `largeErrorSpread`, `classDisagreement`, `predictionCountDisagreement`.

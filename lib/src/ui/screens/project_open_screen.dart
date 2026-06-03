@@ -9,6 +9,11 @@ import '../../platform_io/image_source.dart';
 import '../../platform_io/platform_file_picker.dart';
 import '../../platform_io/project_file_io.dart';
 import '../../platform_io/project_loader.dart';
+import '../../platform_io/recent_projects_io.dart';
+import '../../platform_io/user_preferences.dart';
+import '../widgets/status_views.dart';
+import '../widgets/language_selector.dart';
+import '../l10n/app_locale_scope.dart';
 import 'workspace_screen.dart';
 
 class ProjectOpenScreen extends StatefulWidget {
@@ -22,6 +27,9 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   final TextEditingController _modelName =
       TextEditingController(text: 'Model run');
   final PlatformFilePicker _filePicker = createPlatformFilePicker();
+  final UserPreferencesStore _preferences = createUserPreferencesStore();
+  late final RecentProjectsManager _recentProjectsManager =
+      createRecentProjectsManager(_preferences);
 
   // ── Normal open mode ──────────────────────────────────────────────────────
   PickedDataFile? _annotationsFile;
@@ -39,7 +47,10 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
 
   // ── Shared ────────────────────────────────────────────────────────────────
   bool _loading = false;
-  String? _error;
+  FriendlyError? _error;
+  LongRunningTaskProgress? _taskProgress;
+  CancellationToken? _cancellationToken;
+  List<RecentProjectEntry> _recentProjects = const <RecentProjectEntry>[];
 
   bool get _inRestoreMode => _pendingProject != null;
 
@@ -51,7 +62,14 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadRecentProjects();
+  }
+
+  @override
   void dispose() {
+    _cancellationToken?.cancel();
     _modelName.dispose();
     super.dispose();
   }
@@ -61,17 +79,32 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CV Model Lab'),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: _inRestoreMode
-                ? _buildRestoreMode(context)
-                : _buildNormalMode(context),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Center(child: LanguageSelector()),
           ),
-        ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 980),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: _inRestoreMode
+                    ? _buildRestoreMode(context)
+                    : _buildNormalMode(context),
+              ),
+            ),
+          ),
+          if (_taskProgress != null)
+            TaskProgressOverlay(
+              progress: _taskProgress!,
+              onCancel: _taskProgress!.canCancel ? _cancelTask : null,
+            ),
+        ],
       ),
     );
   }
@@ -85,6 +118,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
         Text(
           'Open Dataset',
           style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Load COCO annotations, predictions, and an image folder to start reviewing detections.',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
         _PickedFileRow(
@@ -149,7 +187,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
         ],
         if (_error != null) ...[
           const SizedBox(height: 16),
-          _MessageBox(message: _error!, isError: true),
+          FriendlyErrorView(error: _error!),
         ],
         if (_loadResult?.preflightSummary != null) ...[
           const SizedBox(height: 16),
@@ -157,9 +195,27 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
         ],
         const SizedBox(height: 16),
         Expanded(
-          child: _loadResult == null || _loadResult!.issues.isEmpty
-              ? const _EmptyHint()
-              : _IssueList(issues: _loadResult!.issues),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 3,
+                child: _loadResult == null || _loadResult!.issues.isEmpty
+                    ? const _EmptyHint()
+                    : _IssueList(issues: _loadResult!.issues),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: _RecentProjectsPanel(
+                  entries: _recentProjects,
+                  onOpen: _loading ? null : _openRecentProject,
+                  onRemove: _loading ? null : _removeRecentProject,
+                  onClear: _loading ? null : _clearRecentProjects,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -274,7 +330,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
         ],
         if (_error != null) ...[
           const SizedBox(height: 16),
-          _MessageBox(message: _error!, isError: true),
+          FriendlyErrorView(error: _error!),
         ],
         const Spacer(),
       ],
@@ -285,7 +341,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
 
   Future<void> _pickAnnotations() async {
     final PickedDataFile? file = await _safePick(
-      _filePicker.pickAnnotationsJson,
+      () async => _filePicker.pickAnnotationsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastAnnotationsDirectory,
+        ),
+      ),
     );
     if (file == null || !mounted) {
       return;
@@ -294,11 +354,19 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       _annotationsFile = file;
       _loadResult = null;
     });
+    await _rememberDirectory(
+      PreferenceKeys.lastAnnotationsDirectory,
+      file.path,
+    );
   }
 
   Future<void> _pickPredictions() async {
     final PickedDataFile? file = await _safePick(
-      _filePicker.pickPredictionsJson,
+      () async => _filePicker.pickPredictionsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastPredictionsDirectory,
+        ),
+      ),
     );
     if (file == null || !mounted) {
       return;
@@ -307,10 +375,20 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       _predictionsFile = file;
       _loadResult = null;
     });
+    await _rememberDirectory(
+      PreferenceKeys.lastPredictionsDirectory,
+      file.path,
+    );
   }
 
   Future<void> _pickImages() async {
-    final ImageSource? source = await _safePick(_filePicker.pickImages);
+    final ImageSource? source = await _safePick(
+      () async => _filePicker.pickImages(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastImagesDirectory,
+        ),
+      ),
+    );
     if (source == null || !mounted) {
       return;
     }
@@ -319,22 +397,40 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       _loadResult = null;
       _imagesRootPath = _extractRootPath(source);
     });
+    await _rememberDirectory(
+      PreferenceKeys.lastImagesDirectory,
+      _imagesRootPath,
+    );
   }
 
   // ── Pickers — restore mode ────────────────────────────────────────────────
 
   Future<void> _pickPendingAnnotations() async {
     final PickedDataFile? file = await _safePick(
-      _filePicker.pickAnnotationsJson,
+      () async => _filePicker.pickAnnotationsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastAnnotationsDirectory,
+        ),
+      ),
     );
     if (file == null || !mounted) {
       return;
     }
     setState(() => _pendingAnnotations = file);
+    await _rememberDirectory(
+      PreferenceKeys.lastAnnotationsDirectory,
+      file.path,
+    );
   }
 
   Future<void> _pickPendingImages() async {
-    final ImageSource? source = await _safePick(_filePicker.pickImages);
+    final ImageSource? source = await _safePick(
+      () async => _filePicker.pickImages(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastImagesDirectory,
+        ),
+      ),
+    );
     if (source == null || !mounted) {
       return;
     }
@@ -342,11 +438,19 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       _pendingImageSource = source;
       _pendingImagesRootPath = _extractRootPath(source);
     });
+    await _rememberDirectory(
+      PreferenceKeys.lastImagesDirectory,
+      _pendingImagesRootPath,
+    );
   }
 
   Future<void> _pickPendingPredictions(int runIndex) async {
     final PickedDataFile? file = await _safePick(
-      _filePicker.pickPredictionsJson,
+      () async => _filePicker.pickPredictionsJson(
+        initialDirectory: await _preferences.getString(
+          PreferenceKeys.lastPredictionsDirectory,
+        ),
+      ),
     );
     if (file == null || !mounted) {
       return;
@@ -355,6 +459,10 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       _pendingPredFiles = List<PickedDataFile?>.of(_pendingPredFiles)
         ..[runIndex] = file;
     });
+    await _rememberDirectory(
+      PreferenceKeys.lastPredictionsDirectory,
+      file.path,
+    );
   }
 
   // ── Restore mode logic ────────────────────────────────────────────────────
@@ -393,27 +501,49 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _cancellationToken = CancellationToken();
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'project-restore',
+        title: 'Restoring project',
+        message: 'Preparing saved project files',
+        progress: null,
+        canCancel: true,
+      );
     });
     await Future<void>.delayed(Duration.zero);
 
     try {
+      final CancellationToken token = _cancellationToken!;
       final List<ModelRunEntry> entries = [];
       final List<ParseIssue> allIssues = [];
       final Map<String, ApEvalResult> apEvalResults = {};
       CocoDataset? dataset;
 
       for (int i = 0; i < project.modelRuns.length; i++) {
+        token.throwIfCancelled();
         final PickedDataFile? predFile = _pendingPredFiles[i];
         if (predFile == null) continue;
         final ProjectModelRunSource runSource = project.modelRuns[i];
 
-        final ProjectLoadResult result = const ProjectLoader().load(
+        final ProjectLoadResult result = await const ProjectLoader().loadAsync(
           annotationsFile: annotationsFile,
           predictionsFile: predFile,
           imageSource: imageSource,
           projectName: project.name,
           modelRunName: runSource.name,
+          modelRunId: runSource.id,
           config: evalConfig,
+          cancellationToken: token,
+          onProgress: (LongRunningTaskProgress progress) {
+            if (!mounted || token.isCancelled) return;
+            setState(
+              () => _taskProgress = progress.copyWith(
+                taskId: 'project-restore',
+                title: 'Restoring project',
+                message: '${runSource.name}: ${progress.message}',
+              ),
+            );
+          },
         );
         if (result.dataset != null) {
           dataset ??= result.dataset;
@@ -437,8 +567,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
 
       if (entries.isEmpty) {
         setState(
-          () => _error =
-              'Could not load any model runs. Check the selected files.',
+          () => _error = const FriendlyError(
+            title: 'Project restore failed',
+            message:
+                'Could not load any model runs. Check the selected files and try again.',
+          ),
         );
         return;
       }
@@ -466,10 +599,32 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
         ),
       );
       if (mounted) setState(() => _pendingProject = null);
+    } on TaskCancelledException {
+      if (mounted) {
+        setState(
+          () => _error = const FriendlyError(
+            title: 'Project restore cancelled',
+            message: 'No project data was changed.',
+          ),
+        );
+      }
     } on Object catch (e) {
-      if (mounted) setState(() => _error = 'Failed to load project: $e');
+      if (mounted) {
+        setState(
+          () => _error = friendlyErrorFrom(
+            e,
+            fallbackTitle: 'Project restore failed',
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _taskProgress = null;
+          _cancellationToken = null;
+        });
+      }
     }
   }
 
@@ -480,7 +635,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       return await action();
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _error = error.toString());
+        setState(() => _error = friendlyErrorFrom(error));
       }
       return null;
     }
@@ -513,7 +668,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     final PickedDataFile? predictions = _predictionsFile;
     if (annotations == null || predictions == null) {
       setState(() {
-        _error = 'Select annotations.json and predictions.json first.';
+        _error = const FriendlyError(
+          title: 'Select required files',
+          message:
+              'Choose annotations.json and predictions.json before running analysis.',
+        );
       });
       return;
     }
@@ -540,12 +699,26 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'open-project',
+        title: 'Opening project',
+        message: 'Waiting for project file selection',
+        progress: null,
+        canCancel: false,
+      );
     });
     try {
       final ProjectFileIo io = createProjectFileIo();
 
-      final PickedDataFile? projectFile = await io.openProject();
+      final PickedDataFile? projectFile = await io.openProject(
+        initialDirectory:
+            await _preferences.getString(PreferenceKeys.lastProjectDirectory),
+      );
       if (projectFile == null || !mounted) return;
+      await _rememberDirectory(
+        PreferenceKeys.lastProjectDirectory,
+        projectFile.path,
+      );
 
       final CvmlProject project;
       try {
@@ -553,131 +726,233 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
           projectFile.readAsString(),
         );
       } on ProjectSerializationException catch (e) {
-        setState(() => _error = 'Invalid project file: ${e.message}');
+        setState(
+          () => _error = FriendlyError(
+            title: 'Invalid project file',
+            message:
+                'The selected file is not a valid CV Model Lab project manifest.',
+            details: e.message,
+          ),
+        );
         return;
       }
 
-      // Try to auto-load all referenced files from saved paths (desktop only).
-      // readFileAtPath returns null on web or when the file is missing.
-      final String? annotationsPath = project.datasetSource.annotationsPath;
-      if (annotationsPath != null) {
-        final PickedDataFile? annotationsFile =
-            await io.readFileAtPath(annotationsPath);
-        if (!mounted) return;
-
-        if (annotationsFile != null) {
-          // Attempt to load all model runs from their saved paths.
-          ImageSource imageSource = const EmptyImageSource();
-          final String? imagesRootPath = project.datasetSource.imagesRootPath;
-          if (imagesRootPath != null) {
-            imageSource =
-                await io.openImageSourceAtPath(imagesRootPath) ?? imageSource;
-          }
-
-          final List<ModelRunEntry> entries = [];
-          final List<ParseIssue> allIssues = [];
-          CocoDataset? dataset;
-          bool anyMissing = false;
-
-          for (final ProjectModelRunSource runSource in project.modelRuns) {
-            final String? predPath = runSource.predictionsPath;
-            if (predPath == null) {
-              anyMissing = true;
-              break;
-            }
-            final PickedDataFile? predFile = await io.readFileAtPath(predPath);
-            if (!mounted) return;
-            if (predFile == null) {
-              anyMissing = true;
-              break;
-            }
-
-            final ProjectLoadResult result = const ProjectLoader().load(
-              annotationsFile: annotationsFile,
-              predictionsFile: predFile,
-              imageSource: imageSource,
-              projectName: project.name,
-              modelRunName: runSource.name,
-              config: project.defaultEvalConfig,
-            );
-            if (result.dataset != null) {
-              dataset ??= result.dataset;
-              imageSource = result.imageSource ?? imageSource;
-            }
-            allIssues.addAll(result.issues);
-            if (result.canOpen) {
-              entries.add(
-                ModelRunEntry(
-                  modelRun: result.modelRun!,
-                  evalResult: result.evalResult!,
-                  predictionsPath: predPath,
-                ),
-              );
-            }
-          }
-
-          if (!mounted) return;
-
-          // All files found and at least one run loaded → open workspace.
-          if (!anyMissing && entries.isNotEmpty) {
-            final String? activeRunId = project.activeModelRunId;
-            final int initialActiveIndex = activeRunId == null
-                ? 0
-                : entries
-                    .indexWhere((e) => e.modelRun.id == activeRunId)
-                    .clamp(0, entries.length - 1);
-
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => WorkspaceScreen(
-                  projectName: project.name,
-                  dataset: dataset!,
-                  modelRunEntries: entries,
-                  imageSource: imageSource,
-                  issues: allIssues,
-                  projectFilePath: projectFile.path,
-                  annotationsPath: annotationsPath,
-                  imagesRootPath: imagesRootPath,
-                  initialActiveRunIndex: initialActiveIndex,
-                ),
-              ),
-            );
-            return;
-          }
-          // Some files missing → fall through to restore mode.
-        }
-        // annotationsFile == null → fall through to restore mode.
-      }
-      // annotationsPath == null (web manifest) → fall through to restore mode.
-
+      final bool opened = await _autoLoadFromManifest(
+        project,
+        io: io,
+        projectFilePath: projectFile.path,
+      );
       if (!mounted) return;
+
+      if (opened) {
+        if (projectFile.path != null) {
+          await _recentProjectsManager.addOrUpdate(
+            projectPath: projectFile.path!,
+            projectName: project.name,
+          );
+          await _loadRecentProjects();
+        }
+        return;
+      }
+      // Some files are no longer at their saved paths → let user re-pick.
       _enterRestoreMode(project);
     } on Object catch (e) {
-      if (mounted) setState(() => _error = 'Failed to open project: $e');
+      if (mounted) {
+        setState(
+          () => _error = friendlyErrorFrom(
+            e,
+            fallbackTitle: 'Project restore failed',
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _taskProgress = null;
+        });
+      }
     }
   }
 
-  void _loadProject({
+  /// Tries to load all project files from their saved absolute paths and opens
+  /// the workspace. Returns `true` if the workspace was opened successfully.
+  /// Returns `false` when any file is missing; the caller should then enter
+  /// restore mode so the user can re-pick the missing paths.
+  Future<bool> _autoLoadFromManifest(
+    CvmlProject project, {
+    required ProjectFileIo io,
+    String? projectFilePath,
+  }) async {
+    final String? annotationsPath = project.datasetSource.annotationsPath;
+    if (annotationsPath == null) return false;
+
+    final PickedDataFile? annotationsFile =
+        await io.readFileAtPath(annotationsPath);
+    if (!mounted || annotationsFile == null) return false;
+
+    ImageSource imageSource = const EmptyImageSource();
+    final String? imagesRootPath = project.datasetSource.imagesRootPath;
+    if (imagesRootPath != null) {
+      imageSource =
+          await io.openImageSourceAtPath(imagesRootPath) ?? imageSource;
+    }
+
+    final List<ModelRunEntry> entries = [];
+    final List<ParseIssue> allIssues = [];
+    final Map<String, ApEvalResult> apEvalResults = {};
+    CocoDataset? dataset;
+    bool anyMissing = false;
+
+    for (final ProjectModelRunSource runSource in project.modelRuns) {
+      setState(
+        () => _taskProgress = LongRunningTaskProgress(
+          taskId: 'open-project',
+          title: 'Opening project',
+          message: 'Loading ${runSource.name}',
+          progress: null,
+          canCancel: false,
+        ),
+      );
+      final String? predPath = runSource.predictionsPath;
+      if (predPath == null) {
+        anyMissing = true;
+        break;
+      }
+      final PickedDataFile? predFile = await io.readFileAtPath(predPath);
+      if (!mounted) return false;
+      if (predFile == null) {
+        anyMissing = true;
+        break;
+      }
+
+      final ProjectLoadResult result = const ProjectLoader().load(
+        annotationsFile: annotationsFile,
+        predictionsFile: predFile,
+        imageSource: imageSource,
+        projectName: project.name,
+        modelRunName: runSource.name,
+        modelRunId: runSource.id,
+        config: project.defaultEvalConfig,
+      );
+      if (result.dataset != null) {
+        dataset ??= result.dataset;
+        imageSource = result.imageSource ?? imageSource;
+      }
+      allIssues.addAll(result.issues);
+      if (result.canOpen) {
+        entries.add(
+          ModelRunEntry(
+            modelRun: result.modelRun!,
+            evalResult: result.evalResult!,
+            predictionsPath: predPath,
+          ),
+        );
+        if (runSource.apEvalResult != null) {
+          apEvalResults[result.modelRun!.id] = runSource.apEvalResult!;
+        }
+      }
+    }
+
+    if (!mounted || anyMissing || entries.isEmpty) return false;
+
+    final String? activeRunId = project.activeModelRunId;
+    final int initialActiveIndex = activeRunId == null
+        ? 0
+        : entries
+            .indexWhere((e) => e.modelRun.id == activeRunId)
+            .clamp(0, entries.length - 1);
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WorkspaceScreen(
+          projectName: project.name,
+          dataset: dataset!,
+          modelRunEntries: entries,
+          imageSource: imageSource,
+          issues: allIssues,
+          projectFilePath: projectFilePath,
+          annotationsPath: annotationsPath,
+          imagesRootPath: imagesRootPath,
+          initialActiveRunIndex: initialActiveIndex,
+          initialApEvalResults: apEvalResults,
+        ),
+      ),
+    );
+    return true;
+  }
+
+  Future<void> _loadProject({
     required PickedDataFile annotationsFile,
     required PickedDataFile predictionsFile,
     required ImageSource imageSource,
     required String projectName,
-  }) {
-    final ProjectLoadResult result = const ProjectLoader().load(
-      annotationsFile: annotationsFile,
-      predictionsFile: predictionsFile,
-      imageSource: imageSource,
-      projectName: projectName,
-      modelRunName: _modelName.text,
-    );
+  }) async {
+    final CancellationToken token = CancellationToken();
     setState(() {
-      _loadResult = result;
-      _error = result.canOpen
-          ? null
-          : 'Could not load project. Review errors below.';
+      _loading = true;
+      _error = null;
+      _cancellationToken = token;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'project-load',
+        title: 'Loading project',
+        message: 'Preparing selected files',
+        progress: null,
+        canCancel: true,
+      );
     });
+    try {
+      final ProjectLoadResult result = await const ProjectLoader().loadAsync(
+        annotationsFile: annotationsFile,
+        predictionsFile: predictionsFile,
+        imageSource: imageSource,
+        projectName: projectName,
+        modelRunName: _modelName.text,
+        cancellationToken: token,
+        onProgress: (LongRunningTaskProgress progress) {
+          if (mounted && identical(_cancellationToken, token)) {
+            setState(() => _taskProgress = progress);
+          }
+        },
+      );
+      if (!mounted || token.isCancelled) return;
+      setState(() {
+        _loadResult = result;
+        _error = result.canOpen
+            ? null
+            : const FriendlyError(
+                title: 'Could not load project',
+                message:
+                    'Review the validation issues below and pick corrected files.',
+              );
+      });
+    } on TaskCancelledException {
+      if (mounted) {
+        setState(
+          () => _error = const FriendlyError(
+            title: 'Analysis cancelled',
+            message: 'No project was opened.',
+          ),
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = friendlyErrorFrom(
+            error,
+            fallbackTitle: 'Could not load project',
+          ),
+        );
+      }
+    } finally {
+      if (mounted && identical(_cancellationToken, token)) {
+        setState(() {
+          _loading = false;
+          _taskProgress = null;
+          _cancellationToken = null;
+        });
+      }
+    }
   }
 
   void _openWorkspace() {
@@ -703,6 +978,139 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       ),
     );
   }
+
+  Future<void> _loadRecentProjects() async {
+    final List<RecentProjectEntry> entries =
+        await _recentProjectsManager.list();
+    if (mounted) {
+      setState(() => _recentProjects = entries);
+    }
+  }
+
+  Future<void> _openRecentProject(RecentProjectEntry entry) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _taskProgress = const LongRunningTaskProgress(
+        taskId: 'open-project',
+        title: 'Opening project',
+        message: 'Reading project file',
+        progress: null,
+        canCancel: false,
+      );
+    });
+    try {
+      final ProjectFileIo io = createProjectFileIo();
+      final PickedDataFile? file = await io.readFileAtPath(entry.projectPath);
+      if (!mounted) return;
+      if (file == null) {
+        await _loadRecentProjects();
+        setState(
+          () => _error = const FriendlyError(
+            title: 'Project unavailable',
+            message:
+                'The recent project file is missing. Remove it from the list or choose another project.',
+          ),
+        );
+        return;
+      }
+
+      final CvmlProject project;
+      try {
+        project =
+            const ProjectSerializer().fromJsonString(file.readAsString());
+      } on ProjectSerializationException catch (e) {
+        setState(
+          () => _error = FriendlyError(
+            title: 'Invalid project file',
+            message:
+                'The selected file is not a valid CV Model Lab project manifest.',
+            details: e.message,
+          ),
+        );
+        return;
+      }
+
+      await _recentProjectsManager.addOrUpdate(
+        projectPath: entry.projectPath,
+        projectName: project.name,
+      );
+      await _rememberDirectory(
+        PreferenceKeys.lastProjectDirectory,
+        entry.projectPath,
+      );
+
+      // Try to load all files from their saved paths. Fall back to restore
+      // mode only when a file has moved or is inaccessible.
+      final bool opened = await _autoLoadFromManifest(
+        project,
+        io: io,
+        projectFilePath: entry.projectPath,
+      );
+      if (!mounted) return;
+
+      if (!opened) {
+        _enterRestoreMode(project);
+      }
+      await _loadRecentProjects();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = friendlyErrorFrom(
+            error,
+            fallbackTitle: 'Project restore failed',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _taskProgress = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _removeRecentProject(RecentProjectEntry entry) async {
+    await _recentProjectsManager.remove(entry.projectPath);
+    await _loadRecentProjects();
+  }
+
+  Future<void> _clearRecentProjects() async {
+    await _recentProjectsManager.clear();
+    await _loadRecentProjects();
+  }
+
+  void _cancelTask() {
+    _cancellationToken?.cancel();
+    setState(() {
+      _taskProgress = _taskProgress?.copyWith(
+        message: 'Cancelling...',
+        clearProgress: true,
+        canCancel: false,
+      );
+    });
+  }
+
+  Future<void> _rememberDirectory(String key, String? path) async {
+    final String? directory = _directoryName(path);
+    if (directory != null && directory.isNotEmpty) {
+      await _preferences.setString(key, directory);
+    }
+  }
+}
+
+String? _directoryName(String? path) {
+  if (path == null || path.isEmpty) {
+    return null;
+  }
+  final String normalized = path.replaceAll('\\', '/');
+  final int index = normalized.lastIndexOf('/');
+  if (index <= 0) {
+    return null;
+  }
+  return normalized.substring(0, index);
 }
 
 PickedDataFile _memoryJsonFile(String name, String json) {
@@ -821,32 +1229,103 @@ class _EmptyHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Select JSON files and images, then run Analyze.',
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+    return const EmptyStateView(
+      title: 'No project loaded',
+      explanation:
+          'Select COCO annotations, predictions, and image files, then run Analyze.',
+      icon: Icons.folder_open,
     );
   }
 }
 
-class _MessageBox extends StatelessWidget {
-  const _MessageBox({required this.message, required this.isError});
+class _RecentProjectsPanel extends StatelessWidget {
+  const _RecentProjectsPanel({
+    required this.entries,
+    required this.onOpen,
+    required this.onRemove,
+    required this.onClear,
+  });
 
-  final String message;
-  final bool isError;
+  final List<RecentProjectEntry> entries;
+  final ValueChanged<RecentProjectEntry>? onOpen;
+  final ValueChanged<RecentProjectEntry>? onRemove;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isError ? Colors.red.shade700 : Colors.amber.shade800;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Text(message, style: TextStyle(color: color)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Recent Projects',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed: entries.isEmpty ? null : onClear,
+                  child: const Text('Clear'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: entries.isEmpty
+                  ? const EmptyStateView(
+                      title: 'No recent projects',
+                      explanation:
+                          'Saved desktop projects will appear here after you open or save them.',
+                      icon: Icons.history,
+                    )
+                  : ListView.separated(
+                      itemCount: entries.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (BuildContext context, int index) {
+                        final RecentProjectEntry entry = entries[index];
+                        return ListTile(
+                          dense: true,
+                          enabled: entry.exists,
+                          leading: Icon(
+                            entry.exists
+                                ? Icons.description_outlined
+                                : Icons.link_off,
+                          ),
+                          title: Text(
+                            entry.projectName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            entry.exists
+                                ? entry.projectPath
+                                : 'Missing: ${entry.projectPath}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remove from recent',
+                            onPressed: onRemove == null
+                                ? null
+                                : () => onRemove!(entry),
+                            icon: const Icon(Icons.close),
+                          ),
+                          onTap: entry.exists && onOpen != null
+                              ? () => onOpen!(entry)
+                              : null,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -871,7 +1350,7 @@ class _IssueList extends StatelessWidget {
                 ? Icons.error
                 : Icons.warning,
           ),
-          title: Text(issue.message),
+          title: Text(AppLocaleScope.l10n(context).parseIssue(issue)),
           subtitle: issue.path == null ? null : Text(issue.path!),
         );
       },

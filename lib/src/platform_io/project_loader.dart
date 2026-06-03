@@ -14,12 +14,93 @@ class ProjectLoader {
   final CocoPredictionParser predictionParser;
   final MetricsCalculator metricsCalculator;
 
+  Future<ProjectLoadResult> loadAsync({
+    required PickedDataFile annotationsFile,
+    required PickedDataFile predictionsFile,
+    required ImageSource imageSource,
+    required String projectName,
+    required String modelRunName,
+    String modelRunId = 'run-1',
+    EvalConfig config = const EvalConfig(),
+    CancellationToken? cancellationToken,
+    ProgressCallback? onProgress,
+  }) async {
+    void progress(String message, double? value) {
+      onProgress?.call(
+        LongRunningTaskProgress(
+          taskId: 'project-load',
+          title: 'Loading project',
+          message: message,
+          progress: value,
+          canCancel: true,
+        ),
+      );
+    }
+
+    cancellationToken?.throwIfCancelled();
+    progress('Parsing annotations JSON', 0.12);
+    await Future<void>.delayed(Duration.zero);
+    final ParseResult<CocoDataset> annotationResult =
+        annotationParser.parseString(
+      annotationsFile.readAsString(),
+    );
+    cancellationToken?.throwIfCancelled();
+
+    final CocoDataset? dataset = annotationResult.value;
+    if (dataset == null) {
+      return ProjectLoadResult.failure(
+        projectName: projectName,
+        issues: annotationResult.issues,
+      );
+    }
+
+    progress('Parsing predictions JSON', 0.34);
+    await Future<void>.delayed(Duration.zero);
+    final ParseResult<ModelRun> predictionResult = predictionParser.parseString(
+      predictionsFile.readAsString(),
+      dataset: dataset,
+      modelRunId: modelRunId,
+      modelRunName:
+          modelRunName.trim().isEmpty ? 'Model run' : modelRunName.trim(),
+    );
+    cancellationToken?.throwIfCancelled();
+
+    progress('Building image index', 0.56);
+    await Future<void>.delayed(Duration.zero);
+    final ProjectLoadResult preEval = _buildResult(
+      annotationResult: annotationResult,
+      predictionResult: predictionResult,
+      imageSource: imageSource,
+      projectName: projectName,
+      config: config,
+      evaluate: false,
+    );
+    if (preEval.modelRun == null || preEval.dataset == null) {
+      return preEval;
+    }
+
+    progress('Running evaluation', 0.78);
+    await Future<void>.delayed(Duration.zero);
+    cancellationToken?.throwIfCancelled();
+    final EvalResult evalResult = metricsCalculator.evaluate(
+      dataset: preEval.dataset!,
+      modelRun: preEval.modelRun!,
+      config: config,
+    );
+    cancellationToken?.throwIfCancelled();
+    progress('Finalizing project', 1);
+    await Future<void>.delayed(Duration.zero);
+
+    return preEval.copyWith(evalResult: evalResult);
+  }
+
   ProjectLoadResult load({
     required PickedDataFile annotationsFile,
     required PickedDataFile predictionsFile,
     required ImageSource imageSource,
     required String projectName,
     required String modelRunName,
+    String modelRunId = 'run-1',
     EvalConfig config = const EvalConfig(),
   }) {
     final ParseResult<CocoDataset> annotationResult =
@@ -37,11 +118,36 @@ class ProjectLoader {
     final ParseResult<ModelRun> predictionResult = predictionParser.parseString(
       predictionsFile.readAsString(),
       dataset: dataset,
-      modelRunId: 'run-1',
+      modelRunId: modelRunId,
       modelRunName:
           modelRunName.trim().isEmpty ? 'Model run' : modelRunName.trim(),
     );
+    return _buildResult(
+      annotationResult: annotationResult,
+      predictionResult: predictionResult,
+      imageSource: imageSource,
+      projectName: projectName,
+      config: config,
+      evaluate: true,
+    );
+  }
+
+  ProjectLoadResult _buildResult({
+    required ParseResult<CocoDataset> annotationResult,
+    required ParseResult<ModelRun> predictionResult,
+    required ImageSource imageSource,
+    required String projectName,
+    required EvalConfig config,
+    required bool evaluate,
+  }) {
+    final CocoDataset? dataset = annotationResult.value;
     final ModelRun? modelRun = predictionResult.value;
+    if (dataset == null) {
+      return ProjectLoadResult.failure(
+        projectName: projectName,
+        issues: annotationResult.issues,
+      );
+    }
     final List<ParseIssue> issues = [
       ...annotationResult.issues,
       ...predictionResult.issues,
@@ -57,11 +163,15 @@ class ProjectLoader {
           severity: ParseIssueSeverity.warning,
           message: 'missing image file',
           path: fileName,
+          key: MessageKey.parseMissingImageFile,
+          params: {'file_name': fileName},
         ),
       if (missingImages.length > 20)
         ParseIssue(
           severity: ParseIssueSeverity.warning,
           message: '${missingImages.length - 20} more image files are missing',
+          key: MessageKey.parseMoreMissingImageFiles,
+          params: {'count': missingImages.length - 20},
         ),
     ];
 
@@ -92,11 +202,13 @@ class ProjectLoader {
       );
     }
 
-    final EvalResult evalResult = metricsCalculator.evaluate(
-      dataset: dataset,
-      modelRun: modelRun,
-      config: config,
-    );
+    final EvalResult? evalResult = evaluate
+        ? metricsCalculator.evaluate(
+            dataset: dataset,
+            modelRun: modelRun,
+            config: config,
+          )
+        : null;
     return ProjectLoadResult(
       projectName: projectName,
       dataset: dataset,
@@ -149,6 +261,20 @@ class ProjectLoadResult {
         modelRun != null &&
         imageSource != null &&
         evalResult != null;
+  }
+
+  ProjectLoadResult copyWith({
+    EvalResult? evalResult,
+  }) {
+    return ProjectLoadResult(
+      projectName: projectName,
+      dataset: dataset,
+      modelRun: modelRun,
+      imageSource: imageSource,
+      evalResult: evalResult ?? this.evalResult,
+      issues: issues,
+      preflightSummary: preflightSummary,
+    );
   }
 }
 

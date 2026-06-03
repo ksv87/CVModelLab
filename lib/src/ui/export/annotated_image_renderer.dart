@@ -39,8 +39,7 @@ class AnnotatedImageRenderer {
     }
 
     final double scale = config.outputScale <= 0 ? 1.0 : config.outputScale;
-    final double srcWidth =
-        (decoded?.width ?? image.width ?? 640).toDouble();
+    final double srcWidth = (decoded?.width ?? image.width ?? 640).toDouble();
     final double srcHeight =
         (decoded?.height ?? image.height ?? 480).toDouble();
     final int outWidth = (srcWidth * scale).round().clamp(1, 1 << 16);
@@ -245,7 +244,8 @@ class AnnotatedImageRenderer {
     double size,
   ) {
     final TextPainter tp = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(color: color, fontSize: size)),
+      text:
+          TextSpan(text: text, style: TextStyle(color: color, fontSize: size)),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, offset);

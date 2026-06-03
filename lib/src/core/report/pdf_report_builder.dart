@@ -8,6 +8,7 @@ import '../comparison/comparison_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/coco_dataset.dart';
 import '../model/eval_config.dart';
 import '../model/eval_result.dart';
@@ -16,6 +17,7 @@ import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
 import 'pdf_report_data.dart';
 import 'report_models.dart';
+import '../../ui/l10n/app_localizations.dart';
 
 // ─── brand colours ────────────────────────────────────────────────────────────
 const _kPrimary = PdfColor.fromInt(0x3949AB); // indigo 600
@@ -49,6 +51,7 @@ class PdfReportBuilder {
     ModelComparisonResult? comparison,
     List<Recommendation> recommendations = const <Recommendation>[],
     ApEvalResult? apEvalResult,
+    AppLocale locale = AppLocale.en,
   }) {
     final o = evalResult.overall;
     final double prec = _ratio(o.totalTp, o.totalTp + o.totalFp);
@@ -86,6 +89,7 @@ class PdfReportBuilder {
       comparison: comparison,
       recommendations: recommendations,
       apEvalResult: apEvalResult,
+      locale: locale,
     );
   }
 
@@ -93,7 +97,7 @@ class PdfReportBuilder {
 
   Future<Uint8List> buildPdf(PdfReportData data) async {
     final doc = pw.Document(
-      title: 'CV Model Lab Report',
+      title: AppLocalizations.forLocale(data.locale).t(MessageKey.reportTitle),
       author: 'CV Model Lab',
     );
 
@@ -124,7 +128,7 @@ class PdfReportBuilder {
           pw.Container(width: double.infinity, height: 4, color: _kPrimaryDark),
           pw.SizedBox(height: 24),
           pw.Text(
-            'CV Model Lab Report',
+            AppLocalizations.forLocale(data.locale).t(MessageKey.reportTitle),
             style: pw.TextStyle(
               fontSize: 26,
               fontWeight: pw.FontWeight.bold,
@@ -151,9 +155,18 @@ class PdfReportBuilder {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 _kv('Generated', _fmtDate(data.generatedAt)),
-                _kv('IoU Threshold', data.evalConfig.iouThreshold.toStringAsFixed(2)),
-                _kv('Confidence Threshold', data.evalConfig.confidenceThreshold.toStringAsFixed(2)),
-                _kv('Class-aware Matching', data.evalConfig.classAwareMatching ? 'Yes' : 'No'),
+                _kv(
+                  'IoU Threshold',
+                  data.evalConfig.iouThreshold.toStringAsFixed(2),
+                ),
+                _kv(
+                  'Confidence Threshold',
+                  data.evalConfig.confidenceThreshold.toStringAsFixed(2),
+                ),
+                _kv(
+                  'Class-aware Matching',
+                  data.evalConfig.classAwareMatching ? 'Yes' : 'No',
+                ),
                 _kv('Ignore Crowd', data.evalConfig.ignoreCrowd ? 'Yes' : 'No'),
               ],
             ),
@@ -222,11 +235,12 @@ class PdfReportBuilder {
       ..._overallMetrics(data),
       if (data.apEvalResult != null) ..._apMetrics(data.apEvalResult!),
       ..._perClassMetrics(data),
-      if (data.healthReport != null) ..._health(data.healthReport!),
+      if (data.healthReport != null) ..._health(data.healthReport!, data),
       if (data.worstCases != null) ..._worstCases(data.worstCases!),
       if (data.confusionDetails != null) ..._confusion(data.confusionDetails!),
       if (data.comparison != null) ..._comparison(data.comparison!),
-      if (data.recommendations.isNotEmpty) ..._recommendations(data.recommendations),
+      if (data.recommendations.isNotEmpty)
+        ..._recommendations(data.recommendations, data),
       ..._appendix(data),
     ];
   }
@@ -294,7 +308,10 @@ class PdfReportBuilder {
           ['Annotations (GT)', '${data.totalGt}'],
           ['Categories', '${data.totalCategories}'],
           ['Predictions (before threshold)', '${data.totalPredictions}'],
-          ['Predictions (after threshold)', '${data.predictionsAfterThreshold}'],
+          [
+            'Predictions (after threshold)',
+            '${data.predictionsAfterThreshold}',
+          ],
           ['Missing image files', '${data.missingImageFileNames.length}'],
         ],
         colWidths: const {0: pw.FlexColumnWidth(2.5), 1: pw.FlexColumnWidth(1)},
@@ -316,13 +333,13 @@ class PdfReportBuilder {
           ['FN', '${data.fn}'],
           ['Precision', _pct(data.precision)],
           ['Recall', _pct(data.recall)],
-          ['F1', _f3(data.f1)],
+          ['F1', _pct(data.f1)],
           ['Micro Precision', _pct(data.microPrecision)],
           ['Micro Recall', _pct(data.microRecall)],
-          ['Micro F1', _f3(data.microF1)],
+          ['Micro F1', _pct(data.microF1)],
           ['Macro Precision', _pct(data.macroPrecision)],
           ['Macro Recall', _pct(data.macroRecall)],
-          ['Macro F1', _f3(data.macroF1)],
+          ['Macro F1', _pct(data.macroF1)],
         ],
         colWidths: const {0: pw.FlexColumnWidth(2.5), 1: pw.FlexColumnWidth(1)},
       ),
@@ -333,7 +350,7 @@ class PdfReportBuilder {
   // ─── COCO AP metrics ──────────────────────────────────────────────────────
 
   List<pw.Widget> _apMetrics(ApEvalResult result) {
-    String _opt(double? v) => v == null ? '-' : _f3(v);
+    String _opt(double? v) => v == null ? '-' : _pct(v);
     final List<pw.Widget> widgets = [
       _sectionTitle('COCO AP Metrics'),
       _table(
@@ -391,7 +408,17 @@ class PdfReportBuilder {
   // ─── per-class metrics ────────────────────────────────────────────────────
 
   List<pw.Widget> _perClassMetrics(PdfReportData data) {
-    const headers = ['Class', 'GT', 'Pred', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F1'];
+    const headers = [
+      'Class',
+      'GT',
+      'Pred',
+      'TP',
+      'FP',
+      'FN',
+      'Precision',
+      'Recall',
+      'F1',
+    ];
     const colWidths = {
       0: pw.FlexColumnWidth(2.5),
       1: pw.FlexColumnWidth(0.6),
@@ -415,7 +442,7 @@ class PdfReportBuilder {
               '${s.fn}',
               _pct(s.precision),
               _pct(s.recall),
-              _f3(s.f1),
+              _pct(s.f1),
             ],
         ];
 
@@ -438,29 +465,42 @@ class PdfReportBuilder {
       pw.SizedBox(height: 4),
       byRecall.isEmpty
           ? _empty()
-          : _table(headers: headers, rows: classRows(byRecall), colWidths: colWidths),
+          : _table(
+              headers: headers,
+              rows: classRows(byRecall),
+              colWidths: colWidths,
+            ),
       pw.SizedBox(height: 10),
       _subTitle('Top 10 classes by FP count'),
       pw.SizedBox(height: 4),
       byFp.isEmpty
           ? _empty()
-          : _table(headers: headers, rows: classRows(byFp), colWidths: colWidths),
+          : _table(
+              headers: headers,
+              rows: classRows(byFp),
+              colWidths: colWidths,
+            ),
       pw.SizedBox(height: 10),
       _subTitle('Top 10 classes by FN count'),
       pw.SizedBox(height: 4),
       byFn.isEmpty
           ? _empty()
-          : _table(headers: headers, rows: classRows(byFn), colWidths: colWidths),
+          : _table(
+              headers: headers,
+              rows: classRows(byFn),
+              colWidths: colWidths,
+            ),
       pw.SizedBox(height: 14),
     ];
   }
 
   // ─── dataset health ───────────────────────────────────────────────────────
 
-  List<pw.Widget> _health(DatasetHealthReport report) {
+  List<pw.Widget> _health(DatasetHealthReport report, PdfReportData data) {
+    final AppLocalizations l10n = AppLocalizations.forLocale(data.locale);
     final topIssues = report.issues.take(20).toList();
     return [
-      _sectionTitle('Dataset Health'),
+      _sectionTitle(l10n.t(MessageKey.reportDatasetHealth)),
       _grid([
         _card('Errors', '${report.errorCount}'),
         _card('Warnings', '${report.warningCount}'),
@@ -476,10 +516,10 @@ class PdfReportBuilder {
           rows: [
             for (final i in topIssues)
               [
-                i.severity.name,
+                l10n.severity(i.severity),
                 i.type.name,
                 _clip(i.fileName ?? '', 28),
-                _clip(i.message, 60),
+                _clip(l10n.datasetIssueMessage(i), 60),
               ],
           ],
           colWidths: const {
@@ -606,13 +646,28 @@ class PdfReportBuilder {
       _table(
         headers: const ['Metric', 'Base', 'Candidate', 'Delta'],
         rows: [
-          ['Precision', _pct(d.basePrecision), _pct(d.candidatePrecision), _sPct(d.deltaPrecision)],
-          ['Recall', _pct(d.baseRecall), _pct(d.candidateRecall), _sPct(d.deltaRecall)],
-          ['F1', _f3(d.baseF1), _f3(d.candidateF1), _s3(d.deltaF1)],
+          [
+            'Precision',
+            _pct(d.basePrecision),
+            _pct(d.candidatePrecision),
+            _sPct(d.deltaPrecision),
+          ],
+          [
+            'Recall',
+            _pct(d.baseRecall),
+            _pct(d.candidateRecall),
+            _sPct(d.deltaRecall),
+          ],
+          ['F1', _pct(d.baseF1), _pct(d.candidateF1), _sPct(d.deltaF1)],
           ['TP', '${d.baseTp}', '${d.candidateTp}', _sInt(d.deltaTp)],
           ['FP', '${d.baseFp}', '${d.candidateFp}', _sInt(d.deltaFp)],
           ['FN', '${d.baseFn}', '${d.candidateFn}', _sInt(d.deltaFn)],
-          ['Images w/ Errors', '${d.baseImagesWithErrors}', '${d.candidateImagesWithErrors}', _sInt(d.deltaImagesWithErrors)],
+          [
+            'Images w/ Errors',
+            '${d.baseImagesWithErrors}',
+            '${d.candidateImagesWithErrors}',
+            _sInt(d.deltaImagesWithErrors),
+          ],
         ],
         colWidths: const {
           0: pw.FlexColumnWidth(2),
@@ -626,14 +681,21 @@ class PdfReportBuilder {
         _subTitle('Top 10 per-class regressions (worst dF1)'),
         pw.SizedBox(height: 4),
         _table(
-          headers: const ['Class', 'dF1', 'dRecall', 'dPrecision', 'dFP', 'dFN'],
+          headers: const [
+            'Class',
+            'dF1',
+            'dRecall',
+            'dPrecision',
+            'dFP',
+            'dFN',
+          ],
           rows: [
             for (final item in top10Reg)
               [
                 _clip(item.categoryName, 30),
-                _s3(item.diff.deltaF1),
-                _s3(item.diff.deltaRecall),
-                _s3(item.diff.deltaPrecision),
+                _sPct(item.diff.deltaF1),
+                _sPct(item.diff.deltaRecall),
+                _sPct(item.diff.deltaPrecision),
                 _sInt(item.diff.deltaFp),
                 _sInt(item.diff.deltaFn),
               ],
@@ -654,7 +716,11 @@ class PdfReportBuilder {
 
   // ─── recommendations ──────────────────────────────────────────────────────
 
-  List<pw.Widget> _recommendations(List<Recommendation> recs) {
+  List<pw.Widget> _recommendations(
+    List<Recommendation> recs,
+    PdfReportData data,
+  ) {
+    final AppLocalizations l10n = AppLocalizations.forLocale(data.locale);
     final bySev = <RecommendationSeverity, List<Recommendation>>{
       for (final s in RecommendationSeverity.values) s: [],
     };
@@ -669,7 +735,7 @@ class PdfReportBuilder {
     };
 
     final widgets = <pw.Widget>[
-      _sectionTitle('Recommendations'),
+      _sectionTitle(l10n.t(MessageKey.reportRecommendations)),
     ];
 
     void addGroup(String label, RecommendationSeverity sev) {
@@ -684,9 +750,9 @@ class PdfReportBuilder {
             rows: [
               for (final r in group)
                 [
-                  _clip(r.title, 40),
-                  _clip(r.message, 70),
-                  _clip(r.action, 70),
+                  _clip(l10n.recommendationTitle(r), 40),
+                  _clip(l10n.recommendationMessage(r), 70),
+                  _clip(l10n.recommendationAction(r), 70),
                 ],
             ],
             colWidths: recColWidths,
@@ -837,7 +903,8 @@ class PdfReportBuilder {
           children: [
             for (final h in headers)
               pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                padding:
+                    const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
                 child: pw.Text(
                   h,
                   style: pw.TextStyle(
@@ -857,7 +924,8 @@ class PdfReportBuilder {
             children: [
               for (final cell in rows[i])
                 pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding:
+                      const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: pw.Text(cell, style: const pw.TextStyle(fontSize: 8)),
                 ),
             ],
@@ -896,8 +964,9 @@ class PdfReportBuilder {
 
   String _pct(double v) => '${(v * 100).toStringAsFixed(1)}%';
   String _f3(double v) => v.toStringAsFixed(3);
-  String _sPct(double v) => v >= 0 ? '+${(v * 100).toStringAsFixed(1)}%' : '${(v * 100).toStringAsFixed(1)}%';
-  String _s3(double v) => v >= 0 ? '+${v.toStringAsFixed(3)}' : v.toStringAsFixed(3);
+  String _sPct(double v) => v >= 0
+      ? '+${(v * 100).toStringAsFixed(1)}%'
+      : '${(v * 100).toStringAsFixed(1)}%';
   String _sInt(int v) => v >= 0 ? '+$v' : '$v';
 
   String _fmtDate(DateTime dt) =>

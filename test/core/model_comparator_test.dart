@@ -211,7 +211,8 @@ void main() {
 
   group('per-class diffs', () {
     test('perClassDiffs has entries for all categories', () {
-      final Set<int> ids = result.perClassDiffs.map((d) => d.categoryId).toSet();
+      final Set<int> ids =
+          result.perClassDiffs.map((d) => d.categoryId).toSet();
       expect(ids, containsAll([1, 2, 3]));
     });
 

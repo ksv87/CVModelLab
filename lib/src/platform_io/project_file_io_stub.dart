@@ -3,11 +3,15 @@ import 'image_source.dart';
 
 abstract interface class ProjectFileIo {
   /// Opens a project file. Returns null if cancelled.
-  Future<PickedDataFile?> openProject();
+  Future<PickedDataFile?> openProject({String? initialDirectory});
 
   /// Saves project JSON to a new file. Returns the saved path, or null if
   /// cancelled.
-  Future<String?> saveProjectAs(String jsonContent, String suggestedName);
+  Future<String?> saveProjectAs(
+    String jsonContent,
+    String suggestedName, {
+    String? initialDirectory,
+  });
 
   /// Saves project JSON to an existing path. Returns true if succeeded.
   Future<bool> saveProjectToPath(String path, String jsonContent);
@@ -25,14 +29,18 @@ class UnsupportedProjectFileIo implements ProjectFileIo {
   const UnsupportedProjectFileIo();
 
   @override
-  Future<PickedDataFile?> openProject() {
+  Future<PickedDataFile?> openProject({String? initialDirectory}) {
     throw UnsupportedError(
       'Project file I/O is not available on this platform.',
     );
   }
 
   @override
-  Future<String?> saveProjectAs(String jsonContent, String suggestedName) {
+  Future<String?> saveProjectAs(
+    String jsonContent,
+    String suggestedName, {
+    String? initialDirectory,
+  }) {
     throw UnsupportedError(
       'Project file I/O is not available on this platform.',
     );

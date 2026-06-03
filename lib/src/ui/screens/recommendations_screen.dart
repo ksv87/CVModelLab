@@ -1,6 +1,9 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale_scope.dart';
+import '../widgets/status_views.dart';
+
 enum RecommendationUiFilter {
   all,
   critical,
@@ -81,7 +84,21 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               _SummaryRow(recommendations: widget.recommendations),
               const SizedBox(height: 12),
               if (recommendations.isEmpty)
-                const Center(child: Text('No recommendations for this filter.'))
+                EmptyStateView(
+                  title: widget.recommendations.isEmpty
+                      ? 'No recommendations'
+                      : 'No recommendations for this filter',
+                  explanation: widget.recommendations.isEmpty
+                      ? 'The rule-based checks did not find actionable dataset or model issues for the current run.'
+                      : 'The selected recommendation filter has no matches. Switch back to All to review the available advice.',
+                  actionLabel:
+                      widget.recommendations.isEmpty ? null : 'Show all',
+                  onAction: widget.recommendations.isEmpty
+                      ? null
+                      : () =>
+                          setState(() => _filter = RecommendationUiFilter.all),
+                  icon: Icons.tips_and_updates_outlined,
+                )
               else
                 for (final Recommendation recommendation in recommendations)
                   _RecommendationCard(
@@ -139,11 +156,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         recommendation.severity == RecommendationSeverity.warning,
       RecommendationUiFilter.info =>
         recommendation.severity == RecommendationSeverity.info,
-      RecommendationUiFilter.dataset =>
-        recommendation.category == RecommendationCategory.datasetHealth ||
-            recommendation.category ==
-                RecommendationCategory.annotationQuality ||
-            recommendation.category == RecommendationCategory.classImbalance,
+      RecommendationUiFilter.dataset => recommendation.category ==
+              RecommendationCategory.datasetHealth ||
+          recommendation.category == RecommendationCategory.annotationQuality ||
+          recommendation.category == RecommendationCategory.classImbalance,
       RecommendationUiFilter.model =>
         recommendation.category == RecommendationCategory.falsePositives ||
             recommendation.category == RecommendationCategory.falseNegatives ||
@@ -202,7 +218,10 @@ class _SummaryRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.$1, style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      item.$1,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     Text(
                       '${item.$2}',
                       style: Theme.of(context).textTheme.titleLarge,
@@ -238,6 +257,7 @@ class _RecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocaleScope.l10n(context);
     return Card(
       elevation: selected ? 3 : 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -255,7 +275,11 @@ class _RecommendationCard extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _SeverityChip(severity: recommendation.severity),
-                  Chip(label: Text(recommendation.category.name)),
+                  Chip(
+                    label: Text(
+                      l10n.recommendationCategory(recommendation.category),
+                    ),
+                  ),
                   if (recommendation.relatedCategoryIds.isNotEmpty)
                     Chip(
                       label: Text(
@@ -264,21 +288,22 @@ class _RecommendationCard extends StatelessWidget {
                     ),
                   if (recommendation.relatedImageIds.isNotEmpty)
                     Chip(
-                      label:
-                          Text('${recommendation.relatedImageIds.length} images'),
+                      label: Text(
+                        '${recommendation.relatedImageIds.length} images',
+                      ),
                     ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                recommendation.title,
+                l10n.recommendationTitle(recommendation),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
-              Text(recommendation.message),
+              Text(l10n.recommendationMessage(recommendation)),
               const SizedBox(height: 8),
               Text(
-                recommendation.action,
+                l10n.recommendationAction(recommendation),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -326,17 +351,21 @@ class _RecommendationDetails extends StatelessWidget {
     if (r == null) {
       return const Center(child: Text('Select a recommendation.'));
     }
+    final l10n = AppLocaleScope.l10n(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SeverityChip(severity: r.severity),
         const SizedBox(height: 12),
-        Text(r.title, style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          l10n.recommendationTitle(r),
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
-        Text(r.message),
+        Text(l10n.recommendationMessage(r)),
         const SizedBox(height: 16),
         Text('Action', style: Theme.of(context).textTheme.titleSmall),
-        Text(r.action),
+        Text(l10n.recommendationAction(r)),
         const SizedBox(height: 16),
         Text('Related classes', style: Theme.of(context).textTheme.titleSmall),
         Text(_classNames(dataset, r.relatedCategoryIds).ifEmpty('-')),
@@ -389,7 +418,7 @@ class _SeverityChip extends StatelessWidget {
       RecommendationSeverity.info => Colors.blue.shade700,
     };
     return Chip(
-      label: Text(severity.name),
+      label: Text(AppLocaleScope.l10n(context).severity(severity)),
       labelStyle: const TextStyle(color: Colors.white),
       backgroundColor: color,
     );

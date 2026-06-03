@@ -4,7 +4,8 @@ import 'package:cv_model_lab/src/platform_io/ap_eval_script.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('embedded ap_eval script matches canonical tools/ap_evaluator/ap_eval.py',
+  test(
+      'embedded ap_eval script matches canonical tools/ap_evaluator/ap_eval.py',
       () {
     final File canonical = File('tools/ap_evaluator/ap_eval.py');
     expect(

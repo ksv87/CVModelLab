@@ -1,3 +1,4 @@
+import '../i18n/message_key.dart';
 import '../model/bbox.dart';
 import 'parse_result.dart';
 
@@ -27,6 +28,7 @@ BBox? readBBox(Object? value, String path, IssueSink addIssue) {
         severity: ParseIssueSeverity.warning,
         message: 'bbox must contain exactly 4 numbers',
         path: path,
+        key: MessageKey.parseBboxMustHaveFourNumbers,
       ),
     );
     return null;
@@ -41,6 +43,7 @@ BBox? readBBox(Object? value, String path, IssueSink addIssue) {
           severity: ParseIssueSeverity.warning,
           message: 'bbox value must be numeric',
           path: '$path[$index]',
+          key: MessageKey.parseBboxMustHaveFourNumbers,
         ),
       );
       return null;
@@ -54,6 +57,7 @@ BBox? readBBox(Object? value, String path, IssueSink addIssue) {
         severity: ParseIssueSeverity.warning,
         message: 'bbox width and height must be positive',
         path: path,
+        key: MessageKey.parseBboxNonPositiveSize,
       ),
     );
     return null;

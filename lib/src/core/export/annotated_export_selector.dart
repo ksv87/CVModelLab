@@ -88,7 +88,8 @@ class AnnotatedExportSelector {
     final List<AnnotatedExportTarget> targets = [];
     for (int i = 0; i < limit; i++) {
       final int imageId = ids[i];
-      final String fileName = dataset.imagesById[imageId]?.fileName ?? '$imageId';
+      final String fileName =
+          dataset.imagesById[imageId]?.fileName ?? '$imageId';
       targets.add(
         AnnotatedExportTarget(
           imageId: imageId,
@@ -113,16 +114,15 @@ class AnnotatedExportSelector {
     required bool Function(ImageEvalSummary) predicate,
     required int Function(ImageEvalSummary) score,
   }) {
-    final List<ImageEvalSummary> summaries = evalResult.imageSummaries.values
-        .where(predicate)
-        .toList()
-      ..sort((ImageEvalSummary a, ImageEvalSummary b) {
-        final int byScore = score(b).compareTo(score(a));
-        if (byScore != 0) {
-          return byScore;
-        }
-        return a.imageId.compareTo(b.imageId);
-      });
+    final List<ImageEvalSummary> summaries =
+        evalResult.imageSummaries.values.where(predicate).toList()
+          ..sort((ImageEvalSummary a, ImageEvalSummary b) {
+            final int byScore = score(b).compareTo(score(a));
+            if (byScore != 0) {
+              return byScore;
+            }
+            return a.imageId.compareTo(b.imageId);
+          });
     return [for (final ImageEvalSummary s in summaries) s.imageId];
   }
 
@@ -169,7 +169,9 @@ class AnnotatedExportSelector {
   /// Strips path separators and characters that are unsafe in file names.
   static String sanitizeSegment(String value) {
     final String replaced = value.replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), '_');
-    return replaced.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+    return replaced
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 
   static String _basename(String path) {

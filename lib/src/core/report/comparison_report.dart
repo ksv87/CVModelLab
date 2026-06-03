@@ -55,8 +55,7 @@ class ComparisonReportBuilder {
 
     final Map<String, String> csvFiles = {};
     if (includePerClassCsv) {
-      csvFiles[ComparisonReportFileNames.perClass] =
-          _buildPerClassCsv(result);
+      csvFiles[ComparisonReportFileNames.perClass] = _buildPerClassCsv(result);
     }
     if (includeImagesCsv) {
       csvFiles[ComparisonReportFileNames.images] = _buildImagesCsv(result);
@@ -291,15 +290,16 @@ class ComparisonReportBuilder {
     );
     html.writeln('<tbody>');
     for (final int id in imageIds) {
-      final String fileName =
-          dataset.imagesById[id]?.fileName ?? '$id';
+      final String fileName = dataset.imagesById[id]?.fileName ?? '$id';
       final ImageComparisonSummary? s = summaryById[id];
       html.writeln('<tr>');
       html.writeln('<td>$id</td>');
       html.writeln('<td>${_esc(fileName)}</td>');
       if (s != null) {
         html.writeln('<td>${s.baseTp}/${s.baseFp}/${s.baseFn}</td>');
-        html.writeln('<td>${s.candidateTp}/${s.candidateFp}/${s.candidateFn}</td>');
+        html.writeln(
+          '<td>${s.candidateTp}/${s.candidateFp}/${s.candidateFn}</td>',
+        );
         html.writeln('<td>${_sign(s.deltaTp)}</td>');
         html.writeln('<td>${_sign(s.deltaFp)}</td>');
         html.writeln('<td>${_sign(s.deltaFn)}</td>');
@@ -345,9 +345,10 @@ class ComparisonReportBuilder {
   }
 
   String _deltaCell(double delta, {required bool higherIsBetter}) {
-    final String text = delta >= 0
-        ? '+${delta.toStringAsFixed(3)}'
-        : delta.toStringAsFixed(3);
+    final double pct = delta * 100;
+    final String text = pct >= 0
+        ? '+${pct.toStringAsFixed(1)}%'
+        : '${pct.toStringAsFixed(1)}%';
     final bool isGood = higherIsBetter ? delta > 0 : delta < 0;
     final bool isBad = higherIsBetter ? delta < 0 : delta > 0;
     final String cls = isGood ? ' class="good"' : (isBad ? ' class="bad"' : '');
@@ -482,5 +483,6 @@ class ComparisonReportBuilder {
 
   static String _esc(String value) => const HtmlEscape().convert(value);
 
-  static String _numP(double value) => value.toStringAsFixed(3);
+  static String _numP(double value) =>
+      '${(value * 100).toStringAsFixed(1)}%';
 }

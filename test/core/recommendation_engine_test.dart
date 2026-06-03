@@ -32,7 +32,7 @@ void main() {
     expect(
       recommendations.any(
         (Recommendation r) =>
-            r.title == 'Low recall for class "red"' &&
+            r.messageKey == MessageKey.recLowRecallClass &&
             r.category == RecommendationCategory.falseNegatives,
       ),
       isTrue,
@@ -57,7 +57,7 @@ void main() {
     expect(
       recommendations.any(
         (Recommendation r) =>
-            r.title == 'Low precision for class "red"' &&
+            r.messageKey == MessageKey.recLowPrecisionClass &&
             r.category == RecommendationCategory.falsePositives,
       ),
       isTrue,
@@ -79,7 +79,9 @@ void main() {
     );
 
     expect(
-      recommendations.any((Recommendation r) => r.title == 'Rare class "red"'),
+      recommendations.any(
+        (Recommendation r) => r.messageKey == MessageKey.recRareClass,
+      ),
       isTrue,
     );
   });
@@ -138,8 +140,7 @@ void main() {
 
     expect(
       recommendations.any(
-        (Recommendation r) =>
-            r.category == RecommendationCategory.smallObjects,
+        (Recommendation r) => r.category == RecommendationCategory.smallObjects,
       ),
       isTrue,
     );
@@ -162,7 +163,7 @@ void main() {
     expect(
       recommendations.any(
         (Recommendation r) =>
-            r.title == 'High-confidence false positives' &&
+            r.messageKey == MessageKey.recHighConfidenceFalsePositives &&
             r.category == RecommendationCategory.scoreCalibration,
       ),
       isTrue,
@@ -191,8 +192,7 @@ void main() {
 
     expect(
       recommendations.any(
-        (Recommendation r) =>
-            r.title == 'Class confusion: "red" predicted as "green"',
+        (Recommendation r) => r.messageKey == MessageKey.recClassConfusion,
       ),
       isTrue,
     );
@@ -332,7 +332,12 @@ CocoDataset _dataset({
   return CocoDataset(
     imagesById: {
       for (int i = 1; i <= imageCount; i += 1)
-        i: ImageRecord(id: i, fileName: 'image_$i.png', width: 200, height: 200),
+        i: ImageRecord(
+          id: i,
+          fileName: 'image_$i.png',
+          width: 200,
+          height: 200,
+        ),
     },
     categoriesById: categories,
     annotations: annotations ?? const <GroundTruthAnnotation>[],

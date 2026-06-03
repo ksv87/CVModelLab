@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/status_views.dart';
 
 enum ConfusionValueMode {
   counts,
@@ -46,6 +47,14 @@ class _ConfusionMatrixScreenState extends State<ConfusionMatrixScreen> {
   @override
   Widget build(BuildContext context) {
     final labels = _labels();
+    if (widget.details.matrix.counts.isEmpty) {
+      return const EmptyStateView(
+        title: 'No confusion matrix data',
+        explanation:
+            'No predictions or ground-truth matches are available for the current evaluation. Load predictions or lower the confidence threshold.',
+        icon: Icons.grid_off,
+      );
+    }
     final examples = _selectedRow == null || _selectedColumn == null
         ? const <ConfusionCellExample>[]
         : widget.details.examples(_selectedRow!, _selectedColumn!);
@@ -243,7 +252,10 @@ class _ConfusionMatrixScreenState extends State<ConfusionMatrixScreen> {
   }
 
   bool _sameBox(BBox a, BBox b) {
-    return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
+    return a.x == b.x &&
+        a.y == b.y &&
+        a.width == b.width &&
+        a.height == b.height;
   }
 }
 

@@ -12,6 +12,12 @@ class ModelRun {
   final List<Prediction> predictions;
   final Map<int, List<Prediction>> predictionsByImageId;
 
+  ModelRun withName(String newName) => ModelRun(
+        id: id,
+        name: newName,
+        predictions: predictions,
+      );
+
   static Map<int, List<Prediction>> _groupPredictions(
     List<Prediction> predictions,
   ) {

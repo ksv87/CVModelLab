@@ -1,5 +1,7 @@
 # CV Model Lab — AP Evaluator
 
+[Русская версия](README.ru.md)
+
 Python sidecar that runs pycocotools COCO AP evaluation and writes results as JSON.
 
 CV Model Lab invokes this script automatically from the desktop app.

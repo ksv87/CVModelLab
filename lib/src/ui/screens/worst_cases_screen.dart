@@ -4,6 +4,7 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/status_views.dart';
 
 class WorstCasesScreen extends StatefulWidget {
   const WorstCasesScreen({
@@ -40,7 +41,12 @@ class _WorstCasesScreenState extends State<WorstCasesScreen>
         .where((group) => group.items.isNotEmpty)
         .toList();
     if (categories.isEmpty) {
-      return const Center(child: Text('No worst cases found.'));
+      return const EmptyStateView(
+        title: 'No worst cases found',
+        explanation:
+            'The current model run does not have ranked FP/FN/confusion examples for the active thresholds.',
+        icon: Icons.task_alt,
+      );
     }
     return Row(
       children: [
@@ -162,8 +168,7 @@ class _WorstCasesScreenState extends State<WorstCasesScreen>
         if (m.prediction == null) {
           continue;
         }
-        if (best == null ||
-            m.prediction!.score > best.prediction!.score) {
+        if (best == null || m.prediction!.score > best.prediction!.score) {
           best = m;
         }
       }
@@ -264,32 +269,40 @@ class _WorstCaseList extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final WorstCaseItem item = items[index];
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                selected: selectedImageId == item.imageId,
-                title: Text(item.fileName),
-                subtitle: Text(
-                  [
-                    item.reason,
-                    'TP ${item.tp}',
-                    'FP ${item.fp}',
-                    'FN ${item.fn}',
-                    if (item.score != null)
-                      'score ${item.score!.toStringAsFixed(2)}',
-                    if (item.iou != null) 'IoU ${item.iou!.toStringAsFixed(2)}',
-                  ].join('  |  '),
+          child: items.isEmpty
+              ? EmptyStateView(
+                  title: 'No worst cases for $label',
+                  explanation:
+                      'This category has no examples under the current thresholds. Try another category or adjust thresholds.',
+                  icon: Icons.filter_alt_off,
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final WorstCaseItem item = items[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                      selected: selectedImageId == item.imageId,
+                      title: Text(item.fileName),
+                      subtitle: Text(
+                        [
+                          item.reason,
+                          'TP ${item.tp}',
+                          'FP ${item.fp}',
+                          'FN ${item.fn}',
+                          if (item.score != null)
+                            'score ${item.score!.toStringAsFixed(2)}',
+                          if (item.iou != null)
+                            'IoU ${item.iou!.toStringAsFixed(2)}',
+                        ].join('  |  '),
+                      ),
+                      trailing: Text(item.severityScore.toStringAsFixed(2)),
+                      onTap: () => onPreview(item, categoryKey),
+                    );
+                  },
                 ),
-                trailing: Text(item.severityScore.toStringAsFixed(2)),
-                onTap: () => onPreview(item, categoryKey),
-              );
-            },
-          ),
         ),
       ],
     );

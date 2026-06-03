@@ -17,24 +17,34 @@ class DesktopPlatformFilePicker implements PlatformFilePicker {
   const DesktopPlatformFilePicker();
 
   @override
-  Future<PickedDataFile?> pickAnnotationsJson() {
-    return _pickJsonFile('Pick annotations.json');
+  Future<PickedDataFile?> pickAnnotationsJson({String? initialDirectory}) {
+    return _pickJsonFile(
+      'Pick annotations.json',
+      initialDirectory: initialDirectory,
+    );
   }
 
   @override
-  Future<PickedDataFile?> pickPredictionsJson() {
-    return _pickJsonFile('Pick predictions.json');
+  Future<PickedDataFile?> pickPredictionsJson({String? initialDirectory}) {
+    return _pickJsonFile(
+      'Pick predictions.json',
+      initialDirectory: initialDirectory,
+    );
   }
 
   @override
-  Future<PickedDataFile?> pickApMetricsJson() {
-    return _pickJsonFile('Pick AP metrics JSON');
+  Future<PickedDataFile?> pickApMetricsJson({String? initialDirectory}) {
+    return _pickJsonFile(
+      'Pick AP metrics JSON',
+      initialDirectory: initialDirectory,
+    );
   }
 
   @override
-  Future<ImageSource?> pickImages() async {
+  Future<ImageSource?> pickImages({String? initialDirectory}) async {
     final String? directoryPath = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Pick images directory',
+      initialDirectory: initialDirectory,
     );
     if (directoryPath == null) {
       return null;
@@ -42,12 +52,16 @@ class DesktopPlatformFilePicker implements PlatformFilePicker {
     return DesktopDirectoryImageSource.scan(directoryPath);
   }
 
-  Future<PickedDataFile?> _pickJsonFile(String dialogTitle) async {
+  Future<PickedDataFile?> _pickJsonFile(
+    String dialogTitle, {
+    String? initialDirectory,
+  }) async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       dialogTitle: dialogTitle,
       type: FileType.custom,
       allowedExtensions: const ['json'],
       withData: false,
+      initialDirectory: initialDirectory,
     );
     if (result == null || result.files.isEmpty) {
       return null;

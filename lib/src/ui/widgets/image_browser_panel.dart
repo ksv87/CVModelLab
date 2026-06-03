@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
+
+import '../../platform_io/image_source.dart';
 
 class ImageBrowserPanel extends StatelessWidget {
   const ImageBrowserPanel({
@@ -10,6 +14,9 @@ class ImageBrowserPanel extends StatelessWidget {
     required this.onFilterChanged,
     required this.onImageSelected,
     required this.onResetFilters,
+    this.thumbnailCache,
+    this.projectId,
+    this.imageSource,
     super.key,
   });
 
@@ -20,6 +27,9 @@ class ImageBrowserPanel extends StatelessWidget {
   final ValueChanged<EvalViewFilter> onFilterChanged;
   final ValueChanged<int> onImageSelected;
   final VoidCallback onResetFilters;
+  final ThumbnailCache? thumbnailCache;
+  final String? projectId;
+  final ImageSource? imageSource;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +161,9 @@ class ImageBrowserPanel extends StatelessWidget {
                     image: image,
                     summary: view.imageSummaries[image.id],
                     selected: selectedImageId == image.id,
+                    thumbnailCache: thumbnailCache,
+                    projectId: projectId,
+                    imageSource: imageSource,
                     onTap: () => onImageSelected(image.id),
                   ),
             ],
@@ -381,12 +394,18 @@ class _ImageListTile extends StatelessWidget {
     required this.summary,
     required this.selected,
     required this.onTap,
+    this.thumbnailCache,
+    this.projectId,
+    this.imageSource,
   });
 
   final ImageRecord image;
   final FilteredImageSummary? summary;
   final bool selected;
   final VoidCallback onTap;
+  final ThumbnailCache? thumbnailCache;
+  final String? projectId;
+  final ImageSource? imageSource;
 
   @override
   Widget build(BuildContext context) {
@@ -397,17 +416,12 @@ class _ImageListTile extends StatelessWidget {
       leading: SizedBox(
         width: 44,
         height: 44,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            summary?.isMissingImage ?? false
-                ? Icons.broken_image_outlined
-                : Icons.image_outlined,
-            size: 20,
-          ),
+        child: _ThumbnailBox(
+          image: image,
+          missing: summary?.isMissingImage ?? false,
+          thumbnailCache: thumbnailCache,
+          projectId: projectId,
+          imageSource: imageSource,
         ),
       ),
       title: Text(image.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -427,6 +441,81 @@ class _ImageListTile extends StatelessWidget {
         ],
       ),
       onTap: onTap,
+    );
+  }
+}
+
+class _ThumbnailBox extends StatelessWidget {
+  const _ThumbnailBox({
+    required this.image,
+    required this.missing,
+    required this.thumbnailCache,
+    required this.projectId,
+    required this.imageSource,
+  });
+
+  final ImageRecord image;
+  final bool missing;
+  final ThumbnailCache? thumbnailCache;
+  final String? projectId;
+  final ImageSource? imageSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThumbnailCache? cache = thumbnailCache;
+    final ImageSource? source = imageSource;
+    final String? id = projectId;
+    if (missing || cache == null || source == null || id == null) {
+      return _placeholder(context, missing: missing);
+    }
+    return FutureBuilder<Uint8List?>(
+      future: ThumbnailService(cache: cache).getOrCreateThumbnail(
+        projectId: id,
+        imageId: image.id,
+        fileName: image.fileName,
+        loadImageBytes: () => source.readImageBytes(image.fileName),
+        maxSize: 96,
+      ),
+      builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
+        final Uint8List? bytes = snapshot.data;
+        if (bytes == null) {
+          return _placeholder(context, loading: !snapshot.hasError);
+        }
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: 44,
+            height: 44,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _placeholder(
+    BuildContext context, {
+    bool missing = false,
+    bool loading = false,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Center(
+        child: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                missing ? Icons.broken_image_outlined : Icons.image_outlined,
+                size: 20,
+              ),
+      ),
     );
   }
 }

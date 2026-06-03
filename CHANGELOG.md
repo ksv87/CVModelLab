@@ -4,6 +4,12 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Localization and multi-model comparison
+
+- Added English/Russian localization for app text, warnings, recommendations, health issues, errors, and report headings.
+- Added multi-model comparison for 3+ model runs with leaderboard, per-class ranking, disagreement analysis, regression matrix, and multi-model exports.
+- Improved metric formatting, recent project restore behavior, AP persistence, model/project renaming, and comparison usability.
+
 ## Recommendations and report exports
 
 - Added rule-based recommendations with deterministic evidence and navigation links.

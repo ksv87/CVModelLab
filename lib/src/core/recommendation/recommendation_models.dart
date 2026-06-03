@@ -1,3 +1,5 @@
+import '../i18n/message_key.dart';
+
 enum RecommendationSeverity {
   info,
   warning,
@@ -22,9 +24,10 @@ class Recommendation {
   const Recommendation({
     required this.severity,
     required this.category,
-    required this.title,
-    required this.message,
-    required this.action,
+    required this.messageKey,
+    this.title = '',
+    this.message = '',
+    this.action = '',
     this.relatedImageIds = const <int>[],
     this.relatedCategoryIds = const <int>[],
     this.evidence = const <String, Object?>{},
@@ -32,6 +35,7 @@ class Recommendation {
 
   final RecommendationSeverity severity;
   final RecommendationCategory category;
+  final MessageKey messageKey;
   final String title;
   final String message;
   final String action;
@@ -68,4 +72,3 @@ class RecommendationConfig {
   final double smallObjectRecallGapThreshold;
   final int minIssueCountForCritical;
 }
-

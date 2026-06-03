@@ -1,6 +1,9 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale_scope.dart';
+import 'status_views.dart';
+
 class DashboardPanel extends StatelessWidget {
   const DashboardPanel({
     required this.dataset,
@@ -82,7 +85,7 @@ class DashboardPanel extends StatelessWidget {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.warning),
-                  title: Text(issue.message),
+                  title: Text(AppLocaleScope.l10n(context).parseIssue(issue)),
                   subtitle: issue.path == null ? null : Text(issue.path!),
                 ),
               ),
@@ -224,7 +227,7 @@ class _DashboardOverview extends StatelessWidget {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.warning),
-                  title: Text(issue.message),
+                  title: Text(AppLocaleScope.l10n(context).parseIssue(issue)),
                   subtitle: issue.path == null ? null : Text(issue.path!),
                 ),
               ),
@@ -564,15 +567,23 @@ class _ApMetricsSection extends StatelessWidget {
             _ApPerClassTable(perClass: apEvalResult!.perClass),
           ],
         ] else ...[
-          const Text('COCO AP metrics have not been computed yet.'),
+          EmptyStateView(
+            title: apEvalUnavailableReason == null
+                ? 'No AP metrics yet'
+                : 'AP evaluation unavailable',
+            explanation: apEvalUnavailableReason ??
+                'Run COCO AP evaluation on desktop or import AP metrics JSON to include AP in dashboards and exports.',
+            actionLabel: onRunApEval == null ? null : 'Run AP evaluation',
+            onAction: onRunApEval,
+            icon: Icons.analytics_outlined,
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: [
               Tooltip(
-                message: onRunApEval == null
-                    ? (apEvalUnavailableReason ?? '')
-                    : '',
+                message:
+                    onRunApEval == null ? (apEvalUnavailableReason ?? '') : '',
                 child: ElevatedButton.icon(
                   onPressed: onRunApEval,
                   icon: const Icon(Icons.play_arrow),

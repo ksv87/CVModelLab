@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../model/coco_dataset.dart';
+import '../i18n/message_key.dart';
 import '../model/model_run.dart';
 import '../model/prediction.dart';
 import 'parse_result.dart';
@@ -28,6 +29,8 @@ class CocoPredictionParser {
           ParseIssue(
             severity: ParseIssueSeverity.error,
             message: 'Invalid JSON: ${error.message}',
+            key: MessageKey.parseInvalidJson,
+            params: {'error': error.message},
           ),
         ],
       );
@@ -40,6 +43,7 @@ class CocoPredictionParser {
           ParseIssue(
             severity: ParseIssueSeverity.error,
             message: 'COCO predictions root must be a list',
+            key: MessageKey.parsePredictionsRootMustBeList,
           ),
         ],
       );
@@ -62,6 +66,7 @@ class CocoPredictionParser {
             severity: ParseIssueSeverity.warning,
             message: 'prediction must be an object',
             path: 'predictions[$index]',
+            key: MessageKey.parsePredictionMustBeObject,
           ),
         );
         continue;
@@ -75,6 +80,7 @@ class CocoPredictionParser {
             severity: ParseIssueSeverity.warning,
             message: 'prediction references unknown category_id',
             path: 'predictions[$index].category_id',
+            key: MessageKey.parsePredictionUnknownCategoryId,
           ),
         );
         continue;
@@ -104,6 +110,7 @@ class CocoPredictionParser {
             severity: ParseIssueSeverity.warning,
             message: 'prediction requires numeric score',
             path: 'predictions[$index].score',
+            key: MessageKey.parsePredictionRequiresNumericScore,
           ),
         );
         continue;
@@ -114,6 +121,7 @@ class CocoPredictionParser {
             severity: ParseIssueSeverity.warning,
             message: 'prediction score is outside expected 0..1 range',
             path: 'predictions[$index].score',
+            key: MessageKey.parsePredictionScoreOutOfRange,
           ),
         );
       }
@@ -157,6 +165,7 @@ class CocoPredictionParser {
           severity: ParseIssueSeverity.warning,
           message: 'prediction references unknown image_id',
           path: 'predictions[$index].image_id',
+          key: MessageKey.parsePredictionUnknownImageId,
         ),
       );
       return null;
@@ -169,6 +178,7 @@ class CocoPredictionParser {
           severity: ParseIssueSeverity.warning,
           message: 'prediction requires image_id or file_name',
           path: 'predictions[$index]',
+          key: MessageKey.parsePredictionRequiresImageIdOrFileName,
         ),
       );
       return null;
@@ -187,6 +197,7 @@ class CocoPredictionParser {
           severity: ParseIssueSeverity.warning,
           message: 'prediction file_name matched by basename fallback',
           path: 'predictions[$index].file_name',
+          key: MessageKey.parsePredictionFileNameBasenameFallback,
         ),
       );
       return basenameMatches.single;
@@ -197,6 +208,7 @@ class CocoPredictionParser {
           severity: ParseIssueSeverity.warning,
           message: 'prediction file_name basename is ambiguous',
           path: 'predictions[$index].file_name',
+          key: MessageKey.parsePredictionFileNameAmbiguous,
         ),
       );
       return null;
@@ -207,6 +219,7 @@ class CocoPredictionParser {
         severity: ParseIssueSeverity.warning,
         message: 'prediction references unknown file_name',
         path: 'predictions[$index].file_name',
+        key: MessageKey.parsePredictionUnknownFileName,
       ),
     );
     return null;

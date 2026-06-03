@@ -1,3 +1,6 @@
+import '../i18n/message_key.dart';
+import '../i18n/message_params.dart';
+
 enum ParseIssueSeverity {
   warning,
   error,
@@ -8,11 +11,15 @@ class ParseIssue {
     required this.severity,
     required this.message,
     this.path,
+    this.key,
+    this.params = const <String, Object?>{},
   });
 
   final ParseIssueSeverity severity;
   final String message;
   final String? path;
+  final MessageKey? key;
+  final MessageParams params;
 }
 
 class ParseResult<T> {

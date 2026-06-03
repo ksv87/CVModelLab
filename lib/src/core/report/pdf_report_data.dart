@@ -3,6 +3,7 @@ import '../comparison/comparison_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../health/dataset_health_models.dart';
+import '../i18n/message_key.dart';
 import '../model/eval_config.dart';
 import '../recommendation/recommendation_models.dart';
 import '../worst_cases/worst_case_models.dart';
@@ -42,6 +43,7 @@ class PdfReportData {
     this.comparison,
     this.recommendations = const <Recommendation>[],
     this.apEvalResult,
+    this.locale = AppLocale.en,
   });
 
   final String projectName;
@@ -78,4 +80,5 @@ class PdfReportData {
   final ModelComparisonResult? comparison;
   final List<Recommendation> recommendations;
   final ApEvalResult? apEvalResult;
+  final AppLocale locale;
 }

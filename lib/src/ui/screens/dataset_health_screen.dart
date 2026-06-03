@@ -4,6 +4,8 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/status_views.dart';
+import '../l10n/app_locale_scope.dart';
 
 enum DatasetHealthUiFilter {
   all,
@@ -46,6 +48,7 @@ class _DatasetHealthScreenState extends State<DatasetHealthScreen> {
   @override
   Widget build(BuildContext context) {
     final List<DatasetHealthIssue> issues = _filteredIssues();
+    final l10n = AppLocaleScope.l10n(context);
     return Row(
       children: [
         Expanded(
@@ -83,11 +86,26 @@ class _DatasetHealthScreenState extends State<DatasetHealthScreen> {
               ),
               const SizedBox(height: 12),
               if (issues.isEmpty)
-                const _EmptyState(text: 'No issues for this filter.')
+                EmptyStateView(
+                  title: widget.report.issues.isEmpty
+                      ? 'No dataset health issues'
+                      : 'No health issues for this filter',
+                  explanation: widget.report.issues.isEmpty
+                      ? 'The loaded dataset did not trigger missing-image, invalid-box, imbalance, or annotation-quality warnings.'
+                      : 'The selected health filter did not match any issues. Switch back to All to review the full report.',
+                  actionLabel:
+                      widget.report.issues.isEmpty ? null : 'Show all issues',
+                  onAction: widget.report.issues.isEmpty
+                      ? null
+                      : () =>
+                          setState(() => _filter = DatasetHealthUiFilter.all),
+                  icon: Icons.check_circle_outline,
+                )
               else
                 _IssueTable(
                   issues: issues,
                   selectedIssue: _selectedIssue,
+                  localizations: l10n,
                   onSelected: (DatasetHealthIssue issue) {
                     setState(() {
                       _selectedIssue = issue;
@@ -228,11 +246,13 @@ class _IssueTable extends StatelessWidget {
   const _IssueTable({
     required this.issues,
     required this.selectedIssue,
+    required this.localizations,
     required this.onSelected,
   });
 
   final List<DatasetHealthIssue> issues;
   final DatasetHealthIssue? selectedIssue;
+  final dynamic localizations;
   final ValueChanged<DatasetHealthIssue> onSelected;
 
   @override
@@ -268,11 +288,18 @@ class _IssueTable extends StatelessWidget {
                     DataCell(
                       Text(issue.categoryName ?? '${issue.categoryId ?? ''}'),
                     ),
-                    DataCell(SizedBox(width: 300, child: Text(issue.message))),
+                    DataCell(
+                      SizedBox(
+                        width: 300,
+                        child: Text(localizations.datasetIssueMessage(issue)),
+                      ),
+                    ),
                     DataCell(
                       SizedBox(
                         width: 240,
-                        child: Text(issue.recommendation ?? ''),
+                        child: Text(
+                          localizations.datasetIssueRecommendation(issue) ?? '',
+                        ),
                       ),
                     ),
                   ],
@@ -296,19 +323,23 @@ class _IssueDetails extends StatelessWidget {
       return const Center(child: Text('Select an issue'));
     }
     final DatasetHealthIssue i = issue!;
+    final l10n = AppLocaleScope.l10n(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(i.title, style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          l10n.datasetIssueTitle(i),
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
-        Text(i.message),
+        Text(l10n.datasetIssueMessage(i)),
         if (i.recommendation != null) ...[
           const SizedBox(height: 12),
           Text(
             'Recommendation',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          Text(i.recommendation!),
+          Text(l10n.datasetIssueRecommendation(i) ?? i.recommendation!),
         ],
         const SizedBox(height: 12),
         Text('Details', style: Theme.of(context).textTheme.titleSmall),
@@ -331,20 +362,6 @@ class _IssueDetails extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text('$key: $value'),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(child: Text(text)),
     );
   }
 }

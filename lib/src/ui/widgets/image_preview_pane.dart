@@ -106,7 +106,9 @@ class _ImagePreviewPaneState extends State<ImagePreviewPane> {
     final bool canFocus = widget.focusMatchTypes.isNotEmpty;
     final List<DetectionMatch> visibleMatches = canFocus && _errorsOnly
         ? widget.matches
-            .where((DetectionMatch m) => widget.focusMatchTypes.contains(m.type))
+            .where(
+              (DetectionMatch m) => widget.focusMatchTypes.contains(m.type),
+            )
             .toList()
         : widget.matches;
 

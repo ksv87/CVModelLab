@@ -8,7 +8,7 @@
 
 ## Открыть predictions
 
-Выберите COCO predictions JSON. Predictions могут ссылаться на изображения через `image_id` или `file_name`. Если оба поля есть, приоритет у `image_id`. Позже можно добавить второй prediction file для model comparison.
+Выберите COCO predictions JSON. Predictions могут ссылаться на изображения через `image_id` или `file_name`. Если оба поля есть, приоритет у `image_id`. Позже можно добавить ещё prediction-файлы прямо из workspace для создания multi-run проекта.
 
 ## Выбрать images directory
 
@@ -24,12 +24,41 @@
 
 ## Сравнить модели
 
-Загрузите второй prediction JSON для того же dataset. Model Compare показывает per-class precision/recall differences и image-level statuses: fixed, broken, improved, regressed.
+### Pairwise
 
-## Экспортировать отчеты
+Добавьте второй prediction JSON из workspace (кнопка Add model run). Model Compare в режиме **Pairwise** показывает per-class precision/recall differences и image-level statuses: fixed, broken, improved, regressed. Если у обеих моделей есть COCO AP metrics, появляется вкладка AP diff.
 
-Через export dialog можно сохранить HTML и CSV reports. CSV включает per-class metrics, image errors, matches, small-object stats, confusion matrix, dataset health и worst cases. Annotated Image Export сохраняет visual overlays.
+### Multi-model (3+ запусков)
 
-## Сохранить проект
+Добавьте три и более model runs в проект, затем откройте Model Compare и переключитесь в режим **Multi-model**. Leaderboard ранжирует каждый запуск по выбираемой метрике; per-class ranking показывает лучшую и худшую модель по классу; анализ расхождений классифицирует каждое изображение; pairwise regression matrix сводит каждую направленную пару; Compare Viewer показывает одно изображение по всем выбранным моделям сеткой.
 
-Desktop workflows могут сохранять и открывать project file с dataset paths, image root, model runs и evaluation config. Web/PWA workflows используют выбранные браузером файлы и restore mode, где он поддерживается.
+## Переименовать model run
+
+Нажмите кнопку-карандаш в AppBar workspace, пока активен нужный запуск. Введите новое имя и подтвердите. Дубликаты имён разрешаются автоматически добавлением числа.
+
+## Переименовать проект
+
+Дважды кликните по названию проекта в заголовке AppBar workspace. Введите новое имя и подтвердите. Новое имя сохраняется при следующем сохранении проекта.
+
+## Запустить COCO AP Metrics
+
+На desktop нажмите **Run COCO AP evaluation** на dashboard. Приложение найдёт Python runner (`uv` или `python3` с `pycocotools`) и запустит evaluator в фоне. Результаты появляются в секции метрик dashboard и сохраняются в файл проекта.
+
+В Web/PWA AP evaluation недоступен, потому что браузеры не могут запускать Python-процессы. Используйте **Import AP metrics JSON** для загрузки заранее посчитанного результата из desktop-приложения или из ручного запуска sidecar.
+
+## Экспортировать отчёты
+
+В диалоге Export report можно сохранить отчёты в любом сочетании форматов:
+
+- **HTML** — самодостаточный отчёт со всеми секциями метрик.
+- **CSV** — per-class metrics, image errors, matches, small-object stats, confusion data, dataset health, worst cases, AP metrics, recommendations.
+- **XLSX** — multi-sheet workbook с теми же данными, что и CSV.
+- **PDF** — печатный отчёт с обложкой, таблицами метрик и сводными секциями.
+
+Annotated Image Export сохраняет visual overlays для выбранных изображений.
+
+## Сохранить и открыть проект
+
+Desktop workflows могут сохранять project file (`.cvmlab.json`) с dataset paths, image root, всеми model runs, evaluation config и COCO AP metrics для каждого запуска. Нажмите **Save** в AppBar.
+
+Открыть снова можно через **File → Open project** (прямое открытие файла) или через **Recent Projects** на home screen. Оба пути загружают все файлы по сохранённым абсолютным путям автоматически без повторного выбора. Если файл перемещён или недоступен — приложение переходит в restore mode, где можно выбрать файлы заново.

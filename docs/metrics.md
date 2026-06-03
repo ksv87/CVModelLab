@@ -54,3 +54,24 @@ Image-level comparison statuses include:
 - regressed: the candidate increased error severity.
 - still correct: both runs are correct.
 - still wrong: both runs have errors without a clear improvement/regression.
+
+## COCO AP Metrics
+
+Standard pycocotools-compatible metrics computed via a Python sidecar on desktop:
+
+- `AP@[.5:.95]` — mean average precision averaged over IoU thresholds 0.50…0.95.
+- `AP50` / `AP75` — average precision at IoU 0.50 and 0.75.
+- `APsmall` / `APmedium` / `APlarge` — AP split by object size (COCO area thresholds).
+- `AR1` / `AR10` / `AR100` — max recall at 1, 10, and 100 detections per image.
+- `ARsmall` / `ARmedium` / `ARlarge` — AR split by object size.
+- Per-class AP, AP50, AP75, AR for every category.
+
+All AP metrics are reported as ratios in `[0, 1]` and displayed as `xx.x%` in human-readable reports.
+
+## Multi-model Comparison
+
+Multi-model comparison aggregates pre-computed `EvalResult` and `ApEvalResult` values for three or more runs without re-running detection matching.
+
+Leaderboard ranking metrics: `AP`, `AP50`, `AP75`, `precision`, `recall`, `F1`, `TP`, `FP`, `FN`, `imagesWithErrors`, `smallObjectRecall`.
+
+Image disagreement types: `allCorrect`, `allWrong`, `onlyOneModelCorrect`, `onlyOneModelWrong`, `someModelsWrong`, `largeErrorSpread`, `classDisagreement`, `predictionCountDisagreement`.

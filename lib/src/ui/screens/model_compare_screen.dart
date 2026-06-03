@@ -5,8 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../../platform_io/image_source.dart';
 import '../../platform_io/report_saver.dart';
+import '../../platform_io/user_preferences.dart';
+import '../l10n/app_locale_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/detection_image_viewer.dart';
+import '../widgets/status_views.dart';
 import 'workspace_screen.dart';
+
+enum _CompareMode { pairwise, multi }
 
 class ModelCompareScreen extends StatefulWidget {
   const ModelCompareScreen({
@@ -16,6 +22,9 @@ class ModelCompareScreen extends StatefulWidget {
     required this.evalConfig,
     required this.projectName,
     this.apEvalResults = const {},
+    this.onActivateRun,
+    this.onOpenCategory,
+    this.onOpenImage,
     super.key,
   });
 
@@ -26,13 +35,37 @@ class ModelCompareScreen extends StatefulWidget {
   final String projectName;
   final Map<String, ApEvalResult> apEvalResults;
 
+  /// Set a model run as the workspace's active run (and leave the screen).
+  final void Function(String runId)? onActivateRun;
+
+  /// Open the Error Browser filtered by a category.
+  final void Function(int categoryId)? onOpenCategory;
+
+  /// Open the Error Browser focused on an image.
+  final void Function(int imageId)? onOpenImage;
+
   @override
   State<ModelCompareScreen> createState() => _ModelCompareScreenState();
 }
 
+// Metrics valid for the per-class ranking dropdown (class-level comparison).
+// Must stay in sync with the items list in the per-class DropdownButton.
+const List<MultiModelRankingMetric> _kPerClassMetrics = [
+  MultiModelRankingMetric.f1,
+  MultiModelRankingMetric.recall,
+  MultiModelRankingMetric.precision,
+  MultiModelRankingMetric.ap,
+  MultiModelRankingMetric.fp,
+  MultiModelRankingMetric.fn,
+];
+
 class _ModelCompareScreenState extends State<ModelCompareScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+    with TickerProviderStateMixin {
+  late TabController _pairwiseTab;
+  late TabController _multiTab;
+  _CompareMode _mode = _CompareMode.pairwise;
+
+  // Pairwise state.
   int _baseIndex = 0;
   int _candidateIndex = 1;
   ModelComparisonResult? _comparisonResult;
@@ -40,37 +73,77 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   int? _selectedImageId;
   Uint8List? _selectedImageBytes;
   bool _loadingImage = false;
+
+  // Multi-model state.
+  late Set<String> _selectedRunIds;
+  MultiModelRankingMetric _rankingMetric = MultiModelRankingMetric.f1;
+  bool _hideAllCorrect = true;
+  bool _includeAp = true;
+  MultiModelComparisonResult? _multiResult;
+  ImageDisagreementType? _disagreementFilter;
+  MultiModelRankingMetric _perClassMetric = MultiModelRankingMetric.f1;
+  String _classSearch = '';
+  String _matrixCellMode = 'dF1';
+  final Set<String> _pairSelection = {};
+  int? _multiImageId;
+  Uint8List? _multiImageBytes;
+  bool _loadingMultiImage = false;
+
   bool _exporting = false;
 
   final ReportSaver _reportSaver = createReportSaver();
-
-  static const List<String> _tabLabels = [
-    'Overview',
-    'Per Class',
-    'Images',
-    'Compare Viewer',
-    'AP Diff',
-  ];
+  final UserPreferencesStore _preferences = createUserPreferencesStore();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabLabels.length, vsync: this);
-    _compute();
+    _pairwiseTab = TabController(length: 5, vsync: this);
+    _multiTab = TabController(length: 5, vsync: this);
+    _selectedRunIds = {
+      for (final ModelRunEntry e in widget.modelRunEntries) e.modelRun.id,
+    };
+    _includeAp = widget.apEvalResults.isNotEmpty;
+    _computePairwise();
+    _computeMulti();
+    _restorePreferences();
   }
-
-  ApEvalResult? get _baseApEval =>
-      widget.apEvalResults[widget.modelRunEntries[_baseIndex].modelRun.id];
-  ApEvalResult? get _candidateApEval =>
-      widget.apEvalResults[widget.modelRunEntries[_candidateIndex].modelRun.id];
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _pairwiseTab.dispose();
+    _multiTab.dispose();
     super.dispose();
   }
 
-  void _compute() {
+  Future<void> _restorePreferences() async {
+    final String? mode =
+        await _preferences.getString(PreferenceKeys.lastCompareMode);
+    final String? metric =
+        await _preferences.getString(PreferenceKeys.lastRankingMetric);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      if (mode == 'multi' && widget.modelRunEntries.length >= 2) {
+        _mode = _CompareMode.multi;
+      }
+      if (metric != null) {
+        _rankingMetric = MultiModelRankingMetric.values.firstWhere(
+          (m) => m.name == metric,
+          orElse: () => MultiModelRankingMetric.f1,
+        );
+        // _perClassMetric must be in the per-class dropdown subset.
+        _perClassMetric = _kPerClassMetrics.contains(_rankingMetric)
+            ? _rankingMetric
+            : MultiModelRankingMetric.f1;
+      }
+    });
+    _computeMulti();
+  }
+
+  // ── compute ────────────────────────────────────────────────────────────
+
+  void _computePairwise() {
     if (widget.modelRunEntries.length < 2) {
       return;
     }
@@ -85,20 +158,53 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       candidateEval: candidateEntry.evalResult,
       evalConfig: widget.evalConfig,
     );
-    setState(() {
-      _comparisonResult = result;
-    });
+    setState(() => _comparisonResult = result);
   }
+
+  void _computeMulti() {
+    final List<ModelRunEntry> selected = widget.modelRunEntries
+        .where((e) => _selectedRunIds.contains(e.modelRun.id))
+        .toList();
+    if (selected.length < 2) {
+      setState(() => _multiResult = null);
+      return;
+    }
+    final Map<String, EvalResult> evals = {
+      for (final ModelRunEntry e in selected) e.modelRun.id: e.evalResult,
+    };
+    final MultiModelComparisonResult result = const MultiModelComparator()
+        .compare(
+      dataset: widget.dataset,
+      modelRuns: selected.map((e) => e.modelRun).toList(),
+      evalResultsByRunId: evals,
+      evalConfig: widget.evalConfig,
+      apResultsByRunId: _includeAp ? widget.apEvalResults : null,
+      config: MultiModelComparisonConfig(primaryMetric: _rankingMetric),
+      generatedAt: DateTime.now(),
+    );
+    setState(() => _multiResult = result);
+  }
+
+  bool get _hasAnyAp => widget.apEvalResults.isNotEmpty;
+
+  // ── build ──────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l = AppLocaleScope.l10n(context);
+    if (widget.modelRunEntries.length < 2) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Compare — ${widget.projectName}')),
+        body: EmptyStateView(
+          title: l.t(MessageKey.mmSelectTwoRuns),
+          explanation: l.t(MessageKey.mmSelectTwoRuns),
+          icon: Icons.compare_arrows,
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text('Compare — ${widget.projectName}'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: _tabLabels.map((t) => Tab(text: t)).toList(),
-        ),
         actions: [
           if (_exporting)
             const Padding(
@@ -113,19 +219,84 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
             )
           else
             TextButton.icon(
-              onPressed: _comparisonResult == null ? null : _exportComparison,
+              onPressed: _export,
               icon: const Icon(Icons.download),
-              label: const Text('Export'),
+              label: Text(l.t(MessageKey.mmExportTable)),
             ),
           const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          _buildModelSelector(),
+          _buildModeSelector(l),
+          if (_mode == _CompareMode.pairwise)
+            _buildPairwiseBody(l)
+          else
+            _buildMultiBody(l),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeSelector(AppLocalizations l) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            SegmentedButton<_CompareMode>(
+              segments: [
+                ButtonSegment(
+                  value: _CompareMode.pairwise,
+                  label: Text(l.t(MessageKey.mmPairwiseMode)),
+                  icon: const Icon(Icons.compare),
+                ),
+                ButtonSegment(
+                  value: _CompareMode.multi,
+                  label: Text(l.t(MessageKey.mmMultiModelMode)),
+                  icon: const Icon(Icons.leaderboard),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (s) {
+                setState(() => _mode = s.first);
+                _preferences.setString(
+                  PreferenceKeys.lastCompareMode,
+                  _mode == _CompareMode.multi ? 'multi' : 'pairwise',
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ════════════════════════ PAIRWISE ════════════════════════
+
+  Widget _buildPairwiseBody(AppLocalizations l) {
+    return Expanded(
+      child: Column(
+        children: [
+          _buildPairwiseSelector(),
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: TabBar(
+              controller: _pairwiseTab,
+              isScrollable: true,
+              tabs: const [
+                Tab(text: 'Overview'),
+                Tab(text: 'Per Class'),
+                Tab(text: 'Images'),
+                Tab(text: 'Compare Viewer'),
+                Tab(text: 'AP Diff'),
+              ],
+            ),
+          ),
           Expanded(
             child: TabBarView(
-              controller: _tabController,
+              controller: _pairwiseTab,
               children: [
                 _buildOverviewTab(),
                 _buildPerClassTab(),
@@ -140,7 +311,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
-  Widget _buildModelSelector() {
+  Widget _buildPairwiseSelector() {
     final List<DropdownMenuItem<int>> items = [
       for (int i = 0; i < widget.modelRunEntries.length; i++)
         DropdownMenuItem<int>(
@@ -148,9 +319,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
           child: Text(widget.modelRunEntries[i].modelRun.name),
         ),
     ];
-
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
@@ -164,15 +334,13 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                 if (v == null || v == _baseIndex) {
                   return;
                 }
-                if (v == _candidateIndex) {
-                  setState(() {
-                    _baseIndex = v;
+                setState(() {
+                  _baseIndex = v;
+                  if (_candidateIndex == _baseIndex) {
                     _candidateIndex = _baseIndex == 0 ? 1 : 0;
-                  });
-                } else {
-                  setState(() => _baseIndex = v);
-                }
-                _compute();
+                  }
+                });
+                _computePairwise();
               },
             ),
             const SizedBox(width: 24),
@@ -185,15 +353,13 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                 if (v == null || v == _candidateIndex) {
                   return;
                 }
-                if (v == _baseIndex) {
-                  setState(() {
-                    _candidateIndex = v;
+                setState(() {
+                  _candidateIndex = v;
+                  if (_baseIndex == _candidateIndex) {
                     _baseIndex = _candidateIndex == 0 ? 1 : 0;
-                  });
-                } else {
-                  setState(() => _candidateIndex = v);
-                }
-                _compute();
+                  }
+                });
+                _computePairwise();
               },
             ),
           ],
@@ -201,8 +367,6 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       ),
     );
   }
-
-  // ---- Overview Tab ----
 
   Widget _buildOverviewTab() {
     final ModelComparisonResult? result = _comparisonResult;
@@ -213,16 +377,12 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     final String baseName = widget.modelRunEntries[_baseIndex].modelRun.name;
     final String candidateName =
         widget.modelRunEntries[_candidateIndex].modelRun.name;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Overall Metrics',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Overall Metrics', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
@@ -291,14 +451,11 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
-  // ---- Per Class Tab ----
-
   Widget _buildPerClassTab() {
     final ModelComparisonResult? result = _comparisonResult;
     if (result == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
     return _PerClassTable(
       diffs: result.perClassDiffs,
       baseName: widget.modelRunEntries[_baseIndex].modelRun.name,
@@ -306,18 +463,14 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
-  // ---- Images Tab ----
-
   Widget _buildImagesTab() {
     final ModelComparisonResult? result = _comparisonResult;
     if (result == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
     final List<ImageComparisonSummary> summaries = _imageFilter == null
         ? result.imageSummaries
         : result.imageSummaries.where((s) => s.status == _imageFilter).toList();
-
     return Column(
       children: [
         Padding(
@@ -339,8 +492,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                     child: FilterChip(
                       label: Text(_statusLabel(status)),
                       selected: _imageFilter == status,
-                      selectedColor:
-                          _statusColor(status).withValues(alpha: 0.2),
+                      selectedColor: _statusColor(status).withValues(alpha: 0.2),
                       onSelected: (_) => setState(
                         () => _imageFilter =
                             _imageFilter == status ? null : status,
@@ -369,7 +521,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   'Delta: ${_sign(s.deltaTp)}TP/${_sign(s.deltaFp)}FP/${_sign(s.deltaFn)}FN',
                 ),
                 trailing: Text(_statusLabel(s.status)),
-                onTap: () => _openInCompareViewer(s.imageId),
+                onTap: () => _openPairwiseImage(s.imageId),
               );
             },
           ),
@@ -378,27 +530,17 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
-  // ---- Compare Viewer Tab ----
-
   Widget _buildCompareViewerTab() {
-    final ModelComparisonResult? result = _comparisonResult;
-    if (result == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     final List<int> imageIds = widget.dataset.imagesById.keys.toList()..sort();
     final int? effectiveId = _selectedImageId != null &&
             widget.dataset.imagesById.containsKey(_selectedImageId)
         ? _selectedImageId
         : (imageIds.isEmpty ? null : imageIds.first);
-
     final ImageRecord? selectedImage =
         effectiveId == null ? null : widget.dataset.imagesById[effectiveId];
-
     final ModelRunEntry baseEntry = widget.modelRunEntries[_baseIndex];
     final ModelRunEntry candidateEntry =
         widget.modelRunEntries[_candidateIndex];
-
     final List<DetectionMatch> baseMatches = effectiveId == null
         ? const []
         : baseEntry.evalResult.matches
@@ -409,10 +551,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
         : candidateEntry.evalResult.matches
             .where((m) => m.imageId == effectiveId)
             .toList();
-
     return Column(
       children: [
-        // Image selector.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
@@ -435,7 +575,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   ],
                   onChanged: (int? id) {
                     if (id != null) {
-                      _selectCompareImage(id);
+                      _selectPairwiseImage(id);
                     }
                   },
                 ),
@@ -443,58 +583,27 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
             ],
           ),
         ),
-        // Side-by-side viewers.
         Expanded(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        baseEntry.modelRun.name,
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                    ),
-                    Expanded(
-                      child: DetectionImageViewer(
-                        image: selectedImage,
-                        categoriesById: widget.dataset.categoriesById,
-                        matches: baseMatches,
-                        imageBytes: _selectedImageBytes,
-                        loadingImage: _loadingImage,
-                        selectedMatch: null,
-                        onMatchSelected: (_) {},
-                      ),
-                    ),
-                  ],
+                child: _viewerPanel(
+                  baseEntry.modelRun.name,
+                  selectedImage,
+                  baseMatches,
+                  _selectedImageBytes,
+                  _loadingImage,
                 ),
               ),
               const VerticalDivider(width: 1),
               Expanded(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        candidateEntry.modelRun.name,
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                    ),
-                    Expanded(
-                      child: DetectionImageViewer(
-                        image: selectedImage,
-                        categoriesById: widget.dataset.categoriesById,
-                        matches: candidateMatches,
-                        imageBytes: _selectedImageBytes,
-                        loadingImage: _loadingImage,
-                        selectedMatch: null,
-                        onMatchSelected: (_) {},
-                      ),
-                    ),
-                  ],
+                child: _viewerPanel(
+                  candidateEntry.modelRun.name,
+                  selectedImage,
+                  candidateMatches,
+                  _selectedImageBytes,
+                  _loadingImage,
                 ),
               ),
             ],
@@ -504,15 +613,14 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     );
   }
 
-  // ---- AP Diff Tab ----
-
   Widget _buildApDiffTab() {
-    final ApEvalResult? baseAp = _baseApEval;
-    final ApEvalResult? candidateAp = _candidateApEval;
+    final ApEvalResult? baseAp =
+        widget.apEvalResults[widget.modelRunEntries[_baseIndex].modelRun.id];
+    final ApEvalResult? candidateAp = widget
+        .apEvalResults[widget.modelRunEntries[_candidateIndex].modelRun.id];
     final String baseName = widget.modelRunEntries[_baseIndex].modelRun.name;
     final String candidateName =
         widget.modelRunEntries[_candidateIndex].modelRun.name;
-
     if (baseAp == null && candidateAp == null) {
       return const Center(
         child: Padding(
@@ -525,29 +633,6 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
         ),
       );
     }
-    if (baseAp == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'AP metrics available for $candidateName only.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-    if (candidateAp == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'AP metrics available for $baseName only.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
     String fmt(double? v) => v == null ? '-' : v.toStringAsFixed(3);
     String delta(double? b, double? c) {
       if (b == null || c == null) {
@@ -557,198 +642,875 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       return d >= 0 ? '+${d.toStringAsFixed(3)}' : d.toStringAsFixed(3);
     }
 
-    Color deltaColor(double? b, double? c) {
-      if (b == null || c == null) {
-        return Colors.black87;
-      }
-      final double d = c - b;
-      if (d > 0) return Colors.green.shade700;
-      if (d < 0) return Colors.red.shade700;
-      return Colors.black87;
-    }
-
     final List<({String metric, double? base, double? candidate})> rows = [
-      (metric: 'AP@[.5:.95]', base: baseAp.ap, candidate: candidateAp.ap),
-      (metric: 'AP50', base: baseAp.ap50, candidate: candidateAp.ap50),
-      (metric: 'AP75', base: baseAp.ap75, candidate: candidateAp.ap75),
-      (metric: 'APsmall', base: baseAp.apSmall, candidate: candidateAp.apSmall),
-      (metric: 'APmedium', base: baseAp.apMedium, candidate: candidateAp.apMedium),
-      (metric: 'APlarge', base: baseAp.apLarge, candidate: candidateAp.apLarge),
-      (metric: 'AR1', base: baseAp.ar1, candidate: candidateAp.ar1),
-      (metric: 'AR10', base: baseAp.ar10, candidate: candidateAp.ar10),
-      (metric: 'AR100', base: baseAp.ar100, candidate: candidateAp.ar100),
-      (metric: 'ARsmall', base: baseAp.arSmall, candidate: candidateAp.arSmall),
-      (metric: 'ARmedium', base: baseAp.arMedium, candidate: candidateAp.arMedium),
-      (metric: 'ARlarge', base: baseAp.arLarge, candidate: candidateAp.arLarge),
+      (metric: 'AP@[.5:.95]', base: baseAp?.ap, candidate: candidateAp?.ap),
+      (metric: 'AP50', base: baseAp?.ap50, candidate: candidateAp?.ap50),
+      (metric: 'AP75', base: baseAp?.ap75, candidate: candidateAp?.ap75),
+      (metric: 'APsmall', base: baseAp?.apSmall, candidate: candidateAp?.apSmall),
+      (
+        metric: 'APmedium',
+        base: baseAp?.apMedium,
+        candidate: candidateAp?.apMedium
+      ),
+      (metric: 'APlarge', base: baseAp?.apLarge, candidate: candidateAp?.apLarge),
     ];
-
-    final hasPerClass =
-        baseAp.perClass.isNotEmpty && candidateAp.perClass.isNotEmpty;
-    final Map<int, ClassApMetric> baseMap = {
-      for (final c in baseAp.perClass) c.categoryId: c,
-    };
-    final Map<int, ClassApMetric> candidateMap = {
-      for (final c in candidateAp.perClass) c.categoryId: c,
-    };
-    final Set<int> allCatIds = {...baseMap.keys, ...candidateMap.keys};
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'AP Metrics Diff',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('AP Metrics Diff', style: Theme.of(context).textTheme.titleLarge),
           Text(
             'Base: $baseName   Candidate: $candidateName',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: [
-                const DataColumn(label: Text('Metric')),
-                DataColumn(label: Text(baseName)),
-                DataColumn(label: Text(candidateName)),
-                const DataColumn(label: Text('Delta')),
-              ],
-              rows: [
-                for (final row in rows)
-                  DataRow(
-                    cells: [
-                      DataCell(Text(row.metric)),
-                      DataCell(Text(fmt(row.base))),
-                      DataCell(Text(fmt(row.candidate))),
-                      DataCell(
-                        Text(
-                          delta(row.base, row.candidate),
-                          style: TextStyle(
-                            color: deltaColor(row.base, row.candidate),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+          DataTable(
+            columns: [
+              const DataColumn(label: Text('Metric')),
+              DataColumn(label: Text(baseName)),
+              DataColumn(label: Text(candidateName)),
+              const DataColumn(label: Text('Delta')),
+            ],
+            rows: [
+              for (final row in rows)
+                DataRow(
+                  cells: [
+                    DataCell(Text(row.metric)),
+                    DataCell(Text(fmt(row.base))),
+                    DataCell(Text(fmt(row.candidate))),
+                    DataCell(Text(delta(row.base, row.candidate))),
+                  ],
+                ),
+            ],
           ),
-          if (hasPerClass) ...[
-            const SizedBox(height: 24),
-            Text(
-              'Per-class AP diff',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  const DataColumn(label: Text('Class')),
-                  const DataColumn(label: Text('AP base')),
-                  const DataColumn(label: Text('AP cand')),
-                  const DataColumn(label: Text('dAP')),
-                  const DataColumn(label: Text('AP50 base')),
-                  const DataColumn(label: Text('AP50 cand')),
-                  const DataColumn(label: Text('dAP50')),
-                ],
-                rows: [
-                  for (final int catId in allCatIds.toList()..sort())
-                    DataRow(
-                      cells: [
-                        DataCell(
-                          Text(
-                            baseMap[catId]?.categoryName ??
-                                candidateMap[catId]?.categoryName ??
-                                '$catId',
-                          ),
-                        ),
-                        DataCell(Text(fmt(baseMap[catId]?.ap))),
-                        DataCell(Text(fmt(candidateMap[catId]?.ap))),
-                        DataCell(
-                          Text(
-                            delta(baseMap[catId]?.ap, candidateMap[catId]?.ap),
-                            style: TextStyle(
-                              color: deltaColor(
-                                baseMap[catId]?.ap,
-                                candidateMap[catId]?.ap,
-                              ),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataCell(Text(fmt(baseMap[catId]?.ap50))),
-                        DataCell(Text(fmt(candidateMap[catId]?.ap50))),
-                        DataCell(
-                          Text(
-                            delta(
-                              baseMap[catId]?.ap50,
-                              candidateMap[catId]?.ap50,
-                            ),
-                            style: TextStyle(
-                              color: deltaColor(
-                                baseMap[catId]?.ap50,
-                                candidateMap[catId]?.ap50,
-                              ),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  void _openInCompareViewer(int imageId) {
-    _tabController.animateTo(3);
-    _selectCompareImage(imageId);
+  // ════════════════════════ MULTI-MODEL ════════════════════════
+
+  Widget _buildMultiBody(AppLocalizations l) {
+    return Expanded(
+      child: Column(
+        children: [
+          _buildMultiControls(l),
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: TabBar(
+              controller: _multiTab,
+              isScrollable: true,
+              tabs: [
+                Tab(text: l.t(MessageKey.mmLeaderboard)),
+                Tab(text: l.t(MessageKey.mmPerClassRanking)),
+                Tab(text: l.t(MessageKey.mmImageDisagreement)),
+                Tab(text: l.t(MessageKey.mmRegressionMatrix)),
+                Tab(text: l.t(MessageKey.mmCompareViewer)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _multiResult == null
+                ? EmptyStateView(
+                    title: l.t(MessageKey.mmSelectTwoRuns),
+                    explanation: l.t(MessageKey.mmSelectTwoRuns),
+                    icon: Icons.leaderboard,
+                  )
+                : TabBarView(
+                    controller: _multiTab,
+                    children: [
+                      _buildLeaderboardTab(l, _multiResult!),
+                      _buildPerClassRankingTab(l, _multiResult!),
+                      _buildDisagreementTab(l, _multiResult!),
+                      _buildRegressionMatrixTab(l, _multiResult!),
+                      _buildMultiCompareViewerTab(l, _multiResult!),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _selectCompareImage(int imageId) {
+  Widget _buildMultiControls(AppLocalizations l) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              Text('${l.t(MessageKey.mmModelRuns)}:'),
+              const SizedBox(width: 8),
+              for (final ModelRunEntry e in widget.modelRunEntries)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(e.modelRun.name),
+                    selected: _selectedRunIds.contains(e.modelRun.id),
+                    onSelected: (sel) {
+                      setState(() {
+                        if (sel) {
+                          _selectedRunIds.add(e.modelRun.id);
+                        } else {
+                          _selectedRunIds.remove(e.modelRun.id);
+                        }
+                      });
+                      _computeMulti();
+                    },
+                  ),
+                ),
+              const SizedBox(width: 16),
+              Text('${l.t(MessageKey.mmRankingMetric)}:'),
+              const SizedBox(width: 8),
+              DropdownButton<MultiModelRankingMetric>(
+                value: _rankingMetric,
+                items: [
+                  for (final MultiModelRankingMetric m
+                      in MultiModelRankingMetric.values)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(l.multiModelRankingMetric(m)),
+                    ),
+                ],
+                onChanged: (m) {
+                  if (m == null) {
+                    return;
+                  }
+                  setState(() => _rankingMetric = m);
+                  _preferences.setString(
+                    PreferenceKeys.lastRankingMetric,
+                    m.name,
+                  );
+                  _computeMulti();
+                },
+              ),
+              const SizedBox(width: 16),
+              FilterChip(
+                label: Text(l.t(MessageKey.mmHideAllCorrect)),
+                selected: _hideAllCorrect,
+                onSelected: (v) => setState(() => _hideAllCorrect = v),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: Text(l.t(MessageKey.mmIncludeAp)),
+                selected: _includeAp,
+                onSelected: _hasAnyAp
+                    ? (v) {
+                        setState(() => _includeAp = v);
+                        _computeMulti();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Leaderboard tab ──
+
+  Widget _buildLeaderboardTab(
+    AppLocalizations l,
+    MultiModelComparisonResult result,
+  ) {
+    return Column(
+      children: [
+        if (_pairSelection.length == 2)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: FilledButton.icon(
+              icon: const Icon(Icons.compare_arrows),
+              label: Text(l.t(MessageKey.mmOpenPairwise)),
+              onPressed: _openPairwiseFromSelection,
+            ),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SingleChildScrollView(
+              child: DataTable(
+                columnSpacing: 16,
+                columns: [
+                  DataColumn(label: Text(l.t(MessageKey.mmRank))),
+                  DataColumn(label: Text(l.t(MessageKey.mmModel))),
+                  const DataColumn(label: Text('AP'), numeric: true),
+                  const DataColumn(label: Text('AP50'), numeric: true),
+                  const DataColumn(label: Text('P'), numeric: true),
+                  const DataColumn(label: Text('R'), numeric: true),
+                  const DataColumn(label: Text('F1'), numeric: true),
+                  const DataColumn(label: Text('TP'), numeric: true),
+                  const DataColumn(label: Text('FP'), numeric: true),
+                  const DataColumn(label: Text('FN'), numeric: true),
+                  DataColumn(
+                    label: Text(l.t(MessageKey.mmImagesWithErrors)),
+                    numeric: true,
+                  ),
+                  DataColumn(
+                    label: Text(l.t(MessageKey.mmSmallRecall)),
+                    numeric: true,
+                  ),
+                ],
+                rows: [
+                  for (final ModelRunLeaderboardEntry e in result.leaderboard)
+                    DataRow(
+                      selected: _pairSelection.contains(e.modelRunId),
+                      onSelectChanged: (_) => _togglePair(e.modelRunId),
+                      cells: [
+                        DataCell(Text('${e.rank}')),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(e.modelRunName),
+                              if (widget.onActivateRun != null)
+                                IconButton(
+                                  tooltip: l.t(MessageKey.mmMakeActiveModel),
+                                  icon: const Icon(Icons.open_in_new, size: 16),
+                                  onPressed: () =>
+                                      widget.onActivateRun!(e.modelRunId),
+                                ),
+                            ],
+                          ),
+                        ),
+                        DataCell(_apCell(l, e.ap)),
+                        DataCell(_apCell(l, e.ap50)),
+                        DataCell(Text(_f(e.precision))),
+                        DataCell(Text(_f(e.recall))),
+                        DataCell(Text(_f(e.f1))),
+                        DataCell(Text('${e.totalTp}')),
+                        DataCell(Text('${e.totalFp}')),
+                        DataCell(Text('${e.totalFn}')),
+                        DataCell(Text('${e.imagesWithErrors}')),
+                        DataCell(_apCell(l, e.smallObjectRecall)),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _apCell(AppLocalizations l, double? value) {
+    if (value == null) {
+      return Tooltip(
+        message: l.t(MessageKey.mmApNotComputed),
+        child: const Text('—'),
+      );
+    }
+    return Text(_f(value));
+  }
+
+  // ── Per-class ranking tab ──
+
+  Widget _buildPerClassRankingTab(
+    AppLocalizations l,
+    MultiModelComparisonResult result,
+  ) {
+    final String query = _classSearch.toLowerCase();
+    final List<ClassModelRanking> rankings = result.perClassRankings
+        .where((r) => r.categoryName.toLowerCase().contains(query))
+        .toList()
+      ..sort((a, b) => _spreadFor(b).compareTo(_spreadFor(a)));
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: l.t(MessageKey.mmClassFilter),
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (v) => setState(() => _classSearch = v),
+                ),
+              ),
+              const SizedBox(width: 12),
+              DropdownButton<MultiModelRankingMetric>(
+                value: _perClassMetric,
+                items: [
+                  for (final MultiModelRankingMetric m in _kPerClassMetrics)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(l.multiModelRankingMetric(m)),
+                    ),
+                ],
+                onChanged: (m) =>
+                    setState(() => _perClassMetric = m ?? _perClassMetric),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: rankings.length,
+            itemBuilder: (context, index) {
+              final ClassModelRanking r = rankings[index];
+              return ExpansionTile(
+                title: Text(r.categoryName),
+                subtitle: Text(
+                  '${l.t(MessageKey.mmBestModel)}: '
+                  '${_runName(result, r.bestModelRunId)}   '
+                  '${l.t(MessageKey.mmWorstModel)}: '
+                  '${_runName(result, r.worstModelRunId)}   '
+                  '${l.t(MessageKey.mmF1Spread)}: ${_f(r.f1Spread)}',
+                ),
+                trailing: widget.onOpenCategory == null
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.filter_alt),
+                        tooltip: l.t(MessageKey.mmClassFilter),
+                        onPressed: () => widget.onOpenCategory!(r.categoryId),
+                      ),
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 14,
+                      columns: [
+                        DataColumn(label: Text(l.t(MessageKey.mmModel))),
+                        const DataColumn(label: Text('P'), numeric: true),
+                        const DataColumn(label: Text('R'), numeric: true),
+                        const DataColumn(label: Text('F1'), numeric: true),
+                        const DataColumn(label: Text('TP'), numeric: true),
+                        const DataColumn(label: Text('FP'), numeric: true),
+                        const DataColumn(label: Text('FN'), numeric: true),
+                        const DataColumn(label: Text('AP'), numeric: true),
+                        const DataColumn(label: Text('AP50'), numeric: true),
+                        const DataColumn(label: Text('AR'), numeric: true),
+                      ],
+                      rows: [
+                        for (final ClassModelMetricEntry e in r.entries)
+                          DataRow(
+                            cells: [
+                              DataCell(Text(e.modelRunName)),
+                              DataCell(Text(_f(e.precision))),
+                              DataCell(Text(_f(e.recall))),
+                              DataCell(Text(_f(e.f1))),
+                              DataCell(Text('${e.tp}')),
+                              DataCell(Text('${e.fp}')),
+                              DataCell(Text('${e.fn}')),
+                              DataCell(_apCell(l, e.ap)),
+                              DataCell(_apCell(l, e.ap50)),
+                              DataCell(_apCell(l, e.ar)),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  double _spreadFor(ClassModelRanking r) {
+    switch (_perClassMetric) {
+      case MultiModelRankingMetric.recall:
+        return r.recallSpread;
+      case MultiModelRankingMetric.ap:
+        return r.apSpread ?? 0;
+      case MultiModelRankingMetric.precision:
+        return (r.bestPrecision ?? 0) - (r.worstPrecision ?? 0);
+      default:
+        return r.f1Spread;
+    }
+  }
+
+  // ── Image disagreement tab ──
+
+  Widget _buildDisagreementTab(
+    AppLocalizations l,
+    MultiModelComparisonResult result,
+  ) {
+    final List<ImageModelDisagreement> all = result.imageDisagreements.where(
+      (d) {
+        if (_hideAllCorrect &&
+            d.type == ImageDisagreementType.allCorrect) {
+          return false;
+        }
+        if (_disagreementFilter != null && d.type != _disagreementFilter) {
+          return false;
+        }
+        return true;
+      },
+    ).toList();
+    final List<ImageDisagreementType> filterTypes = const [
+      ImageDisagreementType.someModelsWrong,
+      ImageDisagreementType.onlyOneModelCorrect,
+      ImageDisagreementType.onlyOneModelWrong,
+      ImageDisagreementType.allWrong,
+      ImageDisagreementType.classDisagreement,
+      ImageDisagreementType.largeErrorSpread,
+    ];
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('All'),
+                  selected: _disagreementFilter == null,
+                  onSelected: (_) =>
+                      setState(() => _disagreementFilter = null),
+                ),
+                const SizedBox(width: 6),
+                for (final ImageDisagreementType t in filterTypes)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(l.multiModelDisagreementType(t)),
+                      selected: _disagreementFilter == t,
+                      onSelected: (_) => setState(
+                        () => _disagreementFilter =
+                            _disagreementFilter == t ? null : t,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: all.length,
+            itemBuilder: (context, index) {
+              final ImageModelDisagreement d = all[index];
+              return Card(
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: ListTile(
+                  title: Row(
+                    children: [
+                      Expanded(child: Text(d.fileName)),
+                      Chip(
+                        label: Text(l.multiModelDisagreementType(d.type)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${l.t(MessageKey.mmCorrectModels)}: '
+                        '${d.modelsCorrectCount}   '
+                        '${l.t(MessageKey.mmWrongModels)}: '
+                        '${d.modelsWrongCount}   '
+                        '${l.t(MessageKey.mmErrorSpread)}: ${d.errorSpread}',
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 12,
+                        children: [
+                          for (final ImageModelStatus s in d.modelStatuses)
+                            Text(
+                              '${s.modelRunName}: '
+                              '${s.tp} / ${s.fp} / ${s.fn}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  onTap: () => _openMultiImage(d.imageId),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Regression matrix tab ──
+
+  Widget _buildRegressionMatrixTab(
+    AppLocalizations l,
+    MultiModelComparisonResult result,
+  ) {
+    final List<ModelRunLeaderboardEntry> models = result.leaderboard;
+    final Map<String, PairwiseRegressionSummary> byPair = {
+      for (final p in result.pairwiseRegressionMatrix)
+        '${p.baseModelRunId}->${p.candidateModelRunId}': p,
+    };
+    const List<String> cellModes = [
+      'dF1',
+      'dAP',
+      'fixed-broken',
+      'improved-regressed',
+      'dFP',
+      'dFN',
+    ];
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              const Text('Cell:'),
+              const SizedBox(width: 8),
+              DropdownButton<String>(
+                value: _matrixCellMode,
+                items: [
+                  for (final String mode in cellModes)
+                    DropdownMenuItem(value: mode, child: Text(mode)),
+                ],
+                onChanged: (m) =>
+                    setState(() => _matrixCellMode = m ?? _matrixCellMode),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SingleChildScrollView(
+              child: DataTable(
+                columnSpacing: 14,
+                columns: [
+                  DataColumn(label: Text(l.t(MessageKey.mmModel))),
+                  for (final ModelRunLeaderboardEntry c in models)
+                    DataColumn(label: Text(c.modelRunName)),
+                ],
+                rows: [
+                  for (final ModelRunLeaderboardEntry base in models)
+                    DataRow(
+                      cells: [
+                        DataCell(Text(base.modelRunName)),
+                        for (final ModelRunLeaderboardEntry cand in models)
+                          if (base.modelRunId == cand.modelRunId)
+                            const DataCell(Text('—'))
+                          else
+                            _matrixCell(
+                              byPair[
+                                  '${base.modelRunId}->${cand.modelRunId}'],
+                            ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  DataCell _matrixCell(PairwiseRegressionSummary? p) {
+    if (p == null) {
+      return const DataCell(Text(''));
+    }
+    final ({double value, String text}) cell = switch (_matrixCellMode) {
+      'dAP' => (
+          value: p.deltaAp ?? 0,
+          text: p.deltaAp == null ? '-' : _signed(p.deltaAp!),
+        ),
+      'fixed-broken' => (
+          value: (p.fixedImages - p.brokenImages).toDouble(),
+          text: '${p.fixedImages - p.brokenImages}',
+        ),
+      'improved-regressed' => (
+          value: (p.improvedImages - p.regressedImages).toDouble(),
+          text: '${p.improvedImages - p.regressedImages}',
+        ),
+      'dFP' => (value: -p.deltaFp.toDouble(), text: _signedInt(p.deltaFp)),
+      'dFN' => (value: -p.deltaFn.toDouble(), text: _signedInt(p.deltaFn)),
+      _ => (value: p.deltaF1, text: _signed(p.deltaF1)),
+    };
+    final Color color = cell.value > 0
+        ? Colors.green.shade700
+        : (cell.value < 0 ? Colors.red.shade700 : Colors.black54);
+    return DataCell(
+      Text(
+        cell.text,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+      onTap: () => _openPairwiseForPair(p.baseModelRunId, p.candidateModelRunId),
+    );
+  }
+
+  // ── Multi compare viewer tab ──
+
+  Widget _buildMultiCompareViewerTab(
+    AppLocalizations l,
+    MultiModelComparisonResult result,
+  ) {
+    final List<int> imageIds = widget.dataset.imagesById.keys.toList()..sort();
+    final int? effectiveId = _multiImageId != null &&
+            widget.dataset.imagesById.containsKey(_multiImageId)
+        ? _multiImageId
+        : (imageIds.isEmpty ? null : imageIds.first);
+    final ImageRecord? image =
+        effectiveId == null ? null : widget.dataset.imagesById[effectiveId];
+    final List<ModelRunEntry> selected = widget.modelRunEntries
+        .where((e) => _selectedRunIds.contains(e.modelRun.id))
+        .toList();
+    final int columns = selected.length <= 1
+        ? 1
+        : (selected.length <= 4 ? 2 : 3);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Text('${l.t(MessageKey.mmImage)}:'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: effectiveId,
+                  items: [
+                    for (final int id in imageIds)
+                      DropdownMenuItem<int>(
+                        value: id,
+                        child: Text(
+                          widget.dataset.imagesById[id]?.fileName ?? '$id',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (id) {
+                    if (id != null) {
+                      _selectMultiImage(id);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: columns,
+            childAspectRatio: 0.85,
+            children: [
+              for (final ModelRunEntry e in selected)
+                _multiViewerPanel(l, e, image, effectiveId),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _multiViewerPanel(
+    AppLocalizations l,
+    ModelRunEntry entry,
+    ImageRecord? image,
+    int? imageId,
+  ) {
+    final List<DetectionMatch> matches = imageId == null
+        ? const []
+        : entry.evalResult.matches
+            .where((m) => m.imageId == imageId)
+            .toList();
+    final int tp =
+        matches.where((m) => m.type == DetectionMatchType.truePositive).length;
+    final int fp =
+        matches.where((m) => m.type == DetectionMatchType.falsePositive).length;
+    final int fn =
+        matches.where((m) => m.type == DetectionMatchType.falseNegative).length;
+    return Card(
+      margin: const EdgeInsets.all(4),
+      child: Column(
+        children: [
+          ListTile(
+            dense: true,
+            title: Text(
+              entry.modelRun.name,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            subtitle: Text('TP $tp / FP $fp / FN $fn'),
+            trailing: widget.onActivateRun == null
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    tooltip: l.t(MessageKey.mmMakeActiveModel),
+                    onPressed: () => widget.onActivateRun!(entry.modelRun.id),
+                  ),
+          ),
+          Expanded(
+            child: DetectionImageViewer(
+              image: image,
+              categoriesById: widget.dataset.categoriesById,
+              matches: matches,
+              imageBytes: _multiImageBytes,
+              loadingImage: _loadingMultiImage,
+              selectedMatch: null,
+              onMatchSelected: (_) {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── shared viewer panel (pairwise) ──
+
+  Widget _viewerPanel(
+    String name,
+    ImageRecord? image,
+    List<DetectionMatch> matches,
+    Uint8List? bytes,
+    bool loading,
+  ) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(name, style: Theme.of(context).textTheme.labelLarge),
+        ),
+        Expanded(
+          child: DetectionImageViewer(
+            image: image,
+            categoriesById: widget.dataset.categoriesById,
+            matches: matches,
+            imageBytes: bytes,
+            loadingImage: loading,
+            selectedMatch: null,
+            onMatchSelected: (_) {},
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── actions ──
+
+  void _togglePair(String runId) {
+    setState(() {
+      if (_pairSelection.contains(runId)) {
+        _pairSelection.remove(runId);
+      } else {
+        if (_pairSelection.length >= 2) {
+          _pairSelection.remove(_pairSelection.first);
+        }
+        _pairSelection.add(runId);
+      }
+    });
+  }
+
+  void _openPairwiseFromSelection() {
+    final List<String> ids = _pairSelection.toList();
+    if (ids.length != 2) {
+      return;
+    }
+    _openPairwiseForPair(ids[0], ids[1]);
+  }
+
+  void _openPairwiseForPair(String baseId, String candidateId) {
+    final int baseIdx = widget.modelRunEntries
+        .indexWhere((e) => e.modelRun.id == baseId);
+    final int candIdx = widget.modelRunEntries
+        .indexWhere((e) => e.modelRun.id == candidateId);
+    if (baseIdx < 0 || candIdx < 0) {
+      return;
+    }
+    setState(() {
+      _mode = _CompareMode.pairwise;
+      _baseIndex = baseIdx;
+      _candidateIndex = candIdx;
+    });
+    _computePairwise();
+  }
+
+  void _openPairwiseImage(int imageId) {
+    _pairwiseTab.animateTo(3);
+    _selectPairwiseImage(imageId);
+  }
+
+  void _selectPairwiseImage(int imageId) {
     if (_selectedImageId == imageId) {
       return;
     }
     setState(() {
       _selectedImageId = imageId;
       _selectedImageBytes = null;
-      _loadingImage = false;
+      _loadingImage = true;
     });
-    _loadCompareImage(imageId);
+    _loadImage(imageId, pairwise: true);
   }
 
-  Future<void> _loadCompareImage(int imageId) async {
+  void _openMultiImage(int imageId) {
+    _multiTab.animateTo(4);
+    _selectMultiImage(imageId);
+  }
+
+  void _selectMultiImage(int imageId) {
+    if (_multiImageId == imageId) {
+      return;
+    }
+    setState(() {
+      _multiImageId = imageId;
+      _multiImageBytes = null;
+      _loadingMultiImage = true;
+    });
+    _loadImage(imageId, pairwise: false);
+  }
+
+  Future<void> _loadImage(int imageId, {required bool pairwise}) async {
     final ImageRecord? image = widget.dataset.imagesById[imageId];
     if (image == null) {
       return;
     }
-    setState(() => _loadingImage = true);
     final Uint8List? bytes =
         await widget.imageSource.readImageBytes(image.fileName);
-    if (!mounted || _selectedImageId != imageId) {
+    if (!mounted) {
       return;
     }
-    setState(() {
-      _selectedImageBytes = bytes;
-      _loadingImage = false;
-    });
+    if (pairwise) {
+      if (_selectedImageId != imageId) {
+        return;
+      }
+      setState(() {
+        _selectedImageBytes = bytes;
+        _loadingImage = false;
+      });
+    } else {
+      if (_multiImageId != imageId) {
+        return;
+      }
+      setState(() {
+        _multiImageBytes = bytes;
+        _loadingMultiImage = false;
+      });
+    }
   }
 
-  Future<void> _exportComparison() async {
+  // ── export ──
+
+  Future<void> _export() async {
+    if (_mode == _CompareMode.pairwise) {
+      await _exportPairwise();
+    } else {
+      await _exportMulti();
+    }
+  }
+
+  Future<void> _exportPairwise() async {
     final ModelComparisonResult? result = _comparisonResult;
     if (result == null) {
       return;
     }
     setState(() => _exporting = true);
-    await Future<void>.delayed(Duration.zero);
     try {
       final ComparisonReportBundle bundle =
           const ComparisonReportBuilder().build(
@@ -758,38 +1520,15 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
         result: result,
         projectName: widget.projectName,
       );
-
-      // Wrap in ReportBundle for the saver.
-      final _ComparisonReportBundleAdapter adapted =
-          _ComparisonReportBundleAdapter(bundle);
-      final ReportSaveResult saveResult = await _reportSaver.save(adapted);
-      if (!mounted) {
-        return;
-      }
-      switch (saveResult.status) {
-        case ReportSaveStatus.cancelled:
-          break;
-        case ReportSaveStatus.downloadStarted:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Comparison report download started.'),
-            ),
-          );
-        case ReportSaveStatus.savedToDirectory:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Saved to: ${saveResult.location}',
-              ),
-            ),
-          );
-      }
+      await _save(
+        _ReportBundleAdapter(
+          htmlReport: bundle.htmlReport,
+          csvFiles: bundle.csvFiles,
+          binaryFiles: const {},
+        ),
+      );
     } on Object catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $error')),
-        );
-      }
+      _showError(error);
     } finally {
       if (mounted) {
         setState(() => _exporting = false);
@@ -797,7 +1536,82 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     }
   }
 
-  // ---- Helpers ----
+  Future<void> _exportMulti() async {
+    final MultiModelComparisonResult? result = _multiResult;
+    if (result == null) {
+      return;
+    }
+    setState(() => _exporting = true);
+    try {
+      final AppLocalizations l = AppLocaleScope.l10n(context);
+      final MultiModelReportBundle bundle =
+          await const MultiModelReportBuilder().build(
+        result: result,
+        projectName: widget.projectName,
+        locale: l.locale,
+      );
+      await _save(
+        _ReportBundleAdapter(
+          htmlReport: bundle.htmlReport,
+          csvFiles: bundle.csvFiles,
+          binaryFiles: bundle.binaryFiles,
+        ),
+      );
+    } on Object catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
+  Future<void> _save(ReportBundle bundle) async {
+    final ReportSaveResult saveResult = await _reportSaver.save(bundle);
+    if (!mounted) {
+      return;
+    }
+    switch (saveResult.status) {
+      case ReportSaveStatus.cancelled:
+        break;
+      case ReportSaveStatus.downloadStarted:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report download started.')),
+        );
+      case ReportSaveStatus.savedToDirectory:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved to: ${saveResult.location}')),
+        );
+    }
+  }
+
+  void _showError(Object error) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $error')),
+      );
+    }
+  }
+
+  // ── helpers ──
+
+  String _f(double v) => v.toStringAsFixed(3);
+  String _signed(double v) =>
+      v >= 0 ? '+${v.toStringAsFixed(3)}' : v.toStringAsFixed(3);
+  String _signedInt(int v) => v >= 0 ? '+$v' : '$v';
+  String _sign(int value) => value >= 0 ? '+$value' : '$value';
+
+  String _runName(MultiModelComparisonResult result, String? id) {
+    if (id == null) {
+      return '';
+    }
+    for (final ModelRunLeaderboardEntry e in result.leaderboard) {
+      if (e.modelRunId == id) {
+        return e.modelRunName;
+      }
+    }
+    return id;
+  }
 
   String _statusLabel(ImageComparisonStatus status) {
     return switch (status) {
@@ -831,25 +1645,25 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       ImageComparisonStatus.unchangedWrong => Icons.warning,
     };
   }
-
-  String _sign(int value) => value >= 0 ? '+$value' : '$value';
 }
 
-// Adapter wrapping ComparisonReportBundle to satisfy ReportBundle's interface.
-class _ComparisonReportBundleAdapter extends ReportBundle {
-  _ComparisonReportBundleAdapter(ComparisonReportBundle bundle)
-      : super(
+/// Adapts a comparison/multi-model bundle to the [ReportBundle] interface the
+/// platform saver expects.
+class _ReportBundleAdapter extends ReportBundle {
+  _ReportBundleAdapter({
+    required String htmlReport,
+    required Map<String, String> csvFiles,
+    required Map<String, List<int>> binaryFiles,
+  }) : super(
           projectName: '',
           modelRunName: '',
           generatedAt: DateTime.now(),
           evalConfig: const EvalConfig(),
-          htmlReport: bundle.htmlReport,
-          csvFiles: bundle.csvFiles,
-          binaryFiles: const <String, List<int>>{},
+          htmlReport: htmlReport,
+          csvFiles: csvFiles,
+          binaryFiles: binaryFiles,
         );
 }
-
-// ---- Reusable widgets ----
 
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
@@ -879,9 +1693,8 @@ class _MetricCard extends StatelessWidget {
     final String deltaText = d == null
         ? ''
         : (d >= 0
-            ? '+${intDelta != null ? intDelta : d.toStringAsFixed(3)}'
-            : '${intDelta != null ? intDelta : d.toStringAsFixed(3)}');
-
+            ? '+${intDelta ?? d.toStringAsFixed(3)}'
+            : '${intDelta ?? d.toStringAsFixed(3)}');
     return SizedBox(
       width: 180,
       child: Card(
@@ -890,15 +1703,9 @@ class _MetricCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 4),
-              Text(
-                'Base: $base',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              Text('Base: $base', style: Theme.of(context).textTheme.bodySmall),
               Text(
                 'Cand: $candidate',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -972,7 +1779,7 @@ class _PerClassTable extends StatefulWidget {
 }
 
 class _PerClassTableState extends State<_PerClassTable> {
-  String? _filter; // null = all, 'improved', 'regressed'
+  String? _filter;
 
   @override
   Widget build(BuildContext context) {
@@ -981,7 +1788,6 @@ class _PerClassTableState extends State<_PerClassTable> {
       'regressed' => widget.diffs.where((d) => d.diff.deltaF1 < 0).toList(),
       _ => widget.diffs,
     };
-
     return Column(
       children: [
         Padding(
@@ -1039,31 +1845,17 @@ class _PerClassTableState extends State<_PerClassTable> {
                     cells: [
                       DataCell(Text(d.categoryName)),
                       DataCell(Text(diff.basePrecision.toStringAsFixed(3))),
-                      DataCell(
-                        Text(diff.candidatePrecision.toStringAsFixed(3)),
-                      ),
-                      DataCell(
-                        _deltaText(diff.deltaPrecision, higherIsBetter: true),
-                      ),
+                      DataCell(Text(diff.candidatePrecision.toStringAsFixed(3))),
+                      DataCell(_deltaText(diff.deltaPrecision, true)),
                       DataCell(Text(diff.baseRecall.toStringAsFixed(3))),
                       DataCell(Text(diff.candidateRecall.toStringAsFixed(3))),
-                      DataCell(
-                        _deltaText(diff.deltaRecall, higherIsBetter: true),
-                      ),
+                      DataCell(_deltaText(diff.deltaRecall, true)),
                       DataCell(Text(diff.baseF1.toStringAsFixed(3))),
                       DataCell(Text(diff.candidateF1.toStringAsFixed(3))),
-                      DataCell(
-                        _deltaText(diff.deltaF1, higherIsBetter: true),
-                      ),
-                      DataCell(
-                        _intDeltaText(diff.deltaTp, higherIsBetter: true),
-                      ),
-                      DataCell(
-                        _intDeltaText(diff.deltaFp, higherIsBetter: false),
-                      ),
-                      DataCell(
-                        _intDeltaText(diff.deltaFn, higherIsBetter: false),
-                      ),
+                      DataCell(_deltaText(diff.deltaF1, true)),
+                      DataCell(_intDeltaText(diff.deltaTp, true)),
+                      DataCell(_intDeltaText(diff.deltaFp, false)),
+                      DataCell(_intDeltaText(diff.deltaFn, false)),
                     ],
                   );
                 }).toList(),
@@ -1075,7 +1867,7 @@ class _PerClassTableState extends State<_PerClassTable> {
     );
   }
 
-  Widget _deltaText(double delta, {required bool higherIsBetter}) {
+  Widget _deltaText(double delta, bool higherIsBetter) {
     final bool isGood = higherIsBetter ? delta > 0 : delta < 0;
     final bool isBad = higherIsBetter ? delta < 0 : delta > 0;
     final Color color = isGood
@@ -1083,22 +1875,16 @@ class _PerClassTableState extends State<_PerClassTable> {
         : (isBad ? Colors.red.shade700 : Colors.black87);
     final String text =
         delta >= 0 ? '+${delta.toStringAsFixed(3)}' : delta.toStringAsFixed(3);
-    return Text(
-      text,
-      style: TextStyle(color: color, fontWeight: FontWeight.w600),
-    );
+    return Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600));
   }
 
-  Widget _intDeltaText(int delta, {required bool higherIsBetter}) {
+  Widget _intDeltaText(int delta, bool higherIsBetter) {
     final bool isGood = higherIsBetter ? delta > 0 : delta < 0;
     final bool isBad = higherIsBetter ? delta < 0 : delta > 0;
     final Color color = isGood
         ? Colors.green.shade700
         : (isBad ? Colors.red.shade700 : Colors.black87);
     final String text = delta >= 0 ? '+$delta' : '$delta';
-    return Text(
-      text,
-      style: TextStyle(color: color, fontWeight: FontWeight.w600),
-    );
+    return Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600));
   }
 }

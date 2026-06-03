@@ -37,7 +37,8 @@ class PdfReportOptions {
     bool? includeConfusion,
   }) {
     return PdfReportOptions(
-      includeRecommendations: includeRecommendations ?? this.includeRecommendations,
+      includeRecommendations:
+          includeRecommendations ?? this.includeRecommendations,
       includeWorstCases: includeWorstCases ?? this.includeWorstCases,
       includeComparison: includeComparison ?? this.includeComparison,
       includeHealth: includeHealth ?? this.includeHealth,
@@ -62,6 +63,10 @@ class ReportComponents {
     this.includeXlsxWorkbook = false,
     this.includePdfReport = false,
     this.pdfOptions = const PdfReportOptions(),
+    this.includeApInHtml = true,
+    this.includePerClassAp = true,
+    this.includeApInXlsx = true,
+    this.includeApInPdf = true,
     this.includeApMetricsCsv = false,
     this.includePerClassApCsv = false,
   });
@@ -79,6 +84,10 @@ class ReportComponents {
   final bool includeXlsxWorkbook;
   final bool includePdfReport;
   final PdfReportOptions pdfOptions;
+  final bool includeApInHtml;
+  final bool includePerClassAp;
+  final bool includeApInXlsx;
+  final bool includeApInPdf;
   final bool includeApMetricsCsv;
   final bool includePerClassApCsv;
 
@@ -96,6 +105,10 @@ class ReportComponents {
     bool? includeXlsxWorkbook,
     bool? includePdfReport,
     PdfReportOptions? pdfOptions,
+    bool? includeApInHtml,
+    bool? includePerClassAp,
+    bool? includeApInXlsx,
+    bool? includeApInPdf,
     bool? includeApMetricsCsv,
     bool? includePerClassApCsv,
   }) {
@@ -120,6 +133,10 @@ class ReportComponents {
       includeXlsxWorkbook: includeXlsxWorkbook ?? this.includeXlsxWorkbook,
       includePdfReport: includePdfReport ?? this.includePdfReport,
       pdfOptions: pdfOptions ?? this.pdfOptions,
+      includeApInHtml: includeApInHtml ?? this.includeApInHtml,
+      includePerClassAp: includePerClassAp ?? this.includePerClassAp,
+      includeApInXlsx: includeApInXlsx ?? this.includeApInXlsx,
+      includeApInPdf: includeApInPdf ?? this.includeApInPdf,
       includeApMetricsCsv: includeApMetricsCsv ?? this.includeApMetricsCsv,
       includePerClassApCsv: includePerClassApCsv ?? this.includePerClassApCsv,
     );
@@ -177,8 +194,7 @@ List<ReportMatchRow> buildMatchRows({
     if (match.type == DetectionMatchType.ignored) {
       continue;
     }
-    final String fileName =
-        dataset.imagesById[match.imageId]?.fileName ?? '';
+    final String fileName = dataset.imagesById[match.imageId]?.fileName ?? '';
     final bool isFn = match.type == DetectionMatchType.falseNegative;
     final Prediction? prediction = match.prediction;
     final GroundTruthAnnotation? groundTruth = match.groundTruth;
@@ -193,8 +209,9 @@ List<ReportMatchRow> buildMatchRows({
         fileName: fileName,
         matchType: matchTypeLabel(match.type),
         categoryId: categoryId,
-        categoryName:
-            categoryId == null ? '' : (dataset.categoriesById[categoryId]?.name ?? '$categoryId'),
+        categoryName: categoryId == null
+            ? ''
+            : (dataset.categoriesById[categoryId]?.name ?? '$categoryId'),
         score: isFn ? null : prediction?.score,
         iou: match.iou,
         reason: match.reason,

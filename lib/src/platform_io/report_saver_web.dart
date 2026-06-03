@@ -19,7 +19,10 @@ class WebReportSaver implements ReportSaver {
   const WebReportSaver();
 
   @override
-  Future<ReportSaveResult> save(ReportBundle bundle) async {
+  Future<ReportSaveResult> save(
+    ReportBundle bundle, {
+    String? initialDirectory,
+  }) async {
     final Archive archive = Archive();
     void addFile(String name, String content) {
       final List<int> bytes = utf8.encode(content);
