@@ -1,0 +1,16 @@
+class_id,class_name,size_bucket,gt_count,tp,fn,recall
+1,red_light,small,0,0,0,0.0
+1,red_light,medium,4,3,1,0.75
+1,red_light,large,18,16,2,0.8888888888888888
+2,yellow_light,small,1,1,0,1.0
+2,yellow_light,medium,7,5,2,0.7142857142857143
+2,yellow_light,large,4,2,2,0.5
+3,green_light,small,0,0,0,0.0
+3,green_light,medium,9,6,3,0.6666666666666666
+3,green_light,large,16,13,3,0.8125
+4,pedestrian_sign,small,0,0,0,0.0
+4,pedestrian_sign,medium,8,8,0,1.0
+4,pedestrian_sign,large,0,0,0,0.0
+5,background_distractor,small,20,10,10,0.5
+5,background_distractor,medium,0,0,0,0.0
+5,background_distractor,large,0,0,0,0.0

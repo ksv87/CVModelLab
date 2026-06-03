@@ -1,0 +1,16 @@
+category_id,category_name,model_run_id,model_run_name,gt_count,pred_count,tp,fp,fn,precision,recall,f1,ap,ap50,ap75,ar,f1_spread,best_model_run_id,worst_model_run_id
+2,yellow_light,showcase-a,Model A — Baseline,12,8,8,0,4,1.0,0.6666666666666666,0.8,0.432,0.635,0.449,0.558,0.4666666666666667,showcase-c,showcase-b
+2,yellow_light,showcase-b,Model B — High Recall,12,18,8,10,4,0.4444444444444444,0.6666666666666666,0.5333333333333333,0.389,0.601,0.402,0.691,0.4666666666666667,showcase-c,showcase-b
+2,yellow_light,showcase-c,Model C — High Precision,12,12,12,0,0,1.0,1.0,1.0,0.558,0.768,0.589,0.628,0.4666666666666667,showcase-c,showcase-b
+5,background_distractor,showcase-a,Model A — Baseline,20,10,10,0,10,1.0,0.5,0.6666666666666666,0.501,0.724,0.528,0.624,0.3793103448275862,showcase-b,showcase-c
+5,background_distractor,showcase-b,Model B — High Recall,20,20,20,0,0,1.0,1.0,1.0,0.542,0.775,0.569,0.806,0.3793103448275862,showcase-b,showcase-c
+5,background_distractor,showcase-c,Model C — High Precision,20,9,9,0,11,1.0,0.45,0.6206896551724138,0.652,0.851,0.688,0.797,0.3793103448275862,showcase-b,showcase-c
+3,green_light,showcase-a,Model A — Baseline,25,24,19,5,6,0.7916666666666666,0.76,0.7755102040816326,0.591,0.812,0.622,0.695,0.28036723163841804,showcase-c,showcase-b
+3,green_light,showcase-b,Model B — High Recall,25,34,20,14,5,0.5882352941176471,0.8,0.6779661016949153,0.512,0.741,0.538,0.782,0.28036723163841804,showcase-c,showcase-b
+3,green_light,showcase-c,Model C — High Precision,25,23,23,0,2,1.0,0.92,0.9583333333333334,0.661,0.872,0.698,0.725,0.28036723163841804,showcase-c,showcase-b
+4,pedestrian_sign,showcase-a,Model A — Baseline,8,8,8,0,0,1.0,1.0,1.0,0.514,0.731,0.54,0.626,0.23076923076923073,showcase-a,showcase-b
+4,pedestrian_sign,showcase-b,Model B — High Recall,8,5,5,0,3,1.0,0.625,0.7692307692307693,0.489,0.718,0.512,0.742,0.23076923076923073,showcase-a,showcase-b
+4,pedestrian_sign,showcase-c,Model C — High Precision,8,7,7,0,1,1.0,0.875,0.9333333333333333,0.541,0.748,0.572,0.598,0.23076923076923073,showcase-a,showcase-b
+1,red_light,showcase-a,Model A — Baseline,22,22,19,3,3,0.8636363636363636,0.8636363636363636,0.8636363636363636,0.581,0.802,0.617,0.681,0.18173122907699646,showcase-c,showcase-b
+1,red_light,showcase-b,Model B — High Recall,22,29,19,10,3,0.6551724137931034,0.8636363636363636,0.7450980392156864,0.421,0.641,0.441,0.718,0.18173122907699646,showcase-c,showcase-b
+1,red_light,showcase-c,Model C — High Precision,22,19,19,0,3,1.0,0.8636363636363636,0.9268292682926829,0.648,0.861,0.684,0.712,0.18173122907699646,showcase-c,showcase-b

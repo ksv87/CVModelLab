@@ -5,6 +5,7 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../../platform_io/annotated_image_saver.dart';
+import '../../platform_io/pdf_font_loader.dart';
 import '../../core/parser/coco_serializer.dart';
 import '../../platform_io/ap_evaluator.dart';
 import '../../platform_io/file_pick_result.dart';
@@ -427,6 +428,21 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     );
   }
 
+  MultiModelComparisonResult? _buildMultiComparison() {
+    if (_modelRunEntries.length < 3) return null;
+    final Map<String, EvalResult> evals = {
+      for (final e in _modelRunEntries) e.modelRun.id: e.evalResult,
+    };
+    return const MultiModelComparator().compare(
+      dataset: widget.dataset,
+      modelRuns: _modelRunEntries.map((e) => e.modelRun).toList(),
+      evalResultsByRunId: evals,
+      evalConfig: _evalConfig,
+      apResultsByRunId: _apEvalResults.isNotEmpty ? _apEvalResults : null,
+      generatedAt: DateTime.now(),
+    );
+  }
+
   List<Recommendation> _buildRecommendations() {
     final DatasetHealthReport healthReport = _buildHealthReport();
     final WorstCasesResult worstCases = _buildWorstCases();
@@ -806,9 +822,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     if (newName == null || newName.isEmpty || !mounted) {
       return;
     }
-    final String deduplicatedName = newName == _activeModelRun.name
-        ? newName
-        : _deduplicateName(newName);
+    final String deduplicatedName =
+        newName == _activeModelRun.name ? newName : _deduplicateName(newName);
     final ModelRunEntry old = _modelRunEntries[_activeRunIndex];
     setState(() {
       _modelRunEntries = [
@@ -834,8 +849,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           projectName: _projectName,
           apEvalResults: Map<String, ApEvalResult>.of(_apEvalResults),
           onActivateRun: (String runId) {
-            final int index = _modelRunEntries
-                .indexWhere((e) => e.modelRun.id == runId);
+            final int index =
+                _modelRunEntries.indexWhere((e) => e.modelRun.id == runId);
             if (index >= 0) {
               _switchActiveRun(index);
               Navigator.of(context).pop();
@@ -1263,6 +1278,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         confusionMatrixAvailable: _evalResult.confusionMatrix.counts.isNotEmpty,
         filteredViewAvailable: true,
         apMetricsAvailable: _apEvalResults[_activeModelRun.id] != null,
+        comparisonAvailable: _modelRunEntries.length >= 2,
       ),
     );
     if (request == null || !mounted) {
@@ -1285,8 +1301,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     await Future<void>.delayed(Duration.zero);
     try {
       final AppLocale reportLocale = request.locale == AppLocale.system
-          ? AppLocaleScope.of(context).locale
+          ? AppLocaleScope.l10n(context).locale
           : request.locale;
+      final pdfTheme = await loadPdfTheme();
       final ReportBundle bundle = await const ReportBundleBuilder().build(
         dataset: widget.dataset,
         modelRun: _activeModelRun,
@@ -1304,8 +1321,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           missingFileNames: _missingImageFileNames,
           available: true,
         ),
-        comparison: _buildRecommendationComparison(),
+        comparison: _modelRunEntries.length == 2
+            ? _buildRecommendationComparison()
+            : null,
+        multiComparison: _buildMultiComparison(),
         apEvalResult: _apEvalResults[_activeModelRun.id],
+        pdfTheme: pdfTheme,
       );
       setState(
         () => _taskProgress = const LongRunningTaskProgress(

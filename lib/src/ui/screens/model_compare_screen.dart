@@ -4,6 +4,7 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../../platform_io/image_source.dart';
+import '../../platform_io/pdf_font_loader.dart';
 import '../../platform_io/report_saver.dart';
 import '../../platform_io/user_preferences.dart';
 import '../l10n/app_locale_scope.dart';
@@ -73,6 +74,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   int? _selectedImageId;
   Uint8List? _selectedImageBytes;
   bool _loadingImage = false;
+  final TransformationController _pairwiseTransform =
+      TransformationController();
 
   // Multi-model state.
   late Set<String> _selectedRunIds;
@@ -88,6 +91,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   int? _multiImageId;
   Uint8List? _multiImageBytes;
   bool _loadingMultiImage = false;
+  final TransformationController _multiTransform = TransformationController();
 
   bool _exporting = false;
 
@@ -99,6 +103,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     super.initState();
     _pairwiseTab = TabController(length: 5, vsync: this);
     _multiTab = TabController(length: 5, vsync: this);
+    _pairwiseTab.addListener(_onPairwiseTabChanged);
+    _multiTab.addListener(_onMultiTabChanged);
     _selectedRunIds = {
       for (final ModelRunEntry e in widget.modelRunEntries) e.modelRun.id,
     };
@@ -108,10 +114,34 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     _restorePreferences();
   }
 
+  void _onPairwiseTabChanged() {
+    if (!mounted) return;
+    if (!_pairwiseTab.indexIsChanging &&
+        _pairwiseTab.index == 3 &&
+        _selectedImageId == null) {
+      final List<int> ids = widget.dataset.imagesById.keys.toList()..sort();
+      if (ids.isNotEmpty) _selectPairwiseImage(ids.first);
+    }
+  }
+
+  void _onMultiTabChanged() {
+    if (!mounted) return;
+    if (!_multiTab.indexIsChanging &&
+        _multiTab.index == 4 &&
+        _multiImageId == null) {
+      final List<int> ids = widget.dataset.imagesById.keys.toList()..sort();
+      if (ids.isNotEmpty) _selectMultiImage(ids.first);
+    }
+  }
+
   @override
   void dispose() {
+    _pairwiseTab.removeListener(_onPairwiseTabChanged);
+    _multiTab.removeListener(_onMultiTabChanged);
     _pairwiseTab.dispose();
     _multiTab.dispose();
+    _pairwiseTransform.dispose();
+    _multiTransform.dispose();
     super.dispose();
   }
 
@@ -172,8 +202,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     final Map<String, EvalResult> evals = {
       for (final ModelRunEntry e in selected) e.modelRun.id: e.evalResult,
     };
-    final MultiModelComparisonResult result = const MultiModelComparator()
-        .compare(
+    final MultiModelComparisonResult result =
+        const MultiModelComparator().compare(
       dataset: widget.dataset,
       modelRuns: selected.map((e) => e.modelRun).toList(),
       evalResultsByRunId: evals,
@@ -382,7 +412,10 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Overall Metrics', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Overall Metrics',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
@@ -492,7 +525,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                     child: FilterChip(
                       label: Text(_statusLabel(status)),
                       selected: _imageFilter == status,
-                      selectedColor: _statusColor(status).withValues(alpha: 0.2),
+                      selectedColor:
+                          _statusColor(status).withValues(alpha: 0.2),
                       onSelected: (_) => setState(
                         () => _imageFilter =
                             _imageFilter == status ? null : status,
@@ -580,6 +614,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   },
                 ),
               ),
+              const SizedBox(width: 16),
+              _buildZoomControls(_pairwiseTransform),
             ],
           ),
         ),
@@ -594,6 +630,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   baseMatches,
                   _selectedImageBytes,
                   _loadingImage,
+                  _pairwiseTransform,
                 ),
               ),
               const VerticalDivider(width: 1),
@@ -604,6 +641,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   candidateMatches,
                   _selectedImageBytes,
                   _loadingImage,
+                  _pairwiseTransform,
                 ),
               ),
             ],
@@ -611,6 +649,41 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
         ),
       ],
     );
+  }
+
+  Widget _buildZoomControls(TransformationController ctrl) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.zoom_out, size: 20),
+          tooltip: 'Zoom out',
+          onPressed: () => _applyZoom(ctrl, 1 / 1.5),
+          visualDensity: VisualDensity.compact,
+        ),
+        IconButton(
+          icon: const Icon(Icons.zoom_in, size: 20),
+          tooltip: 'Zoom in',
+          onPressed: () => _applyZoom(ctrl, 1.5),
+          visualDensity: VisualDensity.compact,
+        ),
+        IconButton(
+          icon: const Icon(Icons.fit_screen, size: 20),
+          tooltip: 'Reset zoom',
+          onPressed: () => ctrl.value = Matrix4.identity(),
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
+
+  void _applyZoom(TransformationController ctrl, double factor) {
+    final Matrix4 m = ctrl.value.clone();
+    final double current = m.getMaxScaleOnAxis();
+    final double next = (current * factor).clamp(0.1, 8.0);
+    final double actual = next / current;
+    m.scaleByDouble(actual, actual, 1.0, 1.0);
+    ctrl.value = m;
   }
 
   Widget _buildApDiffTab() {
@@ -646,20 +719,31 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       (metric: 'AP@[.5:.95]', base: baseAp?.ap, candidate: candidateAp?.ap),
       (metric: 'AP50', base: baseAp?.ap50, candidate: candidateAp?.ap50),
       (metric: 'AP75', base: baseAp?.ap75, candidate: candidateAp?.ap75),
-      (metric: 'APsmall', base: baseAp?.apSmall, candidate: candidateAp?.apSmall),
+      (
+        metric: 'APsmall',
+        base: baseAp?.apSmall,
+        candidate: candidateAp?.apSmall
+      ),
       (
         metric: 'APmedium',
         base: baseAp?.apMedium,
         candidate: candidateAp?.apMedium
       ),
-      (metric: 'APlarge', base: baseAp?.apLarge, candidate: candidateAp?.apLarge),
+      (
+        metric: 'APlarge',
+        base: baseAp?.apLarge,
+        candidate: candidateAp?.apLarge
+      ),
     ];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('AP Metrics Diff', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'AP Metrics Diff',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           Text(
             'Base: $baseName   Candidate: $candidateName',
             style: Theme.of(context).textTheme.bodySmall,
@@ -1038,8 +1122,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   ) {
     final List<ImageModelDisagreement> all = result.imageDisagreements.where(
       (d) {
-        if (_hideAllCorrect &&
-            d.type == ImageDisagreementType.allCorrect) {
+        if (_hideAllCorrect && d.type == ImageDisagreementType.allCorrect) {
           return false;
         }
         if (_disagreementFilter != null && d.type != _disagreementFilter) {
@@ -1067,8 +1150,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                 FilterChip(
                   label: const Text('All'),
                   selected: _disagreementFilter == null,
-                  onSelected: (_) =>
-                      setState(() => _disagreementFilter = null),
+                  onSelected: (_) => setState(() => _disagreementFilter = null),
                 ),
                 const SizedBox(width: 6),
                 for (final ImageDisagreementType t in filterTypes)
@@ -1093,8 +1175,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
             itemBuilder: (context, index) {
               final ImageModelDisagreement d = all[index];
               return Card(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ListTile(
                   title: Row(
                     children: [
@@ -1199,8 +1280,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                             const DataCell(Text('—'))
                           else
                             _matrixCell(
-                              byPair[
-                                  '${base.modelRunId}->${cand.modelRunId}'],
+                              byPair['${base.modelRunId}->${cand.modelRunId}'],
                             ),
                       ],
                     ),
@@ -1242,7 +1322,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
         cell.text,
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
-      onTap: () => _openPairwiseForPair(p.baseModelRunId, p.candidateModelRunId),
+      onTap: () =>
+          _openPairwiseForPair(p.baseModelRunId, p.candidateModelRunId),
     );
   }
 
@@ -1262,9 +1343,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     final List<ModelRunEntry> selected = widget.modelRunEntries
         .where((e) => _selectedRunIds.contains(e.modelRun.id))
         .toList();
-    final int columns = selected.length <= 1
-        ? 1
-        : (selected.length <= 4 ? 2 : 3);
+    final int columns =
+        selected.length <= 1 ? 1 : (selected.length <= 4 ? 2 : 3);
     return Column(
       children: [
         Padding(
@@ -1294,6 +1374,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
                   },
                 ),
               ),
+              const SizedBox(width: 16),
+              _buildZoomControls(_multiTransform),
             ],
           ),
         ),
@@ -1319,9 +1401,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   ) {
     final List<DetectionMatch> matches = imageId == null
         ? const []
-        : entry.evalResult.matches
-            .where((m) => m.imageId == imageId)
-            .toList();
+        : entry.evalResult.matches.where((m) => m.imageId == imageId).toList();
     final int tp =
         matches.where((m) => m.type == DetectionMatchType.truePositive).length;
     final int fp =
@@ -1356,6 +1436,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
               loadingImage: _loadingMultiImage,
               selectedMatch: null,
               onMatchSelected: (_) {},
+              transformationController: _multiTransform,
+              scaleEnabled: false,
             ),
           ),
         ],
@@ -1371,6 +1453,7 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     List<DetectionMatch> matches,
     Uint8List? bytes,
     bool loading,
+    TransformationController transformCtrl,
   ) {
     return Column(
       children: [
@@ -1387,6 +1470,8 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
             loadingImage: loading,
             selectedMatch: null,
             onMatchSelected: (_) {},
+            transformationController: transformCtrl,
+            scaleEnabled: false,
           ),
         ),
       ],
@@ -1417,10 +1502,10 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
   }
 
   void _openPairwiseForPair(String baseId, String candidateId) {
-    final int baseIdx = widget.modelRunEntries
-        .indexWhere((e) => e.modelRun.id == baseId);
-    final int candIdx = widget.modelRunEntries
-        .indexWhere((e) => e.modelRun.id == candidateId);
+    final int baseIdx =
+        widget.modelRunEntries.indexWhere((e) => e.modelRun.id == baseId);
+    final int candIdx =
+        widget.modelRunEntries.indexWhere((e) => e.modelRun.id == candidateId);
     if (baseIdx < 0 || candIdx < 0) {
       return;
     }
@@ -1512,19 +1597,22 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     }
     setState(() => _exporting = true);
     try {
+      final pdfTheme = await loadPdfTheme();
       final ComparisonReportBundle bundle =
-          const ComparisonReportBuilder().build(
+          await const ComparisonReportBuilder().build(
         dataset: widget.dataset,
         baseRun: widget.modelRunEntries[_baseIndex].modelRun,
         candidateRun: widget.modelRunEntries[_candidateIndex].modelRun,
         result: result,
         projectName: widget.projectName,
+        pdfTheme: pdfTheme,
+        locale: AppLocaleScope.l10n(context).locale,
       );
       await _save(
         _ReportBundleAdapter(
           htmlReport: bundle.htmlReport,
           csvFiles: bundle.csvFiles,
-          binaryFiles: const {},
+          binaryFiles: bundle.binaryFiles,
         ),
       );
     } on Object catch (error) {
@@ -1544,11 +1632,13 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
     setState(() => _exporting = true);
     try {
       final AppLocalizations l = AppLocaleScope.l10n(context);
+      final pdfTheme = await loadPdfTheme();
       final MultiModelReportBundle bundle =
           await const MultiModelReportBuilder().build(
         result: result,
         projectName: widget.projectName,
         locale: l.locale,
+        pdfTheme: pdfTheme,
       );
       await _save(
         _ReportBundleAdapter(
@@ -1845,7 +1935,9 @@ class _PerClassTableState extends State<_PerClassTable> {
                     cells: [
                       DataCell(Text(d.categoryName)),
                       DataCell(Text(diff.basePrecision.toStringAsFixed(3))),
-                      DataCell(Text(diff.candidatePrecision.toStringAsFixed(3))),
+                      DataCell(
+                        Text(diff.candidatePrecision.toStringAsFixed(3)),
+                      ),
                       DataCell(_deltaText(diff.deltaPrecision, true)),
                       DataCell(Text(diff.baseRecall.toStringAsFixed(3))),
                       DataCell(Text(diff.candidateRecall.toStringAsFixed(3))),
@@ -1875,7 +1967,10 @@ class _PerClassTableState extends State<_PerClassTable> {
         : (isBad ? Colors.red.shade700 : Colors.black87);
     final String text =
         delta >= 0 ? '+${delta.toStringAsFixed(3)}' : delta.toStringAsFixed(3);
-    return Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600));
+    return Text(
+      text,
+      style: TextStyle(color: color, fontWeight: FontWeight.w600),
+    );
   }
 
   Widget _intDeltaText(int delta, bool higherIsBetter) {
@@ -1885,6 +1980,9 @@ class _PerClassTableState extends State<_PerClassTable> {
         ? Colors.green.shade700
         : (isBad ? Colors.red.shade700 : Colors.black87);
     final String text = delta >= 0 ? '+$delta' : '$delta';
-    return Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600));
+    return Text(
+      text,
+      style: TextStyle(color: color, fontWeight: FontWeight.w600),
+    );
   }
 }

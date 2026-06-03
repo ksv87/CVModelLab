@@ -1,0 +1,8 @@
+severity,type,image_id,file_name,annotation_id,category_id,category_name,title,message,recommendation,details_json
+info,imageWithoutGroundTruth,29,scene_029.png,,,,Image without ground truth,"Image ""scene_029.png"" (id 29) has no annotations.",Confirm the image is intentionally a negative sample.,
+info,imageWithoutGroundTruth,30,scene_030.png,,,,Image without ground truth,"Image ""scene_030.png"" (id 30) has no annotations.",Confirm the image is intentionally a negative sample.,
+info,imageWithoutGroundTruth,31,scene_031.png,,,,Image without ground truth,"Image ""scene_031.png"" (id 31) has no annotations.",Confirm the image is intentionally a negative sample.,
+info,imageWithoutGroundTruth,32,scene_032.png,,,,Image without ground truth,"Image ""scene_032.png"" (id 32) has no annotations.",Confirm the image is intentionally a negative sample.,
+info,imageWithoutGroundTruth,33,scene_033.png,,,,Image without ground truth,"Image ""scene_033.png"" (id 33) has no annotations.",Confirm the image is intentionally a negative sample.,
+info,predictionOnImageWithoutGroundTruth,32,scene_032.png,,,,Predictions on image without ground truth,"Image ""scene_032.png"" has 2 prediction(s) but no ground truth.",These predictions can only be false positives; verify the GT is complete.,"{""predictionCount"":2}"
+warning,rareClass,,,,4,pedestrian_sign,Rare class,"Class ""pedestrian_sign"" has only 8 GT objects.",Collect more samples for this class.,"{""gtCount"":8}"

@@ -1,5 +1,6 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cv_model_lab/src/ui/l10n/app_localizations.dart';
 
 const String _annotationsJson = '''
 {
@@ -42,7 +43,8 @@ const String _predsC = '''
 ''';
 
 MultiModelComparisonResult _result() {
-  final dataset = const CocoAnnotationParser().parseString(_annotationsJson).value!;
+  final dataset =
+      const CocoAnnotationParser().parseString(_annotationsJson).value!;
   ModelRun mk(String id, String json) => const CocoPredictionParser()
       .parseString(json, dataset: dataset, modelRunId: id, modelRunName: id)
       .value!;
@@ -102,7 +104,10 @@ void main() {
           .split('\n')
           .where((l) => l.isNotEmpty)
           .toList();
-      expect(lines.first, startsWith('base_model_run_id,candidate_model_run_id'));
+      expect(
+        lines.first,
+        startsWith('base_model_run_id,candidate_model_run_id'),
+      );
       // 3 models → 6 ordered non-diagonal pairs.
       expect(lines.length, 6 + 1);
     });
@@ -148,6 +153,22 @@ void main() {
       );
       expect(bundle.htmlReport, contains('Сравнение нескольких моделей'));
       expect(bundle.htmlReport, contains('Таблица лидеров'));
+    });
+
+    test('XLSX sheet names use selected locale', () {
+      final data = builder.buildXlsxData(
+        result,
+        localizations: AppLocalizations.forLocale(AppLocale.ru),
+      );
+      expect(
+        data.sheets.map((sheet) => sheet.name),
+        containsAll([
+          'Таблица лидеров',
+          'Рейтинг по классам',
+          'Расхождения по изображениям',
+          'Матрица регрессий',
+        ]),
+      );
     });
 
     test('empty result still produces a valid bundle', () async {

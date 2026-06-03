@@ -1,7 +1,10 @@
+import 'package:pdf/widgets.dart' as pw;
+
 import '../ap_eval/ap_eval_models.dart';
 import '../eval/confusion_details.dart';
 import '../eval/eval_result_filter.dart';
 import '../comparison/comparison_models.dart';
+import '../comparison/multi_model_comparison_models.dart';
 import '../health/dataset_health_checker.dart';
 import '../health/dataset_health_models.dart';
 import '../i18n/message_key.dart';
@@ -106,8 +109,10 @@ class ReportBundleBuilder {
     Set<String> missingImageFileNames = const <String>{},
     DatasetImageAvailability? imageAvailability,
     ModelComparisonResult? comparison,
+    MultiModelComparisonResult? multiComparison,
     DateTime? generatedAt,
     ApEvalResult? apEvalResult,
+    pw.ThemeData? pdfTheme,
   }) async {
     final DateTime timestamp = generatedAt ?? DateTime.now();
     final String resolvedProject = projectName ?? 'Untitled project';
@@ -333,15 +338,19 @@ class ReportBundleBuilder {
         healthReport: pdfNeedsHealth ? healthReport : null,
         worstCases: pdfNeedsWorst ? worstCases : null,
         confusionDetails: pdfNeedsConfusion ? confusionDetails : null,
-        comparison: pdfNeedsRecs || components.pdfOptions.includeComparison
+        comparison: multiComparison == null &&
+                (pdfNeedsRecs || components.pdfOptions.includeComparison)
             ? comparison
             : null,
+        multiComparison:
+            components.pdfOptions.includeComparison ? multiComparison : null,
         recommendations:
             pdfNeedsRecs ? recommendations : const <Recommendation>[],
         apEvalResult: pdfApEvalResult,
         locale: locale,
       );
-      binaryFiles[ReportFileNames.pdf] = await pdfBuilder.buildPdf(pdfData);
+      binaryFiles[ReportFileNames.pdf] =
+          await pdfBuilder.buildPdf(pdfData, theme: pdfTheme);
     }
 
     return ReportBundle(

@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
@@ -167,11 +164,6 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
               onPressed: _loading ? null : _openSavedProject,
               icon: const Icon(Icons.folder_open),
               label: const Text('Open project'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _loading ? null : _openDemo,
-              icon: const Icon(Icons.science),
-              label: const Text('Open demo project'),
             ),
             if (_loadResult?.canOpen ?? false)
               OutlinedButton.icon(
@@ -684,17 +676,6 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     );
   }
 
-  void _openDemo() {
-    _loadProject(
-      annotationsFile:
-          _memoryJsonFile('annotations.json', _demoAnnotationsJson),
-      predictionsFile:
-          _memoryJsonFile('predictions.json', _demoPredictionsJson),
-      imageSource: const EmptyImageSource(),
-      projectName: 'Mini COCO demo',
-    );
-  }
-
   Future<void> _openSavedProject() async {
     setState(() {
       _loading = true;
@@ -779,13 +760,31 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   /// the workspace. Returns `true` if the workspace was opened successfully.
   /// Returns `false` when any file is missing; the caller should then enter
   /// restore mode so the user can re-pick the missing paths.
+  // Resolve a path stored in the project manifest.
+  // Relative paths are resolved from the directory containing the project file.
+  static String _resolve(String path, String? projectFilePath) {
+    if (projectFilePath == null) return path;
+    // An absolute path starts with / on Unix/macOS or a drive letter on Windows.
+    if (path.startsWith('/') ||
+        (path.length >= 2 && path[1] == ':') ||
+        path.startsWith('\\\\')) {
+      return path;
+    }
+    final int lastSep = projectFilePath.lastIndexOf(RegExp(r'[/\\]'));
+    if (lastSep < 0) return path;
+    final String dir = projectFilePath.substring(0, lastSep);
+    return '$dir/$path';
+  }
+
   Future<bool> _autoLoadFromManifest(
     CvmlProject project, {
     required ProjectFileIo io,
     String? projectFilePath,
   }) async {
-    final String? annotationsPath = project.datasetSource.annotationsPath;
-    if (annotationsPath == null) return false;
+    final String? rawAnnotationsPath = project.datasetSource.annotationsPath;
+    if (rawAnnotationsPath == null) return false;
+    final String annotationsPath =
+        _resolve(rawAnnotationsPath, projectFilePath);
 
     final PickedDataFile? annotationsFile =
         await io.readFileAtPath(annotationsPath);
@@ -794,8 +793,9 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     ImageSource imageSource = const EmptyImageSource();
     final String? imagesRootPath = project.datasetSource.imagesRootPath;
     if (imagesRootPath != null) {
+      final String resolvedImages = _resolve(imagesRootPath, projectFilePath);
       imageSource =
-          await io.openImageSourceAtPath(imagesRootPath) ?? imageSource;
+          await io.openImageSourceAtPath(resolvedImages) ?? imageSource;
     }
 
     final List<ModelRunEntry> entries = [];
@@ -814,11 +814,12 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
           canCancel: false,
         ),
       );
-      final String? predPath = runSource.predictionsPath;
-      if (predPath == null) {
+      final String? rawPredPath = runSource.predictionsPath;
+      if (rawPredPath == null) {
         anyMissing = true;
         break;
       }
+      final String predPath = _resolve(rawPredPath, projectFilePath);
       final PickedDataFile? predFile = await io.readFileAtPath(predPath);
       if (!mounted) return false;
       if (predFile == null) {
@@ -1113,13 +1114,6 @@ String? _directoryName(String? path) {
   return normalized.substring(0, index);
 }
 
-PickedDataFile _memoryJsonFile(String name, String json) {
-  return PickedDataFile(
-    name: name,
-    bytes: Uint8List.fromList(utf8.encode(json)),
-  );
-}
-
 // ── Widgets ──────────────────────────────────────────────────────────────────
 
 class _PickedFileRow extends StatelessWidget {
@@ -1358,37 +1352,3 @@ class _IssueList extends StatelessWidget {
   }
 }
 
-const String _demoAnnotationsJson = '''
-{
-  "images": [
-    {"id": 1, "file_name": "image_001.jpg", "width": 200, "height": 200},
-    {"id": 2, "file_name": "image_002.jpg", "width": 200, "height": 200},
-    {"id": 3, "file_name": "image_003.jpg", "width": 200, "height": 200},
-    {"id": 4, "file_name": "image_004.jpg", "width": 200, "height": 200},
-    {"id": 5, "file_name": "nested/image_005.jpg", "width": 200, "height": 200}
-  ],
-  "annotations": [
-    {"id": 101, "image_id": 1, "category_id": 1, "bbox": [10, 10, 100, 100], "area": 10000, "iscrowd": 0},
-    {"id": 102, "image_id": 2, "category_id": 2, "bbox": [50, 50, 30, 30], "area": 900, "iscrowd": 0},
-    {"id": 103, "image_id": 4, "category_id": 3, "bbox": [100, 100, 80, 80], "area": 6400, "iscrowd": 0},
-    {"id": 104, "image_id": 5, "category_id": 1, "bbox": [0, 0, 100, 100], "area": 10000, "iscrowd": 0},
-    {"id": 105, "image_id": 5, "category_id": 3, "bbox": [150, 150, 10, 10], "area": 100, "iscrowd": 0}
-  ],
-  "categories": [
-    {"id": 1, "name": "red"},
-    {"id": 2, "name": "yellow"},
-    {"id": 3, "name": "green"}
-  ]
-}
-''';
-
-const String _demoPredictionsJson = '''
-[
-  {"image_id": 1, "category_id": 1, "bbox": [10, 10, 100, 100], "score": 0.9},
-  {"image_id": 3, "category_id": 3, "bbox": [20, 20, 50, 50], "score": 0.8},
-  {"image_id": 4, "category_id": 1, "bbox": [100, 100, 80, 80], "score": 0.95},
-  {"file_name": "image_005.jpg", "category_id": 1, "bbox": [0, 0, 100, 100], "score": 0.9},
-  {"image_id": 5, "category_id": 1, "bbox": [1, 1, 100, 100], "score": 0.8},
-  {"image_id": 5, "category_id": 3, "bbox": [150, 150, 10, 10], "score": 0.1}
-]
-''';

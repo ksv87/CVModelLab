@@ -48,6 +48,17 @@ Supported matches include exact file name, relative path, and basename fallback:
 - `val2017/image_001.jpg` -> `val2017/image_001.jpg`
 - `nested/path/image_001.jpg` -> basename fallback to `image_001.jpg` when unambiguous
 
+## Showcase Demo Dataset
+
+`demo/showcase_coco/` contains a synthetic road-scene dataset that ships with
+the app. It uses the standard formats above:
+- `annotations.json` — COCO annotation JSON with 5 categories
+- `predictions_model_a/b/c.json` — three prediction files in `image_id` format
+- `ap_metrics_model_a/b/c.json` — precomputed AP metrics JSON
+
+The dataset can be opened through **Open project** by selecting
+`demo/showcase_coco/showcase_coco.cvmlab.json`, or by manually loading the files above.
+
 ## Limitations
 
 - The app expects COCO XYWH bounding boxes.

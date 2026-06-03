@@ -1,0 +1,11 @@
+CC0 1.0 Universal
+
+The synthetic dataset files in this directory are dedicated to the public domain under CC0 1.0 Universal unless explicitly stated otherwise.
+
+This includes generated images, COCO annotations, prediction files, precomputed metrics, saved CV Model Lab project files, and generated sample reports contained in this directory.
+
+No real photographs, private data, or third-party visual assets are intentionally included in these synthetic datasets.
+
+The CV Model Lab source code remains licensed under the MIT License in the repository root.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/

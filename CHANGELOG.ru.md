@@ -4,6 +4,12 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Синтетический showcase и доработка export
+
+- Добавлен synthetic Showcase COCO dataset со сгенерированными images, annotations, predictions, AP metrics, saved project file и sample reports.
+- Добавлено CC0-лицензирование demo data и report examples.
+- Улучшены report fonts, localization, compare viewer zoom/pan controls, Linux icon packaging assets и публичная документация.
+
 ## Локализация и multi-model comparison
 
 - Добавлена English/Russian localization для app text, warnings, recommendations, health issues, errors и report headings.

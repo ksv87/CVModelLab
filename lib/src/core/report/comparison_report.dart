@@ -1,35 +1,44 @@
 import 'dart:convert';
 
+import 'package:pdf/pdf.dart' show PdfPageFormat;
+import 'package:pdf/widgets.dart' as pw;
+
 import '../comparison/comparison_models.dart';
+import '../i18n/message_key.dart';
 import '../model/coco_dataset.dart';
 import '../model/model_run.dart';
 import '../report/csv_exporter.dart';
+import '../../ui/l10n/app_localizations.dart';
 
 class ComparisonReportFileNames {
   static const String html = 'cv_model_lab_comparison.html';
   static const String perClass = 'comparison_per_class.csv';
   static const String images = 'comparison_images.csv';
+  static const String pdf = 'cv_model_lab_comparison.pdf';
 }
 
 class ComparisonReportBundle {
   const ComparisonReportBundle({
     required this.htmlReport,
     required this.csvFiles,
+    required this.binaryFiles,
   });
 
   final String htmlReport;
   final Map<String, String> csvFiles;
+  final Map<String, List<int>> binaryFiles;
 
   List<String> get fileNames => [
         if (htmlReport.isNotEmpty) ComparisonReportFileNames.html,
         ...csvFiles.keys,
+        ...binaryFiles.keys,
       ];
 }
 
 class ComparisonReportBuilder {
   const ComparisonReportBuilder();
 
-  ComparisonReportBundle build({
+  Future<ComparisonReportBundle> build({
     required CocoDataset dataset,
     required ModelRun baseRun,
     required ModelRun candidateRun,
@@ -38,9 +47,13 @@ class ComparisonReportBuilder {
     bool includeHtml = true,
     bool includePerClassCsv = true,
     bool includeImagesCsv = true,
+    bool includePdf = true,
     DateTime? generatedAt,
-  }) {
+    pw.ThemeData? pdfTheme,
+    AppLocale locale = AppLocale.en,
+  }) async {
     final DateTime timestamp = generatedAt ?? DateTime.now();
+    final AppLocalizations l = AppLocalizations.forLocale(locale);
 
     final String html = includeHtml
         ? _buildHtml(
@@ -50,6 +63,7 @@ class ComparisonReportBuilder {
             result: result,
             projectName: projectName,
             generatedAt: timestamp,
+            l: l,
           )
         : '';
 
@@ -61,7 +75,24 @@ class ComparisonReportBuilder {
       csvFiles[ComparisonReportFileNames.images] = _buildImagesCsv(result);
     }
 
-    return ComparisonReportBundle(htmlReport: html, csvFiles: csvFiles);
+    final Map<String, List<int>> binaryFiles = {};
+    if (includePdf) {
+      binaryFiles[ComparisonReportFileNames.pdf] = await _buildPdf(
+        baseRun: baseRun,
+        candidateRun: candidateRun,
+        result: result,
+        projectName: projectName,
+        generatedAt: timestamp,
+        theme: pdfTheme,
+        l: l,
+      );
+    }
+
+    return ComparisonReportBundle(
+      htmlReport: html,
+      csvFiles: csvFiles,
+      binaryFiles: binaryFiles,
+    );
   }
 
   // ---------- HTML ----------
@@ -73,23 +104,27 @@ class ComparisonReportBuilder {
     required ModelComparisonResult result,
     String? projectName,
     required DateTime generatedAt,
+    required AppLocalizations l,
   }) {
+    final String langAttr = l.locale == AppLocale.ru ? 'ru' : 'en';
     final StringBuffer html = StringBuffer();
     html.writeln('<!DOCTYPE html>');
-    html.writeln('<html lang="en">');
+    html.writeln('<html lang="$langAttr">');
     html.writeln('<head>');
     html.writeln('<meta charset="utf-8">');
     html.writeln(
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
     );
-    html.writeln('<title>CV Model Lab — Comparison Report</title>');
+    final String title =
+        'CV Model Lab — ${l.t(MessageKey.reportModelComparison)}';
+    html.writeln('<title>${_esc(title)}</title>');
     html.writeln('<style>${_css()}</style>');
     html.writeln('</head>');
     html.writeln('<body>');
 
     // Header.
     html.writeln('<header>');
-    html.writeln('<h1>CV Model Lab — Comparison Report</h1>');
+    html.writeln('<h1>${_esc(title)}</h1>');
     if (projectName != null) {
       html.writeln(
         '<p><strong>Project:</strong> ${_esc(projectName)}</p>',
@@ -108,19 +143,19 @@ class ComparisonReportBuilder {
 
     // Overall diff.
     html.writeln('<section>');
-    html.writeln('<h2>Overall metrics comparison</h2>');
+    html.writeln('<h2>${_esc(l.t(MessageKey.reportOverallMetrics))}</h2>');
     _writeOverallDiffTable(html, result.overallDiff, baseRun, candidateRun);
     html.writeln('</section>');
 
     // Per-class diff.
     html.writeln('<section>');
-    html.writeln('<h2>Per-class metrics comparison</h2>');
+    html.writeln('<h2>${_esc(l.t(MessageKey.reportPerClassMetrics))}</h2>');
     _writePerClassDiffTable(html, result.perClassDiffs, baseRun, candidateRun);
     html.writeln('</section>');
 
     // Image status lists.
     html.writeln('<section>');
-    html.writeln('<h2>Images by status</h2>');
+    html.writeln('<h2>${_esc(l.t(MessageKey.reportImagesByStatus))}</h2>');
     _writeImageStatusSection(
       html,
       'Fixed (base had errors, candidate correct)',
@@ -346,9 +381,8 @@ class ComparisonReportBuilder {
 
   String _deltaCell(double delta, {required bool higherIsBetter}) {
     final double pct = delta * 100;
-    final String text = pct >= 0
-        ? '+${pct.toStringAsFixed(1)}%'
-        : '${pct.toStringAsFixed(1)}%';
+    final String text =
+        pct >= 0 ? '+${pct.toStringAsFixed(1)}%' : '${pct.toStringAsFixed(1)}%';
     final bool isGood = higherIsBetter ? delta > 0 : delta < 0;
     final bool isBad = higherIsBetter ? delta < 0 : delta > 0;
     final String cls = isGood ? ' class="good"' : (isBad ? ' class="bad"' : '');
@@ -364,6 +398,121 @@ class ComparisonReportBuilder {
   }
 
   String _sign(int value) => value >= 0 ? '+$value' : '$value';
+
+  // ---------- PDF ----------
+
+  Future<List<int>> _buildPdf({
+    required ModelRun baseRun,
+    required ModelRun candidateRun,
+    required ModelComparisonResult result,
+    String? projectName,
+    required DateTime generatedAt,
+    pw.ThemeData? theme,
+    required AppLocalizations l,
+  }) async {
+    final MetricsDiff d = result.overallDiff;
+    final pw.Document doc = pw.Document(theme: theme);
+
+    String pct(double v) => '${(v * 100).toStringAsFixed(1)}%';
+    String signed(double v) {
+      final double p = v * 100;
+      return p >= 0 ? '+${p.toStringAsFixed(1)}%' : '${p.toStringAsFixed(1)}%';
+    }
+
+    String signedI(int v) => v >= 0 ? '+$v' : '$v';
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context ctx) => [
+          pw.Header(level: 0, text: 'CV Model Lab — Comparison Report'),
+          if (projectName != null) pw.Text('Project: $projectName'),
+          pw.Text('Base model: ${baseRun.name}'),
+          pw.Text('Candidate model: ${candidateRun.name}'),
+          pw.Text('Generated: ${generatedAt.toIso8601String()}'),
+          pw.SizedBox(height: 12),
+          pw.Header(level: 1, text: 'Overall metrics'),
+          pw.TableHelper.fromTextArray(
+            headers: const ['Metric', 'Base', 'Candidate', 'Delta'],
+            data: [
+              [
+                'Precision',
+                pct(d.basePrecision),
+                pct(d.candidatePrecision),
+                signed(d.deltaPrecision),
+              ],
+              [
+                'Recall',
+                pct(d.baseRecall),
+                pct(d.candidateRecall),
+                signed(d.deltaRecall),
+              ],
+              ['F1', pct(d.baseF1), pct(d.candidateF1), signed(d.deltaF1)],
+              ['TP', '${d.baseTp}', '${d.candidateTp}', signedI(d.deltaTp)],
+              ['FP', '${d.baseFp}', '${d.candidateFp}', signedI(d.deltaFp)],
+              ['FN', '${d.baseFn}', '${d.candidateFn}', signedI(d.deltaFn)],
+              [
+                'Images w/ Errors',
+                '${d.baseImagesWithErrors}',
+                '${d.candidateImagesWithErrors}',
+                signedI(d.deltaImagesWithErrors),
+              ],
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Header(level: 1, text: 'Image status summary'),
+          pw.TableHelper.fromTextArray(
+            headers: const ['Status', 'Count'],
+            data: [
+              ['Fixed', '${result.fixedImageIds.length}'],
+              ['Broken', '${result.brokenImageIds.length}'],
+              ['Improved', '${result.improvedImageIds.length}'],
+              ['Regressed', '${result.regressedImageIds.length}'],
+              [
+                'Unchanged correct',
+                '${result.unchangedCorrectImageIds.length}',
+              ],
+              ['Unchanged wrong', '${result.unchangedWrongImageIds.length}'],
+            ],
+          ),
+          if (result.perClassDiffs.isNotEmpty) ...[
+            pw.SizedBox(height: 12),
+            pw.Header(level: 1, text: 'Per-class diff (top 20 by |dF1|)'),
+            pw.TableHelper.fromTextArray(
+              headers: const [
+                'Class',
+                'Base F1',
+                'Cand F1',
+                'dF1',
+                'dTP',
+                'dFP',
+                'dFN',
+              ],
+              data: [
+                for (final item in (result.perClassDiffs.toList()
+                      ..sort(
+                        (a, b) => b.diff.deltaF1.abs().compareTo(
+                              a.diff.deltaF1.abs(),
+                            ),
+                      ))
+                    .take(20))
+                  [
+                    item.categoryName,
+                    pct(item.diff.baseF1),
+                    pct(item.diff.candidateF1),
+                    signed(item.diff.deltaF1),
+                    signedI(item.diff.deltaTp),
+                    signedI(item.diff.deltaFp),
+                    signedI(item.diff.deltaFn),
+                  ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+    return doc.save();
+  }
 
   // ---------- CSV ----------
 
@@ -483,6 +632,5 @@ class ComparisonReportBuilder {
 
   static String _esc(String value) => const HtmlEscape().convert(value);
 
-  static String _numP(double value) =>
-      '${(value * 100).toStringAsFixed(1)}%';
+  static String _numP(double value) => '${(value * 100).toStringAsFixed(1)}%';
 }

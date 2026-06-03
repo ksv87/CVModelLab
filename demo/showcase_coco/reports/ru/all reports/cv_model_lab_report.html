@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отчет CV Model Lab</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#1e293b;line-height:1.4;}h1{margin:0 0 8px;}h2{margin-top:32px;border-bottom:2px solid #e2e8f0;padding-bottom:4px;}h3{margin-top:24px;}header p{margin:2px 0;}section{margin-bottom:24px;}table{border-collapse:collapse;margin:8px 0;font-size:14px;}th,td{border:1px solid #cbd5e1;padding:4px 10px;text-align:left;}thead th{background:#f1f5f9;}table.kv th{background:#f8fafc;width:280px;}td.weak{background:#fee2e2;color:#b91c1c;font-weight:600;}p.empty{color:#64748b;font-style:italic;}</style>
+</head>
+<body>
+<header>
+<h1>Отчет CV Model Lab</h1>
+<p><strong>Project:</strong> Showcase Demo</p>
+<p><strong>Model run:</strong> Model A — Baseline</p>
+<p><strong>Generated at:</strong> 2026-06-03T10:45:39.216115</p>
+</header>
+<section>
+<h2>Evaluation config</h2>
+<table class="kv">
+<tbody>
+<tr><th>IoU threshold</th><td>0.500</td></tr>
+<tr><th>Confidence threshold</th><td>0.250</td></tr>
+<tr><th>Class-aware matching</th><td>yes</td></tr>
+<tr><th>Ignore crowd</th><td>yes</td></tr>
+<tr><th>Scope</th><td>Full evaluation result</td></tr>
+</tbody></table>
+</section>
+<section>
+<h2>Сводка датасета</h2>
+<table class="kv">
+<tbody>
+<tr><th>Total images</th><td>40</td></tr>
+<tr><th>Total annotations &#47; GT boxes</th><td>87</td></tr>
+<tr><th>Total categories</th><td>5</td></tr>
+<tr><th>Total predictions before threshold</th><td>72</td></tr>
+<tr><th>Total predictions after threshold</th><td>72</td></tr>
+</tbody></table>
+</section>
+<section>
+<h2>Общие метрики</h2>
+<table class="kv">
+<tbody>
+<tr><th>TP</th><td>64</td></tr>
+<tr><th>FP</th><td>8</td></tr>
+<tr><th>FN</th><td>23</td></tr>
+</tbody></table>
+<table>
+<thead><tr><th>Metric</th><th>Precision</th><th>Recall</th><th>F1</th></tr></thead>
+<tbody>
+<tr>
+<td>Overall</td>
+<td>88.9%</td>
+<td>73.6%</td>
+<td>80.5%</td>
+</tr>
+<tr>
+<td>Micro</td>
+<td>88.9%</td>
+<td>73.6%</td>
+<td>80.5%</td>
+</tr>
+<tr>
+<td>Macro</td>
+<td>93.1%</td>
+<td>75.8%</td>
+<td>82.1%</td>
+</tr>
+</tbody></table>
+<table class="kv">
+<tbody>
+<tr><th>Images with any error</th><td>18</td></tr>
+<tr><th>Images with FP</th><td>7</td></tr>
+<tr><th>Images with FN</th><td>16</td></tr>
+</tbody></table>
+</section>
+<section>
+<h2>COCO AP Metrics</h2>
+<table class="kv">
+<tbody>
+<tr><th>Evaluator</th><td>showcase_precomputed</td></tr>
+<tr><th>Generated at</th><td>2026-06-03T00:00:00.000Z</td></tr>
+</tbody></table>
+<table>
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr>
+<td>AP@[.5:.95]</td>
+<td>52.4%</td>
+</tr>
+<tr>
+<td>AP50</td>
+<td>74.1%</td>
+</tr>
+<tr>
+<td>AP75</td>
+<td>55.8%</td>
+</tr>
+<tr>
+<td>APsmall</td>
+<td>27.6%</td>
+</tr>
+<tr>
+<td>APmedium</td>
+<td>55.1%</td>
+</tr>
+<tr>
+<td>APlarge</td>
+<td>71.2%</td>
+</tr>
+<tr>
+<td>AR1</td>
+<td>38.1%</td>
+</tr>
+<tr>
+<td>AR10</td>
+<td>61.2%</td>
+</tr>
+<tr>
+<td>AR100</td>
+<td>63.7%</td>
+</tr>
+<tr>
+<td>ARsmall</td>
+<td>31.8%</td>
+</tr>
+<tr>
+<td>ARmedium</td>
+<td>64.1%</td>
+</tr>
+<tr>
+<td>ARlarge</td>
+<td>76.3%</td>
+</tr>
+</tbody></table>
+<h3>Per-class AP</h3>
+<table>
+<thead><tr><th>Class</th><th>AP</th><th>AP50</th><th>AP75</th><th>AR</th></tr></thead>
+<tbody>
+<tr>
+<td>red_light</td>
+<td>58.1%</td>
+<td>80.2%</td>
+<td>61.7%</td>
+<td>68.1%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>43.2%</td>
+<td>63.5%</td>
+<td>44.9%</td>
+<td>55.8%</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>59.1%</td>
+<td>81.2%</td>
+<td>62.2%</td>
+<td>69.5%</td>
+</tr>
+<tr>
+<td>pedestrian_sign</td>
+<td>51.4%</td>
+<td>73.1%</td>
+<td>54.0%</td>
+<td>62.6%</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>50.1%</td>
+<td>72.4%</td>
+<td>52.8%</td>
+<td>62.4%</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Метрики по классам</h2>
+<table>
+<thead><tr><th>Class</th><th>GT</th><th>Pred</th><th>TP</th><th>FP</th><th>FN</th><th>Precision</th><th>Recall</th><th>F1</th></tr></thead>
+<tbody>
+<tr>
+<td>background_distractor</td>
+<td>20</td>
+<td>10</td>
+<td>10</td>
+<td>0</td>
+<td>10</td>
+<td>100.0%</td>
+<td>50.0%</td>
+<td>66.7%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>12</td>
+<td>8</td>
+<td>8</td>
+<td>0</td>
+<td>4</td>
+<td>100.0%</td>
+<td>66.7%</td>
+<td>80.0%</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>25</td>
+<td>24</td>
+<td>19</td>
+<td>5</td>
+<td>6</td>
+<td>79.2%</td>
+<td>76.0%</td>
+<td>77.6%</td>
+</tr>
+<tr>
+<td>red_light</td>
+<td>22</td>
+<td>22</td>
+<td>19</td>
+<td>3</td>
+<td>3</td>
+<td>86.4%</td>
+<td>86.4%</td>
+<td>86.4%</td>
+</tr>
+<tr>
+<td>pedestrian_sign</td>
+<td>8</td>
+<td>8</td>
+<td>8</td>
+<td>0</td>
+<td>0</td>
+<td>100.0%</td>
+<td>100.0%</td>
+<td>100.0%</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Class imbalance</h2>
+<table>
+<thead><tr><th>Class</th><th>GT count</th><th>% of all GT</th><th>Pred count</th><th>% of all predictions</th></tr></thead>
+<tbody>
+<tr>
+<td>green_light</td>
+<td>25</td>
+<td>28.7%</td>
+<td>24</td>
+<td>33.3%</td>
+</tr>
+<tr>
+<td>red_light</td>
+<td>22</td>
+<td>25.3%</td>
+<td>22</td>
+<td>30.6%</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>20</td>
+<td>23.0%</td>
+<td>10</td>
+<td>13.9%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>12</td>
+<td>13.8%</td>
+<td>8</td>
+<td>11.1%</td>
+</tr>
+<tr>
+<td>pedestrian_sign</td>
+<td>8</td>
+<td>9.2%</td>
+<td>8</td>
+<td>11.1%</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Small object stats</h2>
+<table>
+<thead><tr><th>Class</th><th>Size bucket</th><th>GT</th><th>TP</th><th>FN</th><th>Recall</th></tr></thead>
+<tbody>
+<tr>
+<td>red_light</td>
+<td>medium</td>
+<td>4</td>
+<td>3</td>
+<td>1</td>
+<td>75.0%</td>
+</tr>
+<tr>
+<td>red_light</td>
+<td>large</td>
+<td>18</td>
+<td>16</td>
+<td>2</td>
+<td>88.9%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>small</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>100.0%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>medium</td>
+<td>7</td>
+<td>5</td>
+<td>2</td>
+<td>71.4%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>large</td>
+<td>4</td>
+<td>2</td>
+<td>2</td>
+<td>50.0%</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>medium</td>
+<td>9</td>
+<td>6</td>
+<td>3</td>
+<td>66.7%</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>large</td>
+<td>16</td>
+<td>13</td>
+<td>3</td>
+<td>81.3%</td>
+</tr>
+<tr>
+<td>pedestrian_sign</td>
+<td>medium</td>
+<td>8</td>
+<td>8</td>
+<td>0</td>
+<td>100.0%</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>small</td>
+<td>20</td>
+<td>10</td>
+<td>10</td>
+<td>50.0%</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Рекомендации</h2>
+<table>
+<thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Message</th><th>Action</th><th>Related classes</th><th>Related images</th></tr></thead>
+<tbody>
+<tr>
+<td>Критично</td>
+<td>False negatives</td>
+<td>Много пропущенных объектов</td>
+<td>False negatives — значимая часть текущего профиля ошибок.</td>
+<td>Проверьте FN cases, consistency разметки, input resolution, augmentation и train&#47;val distribution.</td>
+<td></td>
+<td>16</td>
+</tr>
+<tr>
+<td>Предупреждение</td>
+<td>Путаница классов</td>
+<td>Путаница классов: &quot;yellow_light&quot; предсказан как &quot;green_light&quot;</td>
+<td>Модель путает эти два класса в class-agnostic matching.</td>
+<td>Проверьте annotation rules и visual similarity. Добавьте discriminative examples.</td>
+<td>yellow_light, green_light</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Предупреждение</td>
+<td>Путаница классов</td>
+<td>Путаница классов: &quot;background_distractor&quot; предсказан как &quot;green_light&quot;</td>
+<td>Модель путает эти два класса в class-agnostic matching.</td>
+<td>Проверьте annotation rules и visual similarity. Добавьте discriminative examples.</td>
+<td>background_distractor, green_light</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Предупреждение</td>
+<td>Путаница классов</td>
+<td>Путаница классов: &quot;background_distractor&quot; предсказан как &quot;red_light&quot;</td>
+<td>Модель путает эти два класса в class-agnostic matching.</td>
+<td>Проверьте annotation rules и visual similarity. Добавьте discriminative examples.</td>
+<td>background_distractor, red_light</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Предупреждение</td>
+<td>Калибровка score</td>
+<td>High-confidence false positives</td>
+<td>Некоторые false positives имеют высокий confidence, что ухудшает надежность thresholding.</td>
+<td>Проверьте hard negatives, добавьте background examples, проверьте score calibration.</td>
+<td>green_light</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>Сбор данных</td>
+<td>Редкий класс &quot;pedestrian_sign&quot;</td>
+<td>У этого класса слишком мало ground-truth примеров.</td>
+<td>Соберите больше samples или не доверяйте метрикам этого класса.</td>
+<td>pedestrian_sign</td>
+<td>0</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Confusion matrix</h2>
+<h3>Top confused pairs</h3>
+<table>
+<thead><tr><th>GT class</th><th>Pred class</th><th>Count</th><th>Row %</th></tr></thead>
+<tbody>
+<tr>
+<td>background_distractor</td>
+<td>missed</td>
+<td>8</td>
+<td>40.0%</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>missed</td>
+<td>6</td>
+<td>24.0%</td>
+</tr>
+<tr>
+<td>red_light</td>
+<td>missed</td>
+<td>3</td>
+<td>13.6%</td>
+</tr>
+<tr>
+<td>background FP</td>
+<td>green_light</td>
+<td>2</td>
+<td>50.0%</td>
+</tr>
+<tr>
+<td>background FP</td>
+<td>red_light</td>
+<td>2</td>
+<td>50.0%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>missed</td>
+<td>2</td>
+<td>16.7%</td>
+</tr>
+<tr>
+<td>yellow_light</td>
+<td>green_light</td>
+<td>2</td>
+<td>16.7%</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>green_light</td>
+<td>1</td>
+<td>5.0%</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>red_light</td>
+<td>1</td>
+<td>5.0%</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Error examples</h2>
+<h3>Top false positives</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>class</th><th>score</th><th>IoU</th><th>bbox</th><th>reason</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>green_light</td>
+<td>0.844</td>
+<td></td>
+<td>[819, 172, 31, 74]</td>
+<td>low_iou</td>
+</tr>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>red_light</td>
+<td>0.594</td>
+<td></td>
+<td>[314, 169, 70, 66]</td>
+<td>no_matching_ground_truth</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>green_light</td>
+<td>0.592</td>
+<td></td>
+<td>[604, 63, 71, 179]</td>
+<td>low_iou</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>red_light</td>
+<td>0.568</td>
+<td></td>
+<td>[222, 117, 39, 21]</td>
+<td>no_matching_ground_truth</td>
+</tr>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>green_light</td>
+<td>0.556</td>
+<td></td>
+<td>[378, 142, 36, 90]</td>
+<td>no_matching_ground_truth</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>green_light</td>
+<td>0.541</td>
+<td>0.002</td>
+<td>[765, 120, 34, 17]</td>
+<td>low_iou</td>
+</tr>
+<tr>
+<td>scene_019.png</td>
+<td>19</td>
+<td>green_light</td>
+<td>0.522</td>
+<td></td>
+<td>[530, 139, 29, 15]</td>
+<td>no_matching_ground_truth</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>red_light</td>
+<td>0.491</td>
+<td></td>
+<td>[291, 118, 30, 14]</td>
+<td>no_matching_ground_truth</td>
+</tr>
+</tbody></table>
+<h3>Top false negatives</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>class</th><th>score</th><th>IoU</th><th>bbox</th><th>reason</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_001.png</td>
+<td>1</td>
+<td>red_light</td>
+<td></td>
+<td></td>
+<td>[578, 0, 125, 305]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_005.png</td>
+<td>5</td>
+<td>yellow_light</td>
+<td></td>
+<td></td>
+<td>[350, 0, 116, 284]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>yellow_light</td>
+<td></td>
+<td></td>
+<td>[608, 59, 72, 176]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_010.png</td>
+<td>10</td>
+<td>red_light</td>
+<td></td>
+<td></td>
+<td>[352, 29, 95, 231]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[291, 118, 30, 15]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[309, 143, 40, 20]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_017.png</td>
+<td>17</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[564, 128, 40, 20]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_018.png</td>
+<td>18</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[411, 117, 42, 21]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[847, 63, 80, 194]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[268, 124, 40, 20]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_021.png</td>
+<td>21</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[656, 141, 30, 15]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[105, 134, 42, 21]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[251, 128, 34, 17]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>yellow_light</td>
+<td></td>
+<td></td>
+<td>[818, 175, 31, 75]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[439, 55, 82, 202]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[568, 194, 22, 54]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_024.png</td>
+<td>24</td>
+<td>red_light</td>
+<td></td>
+<td></td>
+<td>[704, 172, 31, 75]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_026.png</td>
+<td>26</td>
+<td>yellow_light</td>
+<td></td>
+<td></td>
+<td>[761, 172, 32, 80]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_026.png</td>
+<td>26</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[705, 185, 21, 51]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_034.png</td>
+<td>34</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[310, 72, 61, 149]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[767, 121, 34, 17]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>green_light</td>
+<td></td>
+<td></td>
+<td>[678, 28, 85, 207]</td>
+<td>missed_ground_truth</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>background_distractor</td>
+<td></td>
+<td></td>
+<td>[818, 121, 30, 15]</td>
+<td>missed_ground_truth</td>
+</tr>
+</tbody></table>
+<h3>High confidence false positives</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>class</th><th>score</th><th>IoU</th><th>bbox</th><th>reason</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>green_light</td>
+<td>0.844</td>
+<td></td>
+<td>[819, 172, 31, 74]</td>
+<td>low_iou</td>
+</tr>
+</tbody></table>
+<h3>Low IoU true positives</h3>
+<p class="empty">None.</p>
+<h3>Images with most errors</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_026.png</td>
+<td>26</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_005.png</td>
+<td>5</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_010.png</td>
+<td>10</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_024.png</td>
+<td>24</td>
+<td>3</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_021.png</td>
+<td>21</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_001.png</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_034.png</td>
+<td>34</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_019.png</td>
+<td>19</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_017.png</td>
+<td>17</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_018.png</td>
+<td>18</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Worst cases</h2>
+<h3>Most errors</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>1 FP + 3 FN</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>1 FP + 2 FN</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>1 FP + 2 FN</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>1 FP + 1 FN</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>0 FP + 2 FN</td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_026.png</td>
+<td>26</td>
+<td>0 FP + 2 FN</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>2 FP + 0 FN</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>1 FP + 1 FN</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>0 FP + 2 FN</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_001.png</td>
+<td>1</td>
+<td>0 FP + 1 FN</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_005.png</td>
+<td>5</td>
+<td>0 FP + 1 FN</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_010.png</td>
+<td>10</td>
+<td>0 FP + 1 FN</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_017.png</td>
+<td>17</td>
+<td>0 FP + 1 FN</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_018.png</td>
+<td>18</td>
+<td>0 FP + 1 FN</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_019.png</td>
+<td>19</td>
+<td>1 FP + 0 FN</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_021.png</td>
+<td>21</td>
+<td>0 FP + 1 FN</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_024.png</td>
+<td>24</td>
+<td>0 FP + 1 FN</td>
+<td>3</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_034.png</td>
+<td>34</td>
+<td>0 FP + 1 FN</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<h3>Most false positives</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>2 false positives</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>1 false positives</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>1 false positives</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_019.png</td>
+<td>19</td>
+<td>1 false positives</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>1 false positives</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>1 false positives</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>1 false positives</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<h3>Most false negatives</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>3 missed objects</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>2 missed objects</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>2 missed objects</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>2 missed objects</td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_026.png</td>
+<td>26</td>
+<td>2 missed objects</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>2 missed objects</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_001.png</td>
+<td>1</td>
+<td>1 missed objects</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_005.png</td>
+<td>5</td>
+<td>1 missed objects</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>1 missed objects</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_010.png</td>
+<td>10</td>
+<td>1 missed objects</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_017.png</td>
+<td>17</td>
+<td>1 missed objects</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_018.png</td>
+<td>18</td>
+<td>1 missed objects</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_021.png</td>
+<td>21</td>
+<td>1 missed objects</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_024.png</td>
+<td>24</td>
+<td>1 missed objects</td>
+<td>3</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_034.png</td>
+<td>34</td>
+<td>1 missed objects</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>1 missed objects</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<h3>High confidence FP</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>FP at score 0.84</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+</tbody></table>
+<h3>Class confusion</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_009.png</td>
+<td>9</td>
+<td>1 confused object(s)</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>1 confused object(s)</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_019.png</td>
+<td>19</td>
+<td>1 confused object(s)</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>1 confused object(s)</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_023.png</td>
+<td>23</td>
+<td>1 confused object(s)</td>
+<td>2</td>
+<td>1</td>
+<td>3</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>1 confused object(s)</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<h3>Small missed objects</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_016.png</td>
+<td>16</td>
+<td>2 small object(s) missed</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_022.png</td>
+<td>22</td>
+<td>2 small object(s) missed</td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_017.png</td>
+<td>17</td>
+<td>1 small object(s) missed</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_018.png</td>
+<td>18</td>
+<td>1 small object(s) missed</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_020.png</td>
+<td>20</td>
+<td>1 small object(s) missed</td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>scene_021.png</td>
+<td>21</td>
+<td>1 small object(s) missed</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_038.png</td>
+<td>38</td>
+<td>1 small object(s) missed</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_040.png</td>
+<td>40</td>
+<td>1 small object(s) missed</td>
+<td>2</td>
+<td>0</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<h3>No GT but predictions</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_032.png</td>
+<td>32</td>
+<td>2 prediction(s), no GT</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+</tr>
+</tbody></table>
+<h3>GT but no predictions</h3>
+<table>
+<thead><tr><th>file_name</th><th>image_id</th><th>reason</th><th>TP</th><th>FP</th><th>FN</th></tr></thead>
+<tbody>
+<tr>
+<td>scene_001.png</td>
+<td>1</td>
+<td>1 GT object(s), no predictions</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>scene_005.png</td>
+<td>5</td>
+<td>1 GT object(s), no predictions</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Dataset Health</h2>
+<table class="kv">
+<tbody>
+<tr><th>Errors</th><td>0</td></tr>
+<tr><th>Warnings</th><td>1</td></tr>
+<tr><th>Info</th><td>6</td></tr>
+<tr><th>Missing images</th><td>0</td></tr>
+<tr><th>Invalid annotations</th><td>0</td></tr>
+<tr><th>Invalid predictions</th><td>0</td></tr>
+<tr><th>Images without GT</th><td>5</td></tr>
+<tr><th>Rare classes</th><td>1</td></tr>
+<tr><th>Unused files</th><td>0</td></tr>
+</tbody></table>
+<h3>Top issues</h3>
+<table>
+<thead><tr><th>Severity</th><th>Type</th><th>Image / File</th><th>Class</th><th>Message</th></tr></thead>
+<tbody>
+<tr>
+<td>Предупреждение</td>
+<td>rareClass</td>
+<td></td>
+<td>pedestrian_sign</td>
+<td>Class &quot;pedestrian_sign&quot; имеет мало GT objects.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>imageWithoutGroundTruth</td>
+<td>scene_029.png</td>
+<td></td>
+<td>Image &quot;scene_029.png&quot; не имеет annotations.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>imageWithoutGroundTruth</td>
+<td>scene_030.png</td>
+<td></td>
+<td>Image &quot;scene_030.png&quot; не имеет annotations.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>imageWithoutGroundTruth</td>
+<td>scene_031.png</td>
+<td></td>
+<td>Image &quot;scene_031.png&quot; не имеет annotations.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>imageWithoutGroundTruth</td>
+<td>scene_032.png</td>
+<td></td>
+<td>Image &quot;scene_032.png&quot; не имеет annotations.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>imageWithoutGroundTruth</td>
+<td>scene_033.png</td>
+<td></td>
+<td>Image &quot;scene_033.png&quot; не имеет annotations.</td>
+</tr>
+<tr>
+<td>Информация</td>
+<td>predictionOnImageWithoutGroundTruth</td>
+<td>scene_032.png</td>
+<td></td>
+<td>Image имеет predictions, но не имеет ground truth.</td>
+</tr>
+</tbody></table>
+</section>
+</body>
+</html>

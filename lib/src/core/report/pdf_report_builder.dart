@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../ap_eval/ap_eval_models.dart';
 import '../comparison/comparison_models.dart';
+import '../comparison/multi_model_comparison_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../health/dataset_health_models.dart';
@@ -49,6 +50,7 @@ class PdfReportBuilder {
     WorstCasesResult? worstCases,
     ConfusionMatrixDetails? confusionDetails,
     ModelComparisonResult? comparison,
+    MultiModelComparisonResult? multiComparison,
     List<Recommendation> recommendations = const <Recommendation>[],
     ApEvalResult? apEvalResult,
     AppLocale locale = AppLocale.en,
@@ -87,6 +89,7 @@ class PdfReportBuilder {
       worstCases: worstCases,
       confusionDetails: confusionDetails,
       comparison: comparison,
+      multiComparison: multiComparison,
       recommendations: recommendations,
       apEvalResult: apEvalResult,
       locale: locale,
@@ -95,10 +98,11 @@ class PdfReportBuilder {
 
   // ─── document assembly ────────────────────────────────────────────────────
 
-  Future<Uint8List> buildPdf(PdfReportData data) async {
+  Future<Uint8List> buildPdf(PdfReportData data, {pw.ThemeData? theme}) async {
     final doc = pw.Document(
       title: AppLocalizations.forLocale(data.locale).t(MessageKey.reportTitle),
       author: 'CV Model Lab',
+      theme: theme,
     );
 
     doc.addPage(_titlePage(data));
@@ -233,12 +237,16 @@ class PdfReportBuilder {
       ..._execSummary(data),
       ..._datasetSummary(data),
       ..._overallMetrics(data),
-      if (data.apEvalResult != null) ..._apMetrics(data.apEvalResult!),
+      if (data.apEvalResult != null) ..._apMetrics(data.apEvalResult!, data),
       ..._perClassMetrics(data),
       if (data.healthReport != null) ..._health(data.healthReport!, data),
-      if (data.worstCases != null) ..._worstCases(data.worstCases!),
-      if (data.confusionDetails != null) ..._confusion(data.confusionDetails!),
-      if (data.comparison != null) ..._comparison(data.comparison!),
+      if (data.worstCases != null) ..._worstCases(data.worstCases!, data),
+      if (data.confusionDetails != null)
+        ..._confusion(data.confusionDetails!, data),
+      if (data.multiComparison != null)
+        ..._multiComparison(data.multiComparison!, data)
+      else if (data.comparison != null)
+        ..._comparison(data.comparison!, data),
       if (data.recommendations.isNotEmpty)
         ..._recommendations(data.recommendations, data),
       ..._appendix(data),
@@ -248,6 +256,7 @@ class PdfReportBuilder {
   // ─── executive summary ────────────────────────────────────────────────────
 
   List<pw.Widget> _execSummary(PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     final health = data.healthReport;
     final critRecs = data.recommendations
         .where((r) => r.severity == RecommendationSeverity.critical)
@@ -257,7 +266,7 @@ class PdfReportBuilder {
         .length;
 
     return [
-      _sectionTitle('Executive Summary'),
+      _sectionTitle(l.t(MessageKey.reportExecutiveSummary)),
       _grid([
         _card('Images', '${data.totalImages}'),
         _card('Ground Truth', '${data.totalGt}'),
@@ -299,8 +308,9 @@ class PdfReportBuilder {
   // ─── dataset summary ──────────────────────────────────────────────────────
 
   List<pw.Widget> _datasetSummary(PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     return [
-      _sectionTitle('Dataset Summary'),
+      _sectionTitle(l.t(MessageKey.reportDatasetSummary)),
       _table(
         headers: const ['Metric', 'Value'],
         rows: [
@@ -323,8 +333,9 @@ class PdfReportBuilder {
   // ─── overall metrics ──────────────────────────────────────────────────────
 
   List<pw.Widget> _overallMetrics(PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     return [
-      _sectionTitle('Overall Metrics'),
+      _sectionTitle(l.t(MessageKey.reportOverallMetrics)),
       _table(
         headers: const ['Metric', 'Value'],
         rows: [
@@ -349,10 +360,11 @@ class PdfReportBuilder {
 
   // ─── COCO AP metrics ──────────────────────────────────────────────────────
 
-  List<pw.Widget> _apMetrics(ApEvalResult result) {
+  List<pw.Widget> _apMetrics(ApEvalResult result, PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     String _opt(double? v) => v == null ? '-' : _pct(v);
     final List<pw.Widget> widgets = [
-      _sectionTitle('COCO AP Metrics'),
+      _sectionTitle(l.t(MessageKey.reportCocoApMetrics)),
       _table(
         headers: const ['Metric', 'Value'],
         rows: [
@@ -408,6 +420,7 @@ class PdfReportBuilder {
   // ─── per-class metrics ────────────────────────────────────────────────────
 
   List<pw.Widget> _perClassMetrics(PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     const headers = [
       'Class',
       'GT',
@@ -460,7 +473,7 @@ class PdfReportBuilder {
         .toList();
 
     return [
-      _sectionTitle('Per-Class Metrics Summary'),
+      _sectionTitle(l.t(MessageKey.reportPerClassMetrics)),
       _subTitle('Top 10 weakest classes by Recall'),
       pw.SizedBox(height: 4),
       byRecall.isEmpty
@@ -536,7 +549,8 @@ class PdfReportBuilder {
 
   // ─── worst cases ──────────────────────────────────────────────────────────
 
-  List<pw.Widget> _worstCases(WorstCasesResult wc) {
+  List<pw.Widget> _worstCases(WorstCasesResult wc, PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     final sections = [
       (label: 'Most Errors', items: wc.mostErrors),
       (label: 'High Confidence FP', items: wc.highConfidenceFalsePositives),
@@ -546,7 +560,7 @@ class PdfReportBuilder {
     ];
 
     final widgets = <pw.Widget>[
-      _sectionTitle('Worst Cases'),
+      _sectionTitle(l.t(MessageKey.reportWorstCases)),
     ];
 
     const worstColWidths = {
@@ -591,10 +605,14 @@ class PdfReportBuilder {
 
   // ─── confusion matrix ─────────────────────────────────────────────────────
 
-  List<pw.Widget> _confusion(ConfusionMatrixDetails details) {
+  List<pw.Widget> _confusion(
+    ConfusionMatrixDetails details,
+    PdfReportData data,
+  ) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     final pairs = details.pairs(includeDiagonal: false).take(30).toList();
     return [
-      _sectionTitle('Confusion Matrix Summary'),
+      _sectionTitle(l.t(MessageKey.reportConfusionMatrix)),
       if (pairs.isEmpty)
         _empty()
       else ...[
@@ -625,7 +643,8 @@ class PdfReportBuilder {
 
   // ─── model comparison ─────────────────────────────────────────────────────
 
-  List<pw.Widget> _comparison(ModelComparisonResult cmp) {
+  List<pw.Widget> _comparison(ModelComparisonResult cmp, PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     final d = cmp.overallDiff;
     final top10Reg = (cmp.perClassDiffs.toList()
           ..sort((a, b) => a.diff.deltaF1.compareTo(b.diff.deltaF1)))
@@ -633,7 +652,7 @@ class PdfReportBuilder {
         .toList();
 
     return [
-      _sectionTitle('Model Comparison'),
+      _sectionTitle(l.t(MessageKey.reportModelComparison)),
       _grid([
         _card('Fixed Images', '${cmp.fixedImageIds.length}'),
         _card('Broken Images', '${cmp.brokenImageIds.length}'),
@@ -714,6 +733,98 @@ class PdfReportBuilder {
     ];
   }
 
+  // ─── multi-model comparison ───────────────────────────────────────────────
+
+  List<pw.Widget> _multiComparison(
+    MultiModelComparisonResult result,
+    PdfReportData data,
+  ) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
+    final bool hasAp = result.leaderboard.any((e) => e.ap != null);
+    return [
+      _sectionTitle(l.t(MessageKey.reportModelComparison)),
+      _subTitle(l.t(MessageKey.mmLeaderboard)),
+      pw.SizedBox(height: 4),
+      _table(
+        headers: [
+          '#',
+          'Model',
+          'P',
+          'R',
+          'F1',
+          'TP',
+          'FP',
+          'FN',
+          if (hasAp) 'AP',
+          if (hasAp) 'AP50',
+        ],
+        rows: [
+          for (final e in result.leaderboard)
+            [
+              '${e.rank}',
+              _clip(e.modelRunName, 28),
+              _pct(e.precision),
+              _pct(e.recall),
+              _pct(e.f1),
+              '${e.totalTp}',
+              '${e.totalFp}',
+              '${e.totalFn}',
+              if (hasAp) (e.ap != null ? _pct(e.ap!) : '—'),
+              if (hasAp) (e.ap50 != null ? _pct(e.ap50!) : '—'),
+            ],
+        ],
+        colWidths: {
+          0: const pw.FlexColumnWidth(0.5),
+          1: const pw.FlexColumnWidth(3),
+          2: const pw.FlexColumnWidth(1),
+          3: const pw.FlexColumnWidth(1),
+          4: const pw.FlexColumnWidth(1),
+          5: const pw.FlexColumnWidth(1),
+          6: const pw.FlexColumnWidth(1),
+          7: const pw.FlexColumnWidth(1),
+          if (hasAp) 8: const pw.FlexColumnWidth(1),
+          if (hasAp) 9: const pw.FlexColumnWidth(1),
+        },
+      ),
+      if (result.perClassRankings.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _subTitle(l.t(MessageKey.mmPerClassRanking)),
+        pw.SizedBox(height: 4),
+        _table(
+          headers: const ['Class', 'Best model', 'Worst model', 'F1 spread'],
+          rows: [
+            for (final r in result.perClassRankings.toList()
+              ..sort(
+                (a, b) => (b.f1Spread).compareTo(a.f1Spread),
+              ))
+              [
+                _clip(r.categoryName, 30),
+                _clip(_runNameInLeaderboard(result, r.bestModelRunId), 24),
+                _clip(_runNameInLeaderboard(result, r.worstModelRunId), 24),
+                _pct(r.f1Spread),
+              ],
+          ],
+          colWidths: const {
+            0: pw.FlexColumnWidth(2),
+            1: pw.FlexColumnWidth(2),
+            2: pw.FlexColumnWidth(2),
+            3: pw.FlexColumnWidth(1),
+          },
+        ),
+      ],
+      pw.SizedBox(height: 14),
+    ];
+  }
+
+  String _runNameInLeaderboard(MultiModelComparisonResult result, String? id) {
+    if (id == null) return '—';
+    return result.leaderboard
+            .where((e) => e.modelRunId == id)
+            .map((e) => e.modelRunName)
+            .firstOrNull ??
+        id;
+  }
+
   // ─── recommendations ──────────────────────────────────────────────────────
 
   List<pw.Widget> _recommendations(
@@ -771,6 +882,7 @@ class PdfReportBuilder {
   // ─── appendix ─────────────────────────────────────────────────────────────
 
   List<pw.Widget> _appendix(PdfReportData data) {
+    final AppLocalizations l = AppLocalizations.forLocale(data.locale);
     final rows = data.matchRows
         .where((r) => r.matchType == 'FP' || r.matchType == 'FN')
         .take(50)
@@ -779,7 +891,7 @@ class PdfReportBuilder {
     if (rows.isEmpty) return const [];
 
     return [
-      _sectionTitle('Appendix: Top Error Examples'),
+      _sectionTitle(l.t(MessageKey.reportAppendix)),
       _table(
         headers: const ['File', 'Category', 'Type', 'Score', 'IoU'],
         rows: [

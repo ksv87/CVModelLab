@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CV Model Lab — Model Comparison</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#1e293b;line-height:1.4;}h1{margin:0 0 8px;}h2{margin-top:32px;border-bottom:2px solid #e2e8f0;padding-bottom:4px;}h3{margin-top:24px;}header p{margin:2px 0;}section{margin-bottom:24px;}table{border-collapse:collapse;margin:8px 0;font-size:14px;}th,td{border:1px solid #cbd5e1;padding:4px 10px;text-align:left;}thead th{background:#f1f5f9;}td.good{background:#dcfce7;color:#166534;font-weight:600;}td.bad{background:#fee2e2;color:#b91c1c;font-weight:600;}p.empty{color:#64748b;font-style:italic;}</style>
+</head>
+<body>
+<header>
+<h1>CV Model Lab — Model Comparison</h1>
+<p><strong>Project:</strong> Showcase Demo</p>
+<p><strong>Base model:</strong> Model A — Baseline</p>
+<p><strong>Candidate model:</strong> Model B — High Recall</p>
+<p><strong>Generated at:</strong> 2026-06-03T10:49:40.443659</p>
+</header>
+<section>
+<h2>Overall metrics</h2>
+<table>
+<thead><tr><th>Metric</th><th>Model A — Baseline</th><th>Model B — High Recall</th><th>Delta</th></tr></thead>
+<tbody>
+<tr>
+<th>Precision</th>
+<td>88.9%</td>
+<td>67.9%</td>
+<td class="bad">-21.0%</td>
+</tr>
+<tr>
+<th>Recall</th>
+<td>73.6%</td>
+<td>82.8%</td>
+<td class="good">+9.2%</td>
+</tr>
+<tr>
+<th>F1</th>
+<td>80.5%</td>
+<td>74.6%</td>
+<td class="bad">-5.9%</td>
+</tr>
+<tr>
+<th>TP</th>
+<td>64</td>
+<td>72</td>
+<td class="good">+8</td>
+</tr>
+<tr>
+<th>FP</th>
+<td>8</td>
+<td>34</td>
+<td class="bad">+26</td>
+</tr>
+<tr>
+<th>FN</th>
+<td>23</td>
+<td>15</td>
+<td class="good">-8</td>
+</tr>
+<tr>
+<th>Images with errors</th>
+<td>18</td>
+<td>21</td>
+<td class="bad">+3</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Per-class metrics</h2>
+<table>
+<thead><tr><th>Class</th><th>Model A — Baseline P</th><th>Model B — High Recall P</th><th>ΔP</th><th>Model A — Baseline R</th><th>Model B — High Recall R</th><th>ΔR</th><th>Model A — Baseline F1</th><th>Model B — High Recall F1</th><th>ΔF1</th><th>ΔTP</th><th>ΔFP</th><th>ΔFN</th></tr></thead>
+<tbody>
+<tr>
+<td>yellow_light</td>
+<td>100.0%</td>
+<td>44.4%</td>
+<td class="bad">-55.6%</td>
+<td>66.7%</td>
+<td>66.7%</td>
+<td>+0.0%</td>
+<td>80.0%</td>
+<td>53.3%</td>
+<td class="bad">-26.7%</td>
+<td>+0</td>
+<td class="bad">+10</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>pedestrian_sign</td>
+<td>100.0%</td>
+<td>100.0%</td>
+<td>+0.0%</td>
+<td>100.0%</td>
+<td>62.5%</td>
+<td class="bad">-37.5%</td>
+<td>100.0%</td>
+<td>76.9%</td>
+<td class="bad">-23.1%</td>
+<td class="bad">-3</td>
+<td>+0</td>
+<td class="bad">+3</td>
+</tr>
+<tr>
+<td>red_light</td>
+<td>86.4%</td>
+<td>65.5%</td>
+<td class="bad">-20.8%</td>
+<td>86.4%</td>
+<td>86.4%</td>
+<td>+0.0%</td>
+<td>86.4%</td>
+<td>74.5%</td>
+<td class="bad">-11.9%</td>
+<td>+0</td>
+<td class="bad">+7</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>green_light</td>
+<td>79.2%</td>
+<td>58.8%</td>
+<td class="bad">-20.3%</td>
+<td>76.0%</td>
+<td>80.0%</td>
+<td class="good">+4.0%</td>
+<td>77.6%</td>
+<td>67.8%</td>
+<td class="bad">-9.8%</td>
+<td class="good">+1</td>
+<td class="bad">+9</td>
+<td class="good">-1</td>
+</tr>
+<tr>
+<td>background_distractor</td>
+<td>100.0%</td>
+<td>100.0%</td>
+<td>+0.0%</td>
+<td>50.0%</td>
+<td>100.0%</td>
+<td class="good">+50.0%</td>
+<td>66.7%</td>
+<td>100.0%</td>
+<td class="good">+33.3%</td>
+<td class="good">+10</td>
+<td>+0</td>
+<td class="good">-10</td>
+</tr>
+</tbody></table>
+</section>
+<section>
+<h2>Images by Status</h2>
+<h3>Fixed (base had errors, candidate correct) (7)</h3>
+<table>
+<thead><tr><th>image_id</th><th>file_name</th><th>Base TP/FP/FN</th><th>Candidate TP/FP/FN</th><th>ΔTP</th><th>ΔFP</th><th>ΔFN</th></tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>scene_001.png</td>
+<td>0/0/1</td>
+<td>1/0/0</td>
+<td>+1</td>
+<td>+0</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>5</td>
+<td>scene_005.png</td>
+<td>0/0/1</td>
+<td>1/0/0</td>
+<td>+1</td>
+<td>+0</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>9</td>
+<td>scene_009.png</td>
+<td>1/1/1</td>
+<td>2/0/0</td>
+<td>+1</td>
+<td>-1</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>16</td>
+<td>scene_016.png</td>
+<td>1/1/2</td>
+<td>3/0/0</td>
+<td>+2</td>
+<td>-1</td>
+<td>-2</td>
+</tr>
+<tr>
+<td>17</td>
+<td>scene_017.png</td>
+<td>1/0/1</td>
+<td>2/0/0</td>
+<td>+1</td>
+<td>+0</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>21</td>
+<td>scene_021.png</td>
+<td>2/0/1</td>
+<td>3/0/0</td>
+<td>+1</td>
+<td>+0</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>22</td>
+<td>scene_022.png</td>
+<td>1/0/2</td>
+<td>3/0/0</td>
+<td>+2</td>
+<td>+0</td>
+<td>-2</td>
+</tr>
+</tbody></table>
+<h3>Broken (base correct, candidate has errors) (10)</h3>
+<table>
+<thead><tr><th>image_id</th><th>file_name</th><th>Base TP/FP/FN</th><th>Candidate TP/FP/FN</th><th>ΔTP</th><th>ΔFP</th><th>ΔFN</th></tr></thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>scene_002.png</td>
+<td>1/0/0</td>
+<td>0/0/1</td>
+<td>-1</td>
+<td>+0</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>13</td>
+<td>scene_013.png</td>
+<td>2/0/0</td>
+<td>1/1/1</td>
+<td>-1</td>
+<td>+1</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>14</td>
+<td>scene_014.png</td>
+<td>2/0/0</td>
+<td>1/1/1</td>
+<td>-1</td>
+<td>+1</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>15</td>
+<td>scene_015.png</td>
+<td>2/0/0</td>
+<td>1/0/1</td>
+<td>-1</td>
+<td>+0</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>27</td>
+<td>scene_027.png</td>
+<td>2/0/0</td>
+<td>1/1/1</td>
+<td>-1</td>
+<td>+1</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>28</td>
+<td>scene_028.png</td>
+<td>4/0/0</td>
+<td>3/1/1</td>
+<td>-1</td>
+<td>+1</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>29</td>
+<td>scene_029.png</td>
+<td>0/0/0</td>
+<td>0/3/0</td>
+<td>+0</td>
+<td>+3</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>30</td>
+<td>scene_030.png</td>
+<td>0/0/0</td>
+<td>0/3/0</td>
+<td>+0</td>
+<td>+3</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>33</td>
+<td>scene_033.png</td>
+<td>0/0/0</td>
+<td>0/3/0</td>
+<td>+0</td>
+<td>+3</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>39</td>
+<td>scene_039.png</td>
+<td>4/0/0</td>
+<td>3/1/1</td>
+<td>-1</td>
+<td>+1</td>
+<td>+1</td>
+</tr>
+</tbody></table>
+<h3>Improved (both have errors, candidate has fewer) (1)</h3>
+<table>
+<thead><tr><th>image_id</th><th>file_name</th><th>Base TP/FP/FN</th><th>Candidate TP/FP/FN</th><th>ΔTP</th><th>ΔFP</th><th>ΔFN</th></tr></thead>
+<tbody>
+<tr>
+<td>38</td>
+<td>scene_038.png</td>
+<td>3/1/1</td>
+<td>4/1/0</td>
+<td>+1</td>
+<td>+0</td>
+<td>-1</td>
+</tr>
+</tbody></table>
+<h3>Regressed (both have errors, candidate has more) (5)</h3>
+<table>
+<thead><tr><th>image_id</th><th>file_name</th><th>Base TP/FP/FN</th><th>Candidate TP/FP/FN</th><th>ΔTP</th><th>ΔFP</th><th>ΔFN</th></tr></thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>scene_010.png</td>
+<td>1/0/1</td>
+<td>1/1/1</td>
+<td>+0</td>
+<td>+1</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>18</td>
+<td>scene_018.png</td>
+<td>2/0/1</td>
+<td>3/4/0</td>
+<td>+1</td>
+<td>+4</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>19</td>
+<td>scene_019.png</td>
+<td>2/1/0</td>
+<td>2/3/0</td>
+<td>+0</td>
+<td>+2</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>20</td>
+<td>scene_020.png</td>
+<td>2/1/2</td>
+<td>4/5/0</td>
+<td>+2</td>
+<td>+4</td>
+<td>-2</td>
+</tr>
+<tr>
+<td>24</td>
+<td>scene_024.png</td>
+<td>3/0/1</td>
+<td>3/1/1</td>
+<td>+0</td>
+<td>+1</td>
+<td>+0</td>
+</tr>
+</tbody></table>
+</section>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "evaluator_name": "showcase_precomputed",
+  "generated_at": "2026-06-03T00:00:00.000Z",
+  "ap": 0.612,
+  "ap50": 0.822,
+  "ap75": 0.648,
+  "ap_small": 0.189,
+  "ap_medium": 0.631,
+  "ap_large": 0.792,
+  "ar1": 0.441,
+  "ar10": 0.651,
+  "ar100": 0.672,
+  "ar_small": 0.208,
+  "ar_medium": 0.661,
+  "ar_large": 0.831,
+  "per_class": [
+    {
+      "category_id": 1,
+      "category_name": "red_light",
+      "ap": 0.648,
+      "ap50": 0.861,
+      "ap75": 0.684,
+      "ar": 0.712
+    },
+    {
+      "category_id": 2,
+      "category_name": "yellow_light",
+      "ap": 0.558,
+      "ap50": 0.768,
+      "ap75": 0.589,
+      "ar": 0.628
+    },
+    {
+      "category_id": 3,
+      "category_name": "green_light",
+      "ap": 0.661,
+      "ap50": 0.872,
+      "ap75": 0.698,
+      "ar": 0.725
+    },
+    {
+      "category_id": 4,
+      "category_name": "pedestrian_sign",
+      "ap": 0.541,
+      "ap50": 0.748,
+      "ap75": 0.572,
+      "ar": 0.598
+    },
+    {
+      "category_id": 5,
+      "category_name": "background_distractor",
+      "ap": 0.652,
+      "ap50": 0.851,
+      "ap75": 0.688,
+      "ar": 0.797
+    }
+  ],
+  "warnings": []
+}

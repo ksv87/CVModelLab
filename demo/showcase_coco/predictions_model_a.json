@@ -1,0 +1,794 @@
+[
+  {
+    "image_id": 2,
+    "category_id": 3,
+    "bbox": [
+      295,
+      7,
+      127,
+      305
+    ],
+    "score": 0.597
+  },
+  {
+    "image_id": 3,
+    "category_id": 3,
+    "bbox": [
+      395,
+      0,
+      117,
+      279
+    ],
+    "score": 0.556
+  },
+  {
+    "image_id": 4,
+    "category_id": 1,
+    "bbox": [
+      563,
+      14,
+      123,
+      293
+    ],
+    "score": 0.693
+  },
+  {
+    "image_id": 6,
+    "category_id": 1,
+    "bbox": [
+      258,
+      72,
+      75,
+      183
+    ],
+    "score": 0.714
+  },
+  {
+    "image_id": 6,
+    "category_id": 3,
+    "bbox": [
+      655,
+      81,
+      76,
+      181
+    ],
+    "score": 0.566
+  },
+  {
+    "image_id": 7,
+    "category_id": 3,
+    "bbox": [
+      246,
+      44,
+      95,
+      237
+    ],
+    "score": 0.722
+  },
+  {
+    "image_id": 7,
+    "category_id": 1,
+    "bbox": [
+      651,
+      42,
+      97,
+      229
+    ],
+    "score": 0.581
+  },
+  {
+    "image_id": 8,
+    "category_id": 2,
+    "bbox": [
+      358,
+      13,
+      93,
+      232
+    ],
+    "score": 0.605
+  },
+  {
+    "image_id": 8,
+    "category_id": 1,
+    "bbox": [
+      643,
+      19,
+      95,
+      225
+    ],
+    "score": 0.611
+  },
+  {
+    "image_id": 9,
+    "category_id": 3,
+    "bbox": [
+      308,
+      64,
+      70,
+      181
+    ],
+    "score": 0.807
+  },
+  {
+    "image_id": 9,
+    "category_id": 3,
+    "bbox": [
+      604,
+      63,
+      71,
+      179
+    ],
+    "score": 0.592
+  },
+  {
+    "image_id": 10,
+    "category_id": 1,
+    "bbox": [
+      708,
+      13,
+      97,
+      238
+    ],
+    "score": 0.696
+  },
+  {
+    "image_id": 11,
+    "category_id": 3,
+    "bbox": [
+      391,
+      43,
+      92,
+      216
+    ],
+    "score": 0.792
+  },
+  {
+    "image_id": 11,
+    "category_id": 4,
+    "bbox": [
+      612,
+      114,
+      46,
+      56
+    ],
+    "score": 0.714
+  },
+  {
+    "image_id": 12,
+    "category_id": 1,
+    "bbox": [
+      340,
+      7,
+      93,
+      222
+    ],
+    "score": 0.785
+  },
+  {
+    "image_id": 12,
+    "category_id": 4,
+    "bbox": [
+      546,
+      96,
+      40,
+      63
+    ],
+    "score": 0.74
+  },
+  {
+    "image_id": 13,
+    "category_id": 2,
+    "bbox": [
+      362,
+      79,
+      69,
+      166
+    ],
+    "score": 0.609
+  },
+  {
+    "image_id": 13,
+    "category_id": 4,
+    "bbox": [
+      612,
+      121,
+      55,
+      70
+    ],
+    "score": 0.623
+  },
+  {
+    "image_id": 14,
+    "category_id": 3,
+    "bbox": [
+      337,
+      38,
+      77,
+      190
+    ],
+    "score": 0.701
+  },
+  {
+    "image_id": 14,
+    "category_id": 4,
+    "bbox": [
+      636,
+      115,
+      39,
+      65
+    ],
+    "score": 0.852
+  },
+  {
+    "image_id": 15,
+    "category_id": 1,
+    "bbox": [
+      227,
+      12,
+      91,
+      213
+    ],
+    "score": 0.802
+  },
+  {
+    "image_id": 15,
+    "category_id": 4,
+    "bbox": [
+      668,
+      101,
+      42,
+      63
+    ],
+    "score": 0.616
+  },
+  {
+    "image_id": 16,
+    "category_id": 5,
+    "bbox": [
+      772,
+      126,
+      44,
+      22
+    ],
+    "score": 0.779
+  },
+  {
+    "image_id": 16,
+    "category_id": 1,
+    "bbox": [
+      291,
+      118,
+      30,
+      14
+    ],
+    "score": 0.491
+  },
+  {
+    "image_id": 17,
+    "category_id": 5,
+    "bbox": [
+      209,
+      145,
+      32,
+      16
+    ],
+    "score": 0.6
+  },
+  {
+    "image_id": 18,
+    "category_id": 5,
+    "bbox": [
+      379,
+      122,
+      34,
+      17
+    ],
+    "score": 0.711
+  },
+  {
+    "image_id": 18,
+    "category_id": 5,
+    "bbox": [
+      417,
+      117,
+      42,
+      21
+    ],
+    "score": 0.781
+  },
+  {
+    "image_id": 19,
+    "category_id": 5,
+    "bbox": [
+      531,
+      140,
+      30,
+      15
+    ],
+    "score": 0.579
+  },
+  {
+    "image_id": 19,
+    "category_id": 5,
+    "bbox": [
+      860,
+      108,
+      43,
+      21
+    ],
+    "score": 0.817
+  },
+  {
+    "image_id": 19,
+    "category_id": 3,
+    "bbox": [
+      530,
+      139,
+      29,
+      15
+    ],
+    "score": 0.522
+  },
+  {
+    "image_id": 20,
+    "category_id": 5,
+    "bbox": [
+      220,
+      118,
+      40,
+      20
+    ],
+    "score": 0.809
+  },
+  {
+    "image_id": 20,
+    "category_id": 5,
+    "bbox": [
+      611,
+      135,
+      34,
+      17
+    ],
+    "score": 0.674
+  },
+  {
+    "image_id": 20,
+    "category_id": 1,
+    "bbox": [
+      222,
+      117,
+      39,
+      21
+    ],
+    "score": 0.568
+  },
+  {
+    "image_id": 21,
+    "category_id": 5,
+    "bbox": [
+      145,
+      101,
+      37,
+      18
+    ],
+    "score": 0.849
+  },
+  {
+    "image_id": 21,
+    "category_id": 1,
+    "bbox": [
+      675,
+      20,
+      93,
+      221
+    ],
+    "score": 0.828
+  },
+  {
+    "image_id": 22,
+    "category_id": 1,
+    "bbox": [
+      472,
+      50,
+      87,
+      213
+    ],
+    "score": 0.68
+  },
+  {
+    "image_id": 23,
+    "category_id": 3,
+    "bbox": [
+      192,
+      189,
+      25,
+      60
+    ],
+    "score": 0.711
+  },
+  {
+    "image_id": 23,
+    "category_id": 3,
+    "bbox": [
+      227,
+      175,
+      30,
+      72
+    ],
+    "score": 0.775
+  },
+  {
+    "image_id": 23,
+    "category_id": 3,
+    "bbox": [
+      819,
+      172,
+      31,
+      74
+    ],
+    "score": 0.844
+  },
+  {
+    "image_id": 24,
+    "category_id": 1,
+    "bbox": [
+      434,
+      58,
+      80,
+      207
+    ],
+    "score": 0.687
+  },
+  {
+    "image_id": 24,
+    "category_id": 2,
+    "bbox": [
+      60,
+      191,
+      20,
+      48
+    ],
+    "score": 0.631
+  },
+  {
+    "image_id": 24,
+    "category_id": 2,
+    "bbox": [
+      890,
+      170,
+      32,
+      80
+    ],
+    "score": 0.817
+  },
+  {
+    "image_id": 25,
+    "category_id": 3,
+    "bbox": [
+      575,
+      185,
+      21,
+      51
+    ],
+    "score": 0.756
+  },
+  {
+    "image_id": 25,
+    "category_id": 2,
+    "bbox": [
+      671,
+      174,
+      25,
+      62
+    ],
+    "score": 0.702
+  },
+  {
+    "image_id": 25,
+    "category_id": 1,
+    "bbox": [
+      737,
+      161,
+      35,
+      88
+    ],
+    "score": 0.556
+  },
+  {
+    "image_id": 25,
+    "category_id": 1,
+    "bbox": [
+      751,
+      180,
+      32,
+      80
+    ],
+    "score": 0.587
+  },
+  {
+    "image_id": 26,
+    "category_id": 3,
+    "bbox": [
+      174,
+      184,
+      22,
+      54
+    ],
+    "score": 0.778
+  },
+  {
+    "image_id": 26,
+    "category_id": 3,
+    "bbox": [
+      722,
+      166,
+      31,
+      73
+    ],
+    "score": 0.584
+  },
+  {
+    "image_id": 27,
+    "category_id": 1,
+    "bbox": [
+      667,
+      184,
+      26,
+      65
+    ],
+    "score": 0.774
+  },
+  {
+    "image_id": 27,
+    "category_id": 3,
+    "bbox": [
+      893,
+      195,
+      22,
+      54
+    ],
+    "score": 0.877
+  },
+  {
+    "image_id": 28,
+    "category_id": 3,
+    "bbox": [
+      441,
+      44,
+      82,
+      196
+    ],
+    "score": 0.558
+  },
+  {
+    "image_id": 28,
+    "category_id": 2,
+    "bbox": [
+      427,
+      184,
+      27,
+      66
+    ],
+    "score": 0.862
+  },
+  {
+    "image_id": 28,
+    "category_id": 2,
+    "bbox": [
+      826,
+      185,
+      22,
+      53
+    ],
+    "score": 0.639
+  },
+  {
+    "image_id": 28,
+    "category_id": 2,
+    "bbox": [
+      846,
+      186,
+      25,
+      62
+    ],
+    "score": 0.738
+  },
+  {
+    "image_id": 32,
+    "category_id": 1,
+    "bbox": [
+      314,
+      169,
+      70,
+      66
+    ],
+    "score": 0.594
+  },
+  {
+    "image_id": 32,
+    "category_id": 3,
+    "bbox": [
+      378,
+      142,
+      36,
+      90
+    ],
+    "score": 0.556
+  },
+  {
+    "image_id": 34,
+    "category_id": 3,
+    "bbox": [
+      399,
+      86,
+      66,
+      160
+    ],
+    "score": 0.806
+  },
+  {
+    "image_id": 35,
+    "category_id": 3,
+    "bbox": [
+      409,
+      70,
+      68,
+      166
+    ],
+    "score": 0.555
+  },
+  {
+    "image_id": 35,
+    "category_id": 1,
+    "bbox": [
+      624,
+      45,
+      78,
+      199
+    ],
+    "score": 0.748
+  },
+  {
+    "image_id": 36,
+    "category_id": 1,
+    "bbox": [
+      702,
+      74,
+      72,
+      176
+    ],
+    "score": 0.653
+  },
+  {
+    "image_id": 37,
+    "category_id": 1,
+    "bbox": [
+      725,
+      83,
+      69,
+      175
+    ],
+    "score": 0.651
+  },
+  {
+    "image_id": 37,
+    "category_id": 3,
+    "bbox": [
+      665,
+      77,
+      61,
+      150
+    ],
+    "score": 0.599
+  },
+  {
+    "image_id": 38,
+    "category_id": 1,
+    "bbox": [
+      197,
+      41,
+      93,
+      228
+    ],
+    "score": 0.878
+  },
+  {
+    "image_id": 38,
+    "category_id": 3,
+    "bbox": [
+      673,
+      31,
+      96,
+      225
+    ],
+    "score": 0.747
+  },
+  {
+    "image_id": 38,
+    "category_id": 4,
+    "bbox": [
+      459,
+      111,
+      44,
+      63
+    ],
+    "score": 0.773
+  },
+  {
+    "image_id": 38,
+    "category_id": 3,
+    "bbox": [
+      765,
+      120,
+      34,
+      17
+    ],
+    "score": 0.541
+  },
+  {
+    "image_id": 39,
+    "category_id": 1,
+    "bbox": [
+      198,
+      36,
+      88,
+      216
+    ],
+    "score": 0.876
+  },
+  {
+    "image_id": 39,
+    "category_id": 3,
+    "bbox": [
+      679,
+      14,
+      87,
+      215
+    ],
+    "score": 0.826
+  },
+  {
+    "image_id": 39,
+    "category_id": 4,
+    "bbox": [
+      461,
+      105,
+      41,
+      61
+    ],
+    "score": 0.661
+  },
+  {
+    "image_id": 39,
+    "category_id": 5,
+    "bbox": [
+      799,
+      121,
+      38,
+      19
+    ],
+    "score": 0.854
+  },
+  {
+    "image_id": 40,
+    "category_id": 1,
+    "bbox": [
+      196,
+      28,
+      83,
+      205
+    ],
+    "score": 0.758
+  },
+  {
+    "image_id": 40,
+    "category_id": 4,
+    "bbox": [
+      457,
+      93,
+      47,
+      67
+    ],
+    "score": 0.658
+  }
+]

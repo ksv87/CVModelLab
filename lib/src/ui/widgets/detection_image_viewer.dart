@@ -12,6 +12,8 @@ class DetectionImageViewer extends StatefulWidget {
     required this.loadingImage,
     required this.selectedMatch,
     required this.onMatchSelected,
+    this.transformationController,
+    this.scaleEnabled = true,
     super.key,
   });
 
@@ -22,6 +24,12 @@ class DetectionImageViewer extends StatefulWidget {
   final bool loadingImage;
   final DetectionMatch? selectedMatch;
   final ValueChanged<DetectionMatch?> onMatchSelected;
+
+  /// When provided, zoom/pan state is owned externally (shared across panels).
+  final TransformationController? transformationController;
+
+  /// Set to false to disable scroll-to-zoom so scroll events pass to the parent.
+  final bool scaleEnabled;
 
   @override
   State<DetectionImageViewer> createState() => _DetectionImageViewerState();
@@ -36,6 +44,17 @@ class _DetectionImageViewerState extends State<DetectionImageViewer> {
   bool _showLabels = true;
   bool _showScores = true;
   bool _showIou = true;
+
+  TransformationController? _ownedController;
+  TransformationController get _transformController =>
+      widget.transformationController ??
+      (_ownedController ??= TransformationController());
+
+  @override
+  void dispose() {
+    _ownedController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +131,9 @@ class _DetectionImageViewerState extends State<DetectionImageViewer> {
         ),
         Expanded(
           child: InteractiveViewer(
-            minScale: 0.25,
+            transformationController: _transformController,
+            scaleEnabled: widget.scaleEnabled,
+            minScale: 0.1,
             maxScale: 8,
             child: LayoutBuilder(
               builder: (context, constraints) {

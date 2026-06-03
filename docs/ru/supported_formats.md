@@ -48,6 +48,17 @@ CV Model Lab поддерживает стандартный COCO detection anno
 - `val2017/image_001.jpg` -> `val2017/image_001.jpg`
 - `nested/path/image_001.jpg` -> basename fallback к `image_001.jpg`, если имя однозначно
 
+## Демонстрационный датасет (Showcase)
+
+`demo/showcase_coco/` содержит синтетический датасет дорожных сцен, поставляемый
+вместе с приложением. Используются стандартные форматы выше:
+- `annotations.json` — COCO annotation JSON с 5 категориями
+- `predictions_model_a/b/c.json` — три prediction-файла в формате `image_id`
+- `ap_metrics_model_a/b/c.json` — precomputed AP metrics JSON
+
+Датасет открывается через **Open project** с выбором
+`demo/showcase_coco/showcase_coco.cvmlab.json` или вручную через загрузку файлов по отдельности.
+
 ## Ограничения
 
 - Приложение ожидает COCO XYWH bounding boxes.

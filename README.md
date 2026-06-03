@@ -15,43 +15,6 @@ Object detection model failures are hard to understand from aggregate metrics al
 - Check whether failures are caused by model behavior, class imbalance, missing images, suspicious boxes, or small objects.
 - Export shareable reports for dataset and model review.
 
-## Release the current version Highlights
-
-CV Model Lab the current version delivers bug fixes and UX improvements on top of the multi-model comparison foundation:
-
-- **Recent Projects** now auto-loads all files from their saved paths. Restore mode (re-picking files) only activates when a file has moved or been deleted.
-- **AP eval results** are correctly saved and restored for every model run in a multi-run project. A previous bug caused only the last run's metrics to survive a reload.
-- **Metric formatting** is consistent across all human-readable reports (PDF, HTML, comparison): Precision, Recall, F1, and AP metrics are shown as `xx.x%`. CSV and XLSX keep raw doubles for machine-readable compatibility.
-- **Rename model run**: pencil-icon button in the workspace AppBar renames the active run; duplicate names are resolved automatically.
-- **Rename project**: double-click on the project name in the AppBar title.
-- **Compare screen fix**: opening the Compare screen no longer crashes when a previously saved ranking metric is not available in the per-class dropdown.
-- **CI**: build jobs run only on tag pushes; regular push and pull-request runs execute analyze and tests only.
-
-## Release the current version Highlights
-
-CV Model Lab the current version added multi-model comparison for three or more model runs:
-
-- The Model Compare screen has **Pairwise** and **Multi-model** modes; the
-  existing pairwise workflow, reports, and tests are unchanged.
-- A leaderboard ranks runs by a selectable metric (AP/AP50/AP75,
-  precision/recall/F1, TP/FP/FN, images-with-errors, small-object recall) with
-  graceful handling of missing AP metrics.
-- Per-class ranking finds the best/worst model per class, image disagreement
-  analysis surfaces where models differ, a pairwise regression matrix opens any
-  pair in Pairwise mode, and a Compare Viewer shows one image across 3+ models.
-- Multi-model reports export to HTML, CSV, XLSX, and PDF, with EN/RU headings.
-- EN/RU localization for all new labels and report headings.
-
-The v0.4.x–v0.5.x line covers the full COCO detection review loop:
-
-- Professional COCO AP metrics (AP@[.5:.95], AP50/75, AP/AR by size, per-class AP) computed with a pycocotools sidecar on desktop, or imported as precomputed AP JSON on any platform.
-- Report export in HTML, CSV, XLSX, and PDF.
-- Rule-based Recommendations, Dataset Health, Worst Cases, and Confusion Matrix analysis.
-- Model Comparison, including an AP diff between two runs.
-- Annotated Image Export, desktop project save/load, and Web/PWA restore mode.
-- English/Russian localization for recommendations, health issues, parser warnings, friendly errors, and report headings.
-- Clear empty/error states, progress/cancel for long-running work, Recent Projects, last-folder preferences, thumbnail cache, AP export toggles, and generated app icons.
-
 ## Features
 
 - COCO annotations loading.
@@ -79,17 +42,21 @@ The v0.4.x–v0.5.x line covers the full COCO detection review loop:
 - Desktop Recent Projects and last-used folder preferences.
 - Image Browser thumbnail cache with web-safe fallback.
 - Web/PWA restore mode for browser workflows.
-- Desktop + PWA support from the same Flutter UI and pure Dart evaluation core.
+- Desktop and Web/PWA support from the same app experience.
 
-## Screenshots
+## Sample Reports
 
-Screenshots are not checked in yet. Placeholder directory: [docs/screenshots](docs/screenshots/).
+Generated sample reports are included for the synthetic Showcase Demo dataset.
+They are safe to share: the dataset uses generated geometric scenes, not real data.
 
-<!-- TODO: add screenshot: Dashboard -->
-<!-- TODO: add screenshot: Error Browser -->
-<!-- TODO: add screenshot: Model Compare -->
-<!-- TODO: add screenshot: Dataset Health -->
-<!-- TODO: add screenshot: Confusion Matrix -->
+Recommended examples:
+- Full evaluation: `demo/showcase_coco/reports/en/all reports/cv_model_lab_report.html`
+- Pairwise compare: `demo/showcase_coco/reports/en/pairwise compare/cv_model_lab_report.html`
+- Multi-model compare: `demo/showcase_coco/reports/en/multi-model compare/cv_model_lab_report.html`
+- Russian multi-model example: `demo/showcase_coco/reports/ru/multi-model compare/cv_model_lab_report.html`
+
+The folder also contains CSV, XLSX, and PDF exports. CSV headers intentionally stay English for machine-readable compatibility.
+See [docs/showcase_demo.md](docs/showcase_demo.md) and [demo/showcase_coco/reports/README.md](demo/showcase_coco/reports/README.md).
 
 ## Supported Platforms
 
@@ -111,22 +78,10 @@ Details and examples: [Supported Formats](docs/supported_formats.md) / [Форм
 
 ## Quick Start
 
-```bash
-flutter pub get
-flutter analyze
-flutter test
-flutter run -d chrome
-```
-
-For desktop on the current host:
-
-```bash
-flutter run -d linux
-flutter run -d macos
-flutter run -d windows
-```
-
-Use the command that matches your OS and installed Flutter desktop support.
+1. Download the latest desktop build from the public release page, or open the hosted Web/PWA build if available.
+2. Start CV Model Lab.
+3. To try the showcase dataset, click **Open project** and select `demo/showcase_coco/showcase_coco.cvmlab.json`.
+4. For your own data, open COCO annotations, prediction JSON files, and an image directory or selected image files.
 
 ## Typical Workflow
 
@@ -144,6 +99,11 @@ Use the command that matches your OS and installed Flutter desktop support.
 12. Save the project on desktop or use Web/PWA restore mode in the browser.
 
 User guide: [User Guide](docs/user_guide.md) / [Руководство пользователя](docs/ru/user_guide.md).
+
+> **Showcase dataset:** click **Open project** on the project open screen and select
+> `demo/showcase_coco/showcase_coco.cvmlab.json` to load a synthetic three-model
+> road-scene dataset with precomputed AP metrics.
+> See [Showcase Demo](docs/showcase_demo.md) for details.
 
 ## Metrics
 
@@ -210,45 +170,6 @@ CV Model Lab supports:
 - PDF report export with overall metrics, per-class tables, confusion matrix, recommendations, AP metrics, and comparison summaries.
 - Annotated Image Export with overlay images.
 
-## Architecture
-
-```text
-Pure Dart core
-  ↓
-Platform I/O adapters
-  ↓
-Flutter UI
-```
-
-The core does not import `dart:io`, `dart:html`, or Flutter UI. Parsing, evaluation, matching, metrics, comparison, health checks, worst-case mining, and report generation live in testable pure Dart modules. Platform-specific file picking, image loading, project save/load, report saving, browser downloads, and annotated image saving live behind adapters.
-
-Architecture notes: [Architecture](docs/architecture.md) / [Архитектура](docs/ru/architecture.md).
-
-## Testing
-
-```bash
-flutter analyze
-flutter test
-```
-
-The test suite covers IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV/XLSX/PDF generation, Dataset Health Check, Worst Cases, annotated export selection, AP result parsing, AP export, AP project serialization, and the embedded sidecar script guard.
-
-## Build
-
-```bash
-flutter build web
-flutter build linux
-flutter build windows
-flutter build macos
-```
-
-Build scripts are available in [scripts](scripts/). Desktop builds must be run on a host that supports that target.
-
-## Roadmap
-
-- Release screenshots and sample exported reports.
-- Desktop installers and macOS signing/notarization.
-
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
@@ -258,6 +179,8 @@ This license applies only to the CV Model Lab source code.
 Synthetic demo and test datasets stored in `demo/` and `test_data/` are released under CC0 1.0 Universal unless their local dataset README states otherwise.
 
 ## Third-party components and data
+
+The bundled DejaVu Sans font files in `assets/fonts/` are distributed under the DejaVu Fonts License; see `assets/fonts/LICENSE.DejaVu`.
 
 This repository may reference or integrate third-party models, datasets, runtimes, SDKs, and dependencies. They are subject to their own licenses.
 

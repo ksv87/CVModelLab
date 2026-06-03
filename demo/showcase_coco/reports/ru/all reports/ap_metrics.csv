@@ -1,0 +1,13 @@
+metric,value
+AP@[.5:.95],0.524
+AP50,0.741
+AP75,0.558
+APsmall,0.276
+APmedium,0.551
+APlarge,0.712
+AR1,0.381
+AR10,0.612
+AR100,0.637
+ARsmall,0.318
+ARmedium,0.641
+ARlarge,0.763

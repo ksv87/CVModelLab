@@ -70,6 +70,9 @@ enum MessageKey {
   reportModelComparison,
   reportImageErrors,
   reportMatches,
+  reportExecutiveSummary,
+  reportAppendix,
+  reportImagesByStatus,
 
   // Multi-model comparison (v0.6.0).
   mmMultiModelComparison,

@@ -1,5 +1,6 @@
 import '../ap_eval/ap_eval_models.dart';
 import '../comparison/comparison_models.dart';
+import '../comparison/multi_model_comparison_models.dart';
 import '../eval/class_stats.dart';
 import '../eval/confusion_details.dart';
 import '../health/dataset_health_models.dart';
@@ -41,6 +42,7 @@ class PdfReportData {
     this.worstCases,
     this.confusionDetails,
     this.comparison,
+    this.multiComparison,
     this.recommendations = const <Recommendation>[],
     this.apEvalResult,
     this.locale = AppLocale.en,
@@ -78,6 +80,7 @@ class PdfReportData {
   final WorstCasesResult? worstCases;
   final ConfusionMatrixDetails? confusionDetails;
   final ModelComparisonResult? comparison;
+  final MultiModelComparisonResult? multiComparison;
   final List<Recommendation> recommendations;
   final ApEvalResult? apEvalResult;
   final AppLocale locale;

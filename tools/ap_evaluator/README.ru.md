@@ -2,13 +2,11 @@
 
 [English version](README.md)
 
-Python sidecar, который запускает pycocotools COCO AP evaluation и записывает
-результат в JSON.
+Python sidecar запускает pycocotools COCO AP evaluation и записывает результат в JSON.
 
-CV Model Lab вызывает этот script автоматически из desktop app. Обычно запускать
-его вручную не нужно.
+CV Model Lab вызывает этот script автоматически из desktop app. Обычно запускать его вручную не нужно.
 
-## Running via uv (recommended)
+## Запуск через uv (рекомендуется)
 
 [uv](https://docs.astral.sh/uv/) управляет Python и dependencies автоматически:
 без `pip install` и без ручной activation venv.
@@ -23,7 +21,7 @@ uv run ap_eval.py \
 Script использует [PEP 723](https://peps.python.org/pep-0723/) inline metadata,
 поэтому `uv run` сам resolves `pycocotools` при первом запуске и кеширует его.
 
-## Running via plain Python
+## Запуск через обычный Python
 
 ```bash
 pip install pycocotools
@@ -33,13 +31,13 @@ python3 ap_eval.py \
   --output /path/to/ap_metrics.json
 ```
 
-## Detection order in CV Model Lab (desktop)
+## Порядок выбора evaluator в CV Model Lab (desktop)
 
-1. `uv` in PATH → uses `uv run ap_eval.py ...` (preferred)
-2. `python3` in PATH with `pycocotools` installed → uses `python3 ap_eval.py ...`
-3. Neither available → shows an error with instructions
+1. `uv` в PATH → используется `uv run ap_eval.py ...` (предпочтительно)
+2. `python3` в PATH с установленным `pycocotools` → используется `python3 ap_eval.py ...`
+3. Если ничего не найдено → приложение показывает ошибку с инструкцией
 
-## Output JSON
+## Формат JSON
 
 ```json
 {
@@ -71,5 +69,4 @@ python3 ap_eval.py \
 }
 ```
 
-Все metric values равны `null`, если predictions отсутствуют или metric cannot
-be computed, например для size bucket без ground truth.
+Все metric values равны `null`, если predictions отсутствуют или метрику нельзя вычислить, например для size bucket без ground truth.

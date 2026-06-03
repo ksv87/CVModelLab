@@ -79,8 +79,8 @@ void main() {
   const ComparisonReportBuilder builder = ComparisonReportBuilder();
 
   group('HTML report', () {
-    test('contains base model name', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -90,8 +90,8 @@ void main() {
       expect(bundle.htmlReport, contains('Base Model'));
     });
 
-    test('contains candidate model name', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -100,8 +100,8 @@ void main() {
       expect(bundle.htmlReport, contains('Candidate Model'));
     });
 
-    test('contains project name when provided', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -111,8 +111,8 @@ void main() {
       expect(bundle.htmlReport, contains('My Special Project'));
     });
 
-    test('is empty when includeHtml = false', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -124,8 +124,8 @@ void main() {
   });
 
   group('per-class CSV', () {
-    test('has correct headers', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -157,8 +157,8 @@ void main() {
       expect(header, contains('delta_fn'));
     });
 
-    test('contains data rows for each category', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -173,8 +173,8 @@ void main() {
   });
 
   group('images CSV', () {
-    test('has correct headers', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -198,8 +198,8 @@ void main() {
       expect(header, contains('delta_fn'));
     });
 
-    test('CSV values match comparison result', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -215,8 +215,8 @@ void main() {
   });
 
   group('fileNames', () {
-    test('includes HTML and both CSVs when all enabled', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,
@@ -227,8 +227,8 @@ void main() {
       expect(bundle.fileNames, contains(ComparisonReportFileNames.images));
     });
 
-    test('fileNames excludes HTML when not included', () {
-      final ComparisonReportBundle bundle = builder.build(
+    test('\1', () async {
+      final ComparisonReportBundle bundle = await builder.build(
         dataset: dataset,
         baseRun: baseRun,
         candidateRun: candidateRun,

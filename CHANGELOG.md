@@ -4,6 +4,12 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Synthetic showcase data and export polish
+
+- Added the synthetic Showcase COCO dataset with generated images, annotations, predictions, AP metrics, saved project file, and sample reports.
+- Added CC0 dataset licensing for demo data and report examples.
+- Improved report fonts, localization, compare viewer zoom/pan controls, Linux icon packaging assets, and public documentation.
+
 ## Localization and multi-model comparison
 
 - Added English/Russian localization for app text, warnings, recommendations, health issues, errors, and report headings.

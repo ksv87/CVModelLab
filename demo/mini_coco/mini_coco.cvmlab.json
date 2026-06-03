@@ -1,0 +1,35 @@
+{
+  "schema_version": "1",
+  "id": "demo-mini-coco",
+  "name": "Mini COCO Demo",
+  "created_at": "2026-06-03T00:00:00.000Z",
+  "updated_at": "2026-06-03T00:00:00.000Z",
+  "dataset": {
+    "annotations_path": "annotations.json",
+    "images_root_path": "images",
+    "annotations_file_name": "annotations.json",
+    "images_source_label": "images/"
+  },
+  "model_runs": [
+    {
+      "id": "mini-coco-run-a",
+      "name": "Model A",
+      "predictions_path": "predictions_model_a.json",
+      "predictions_file_name": "predictions_model_a.json",
+      "added_at": "2026-06-03T00:00:00.000Z"
+    },
+    {
+      "id": "mini-coco-run-b",
+      "name": "Model B",
+      "predictions_path": "predictions_model_b.json",
+      "predictions_file_name": "predictions_model_b.json",
+      "added_at": "2026-06-03T00:00:00.000Z"
+    }
+  ],
+  "default_eval_config": {
+    "iou_threshold": 0.5,
+    "confidence_threshold": 0.25,
+    "class_aware_matching": true,
+    "ignore_crowd": true
+  }
+}

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:pdf/pdf.dart';
+import 'package:pdf/pdf.dart' show PdfPageFormat;
 import 'package:pdf/widgets.dart' as pw;
 
 import '../comparison/multi_model_comparison_models.dart';
@@ -15,7 +15,8 @@ class MultiModelReportFileNames {
   static const String html = 'multi_model_comparison.html';
   static const String leaderboard = 'multi_model_leaderboard.csv';
   static const String perClass = 'multi_model_per_class.csv';
-  static const String imageDisagreements = 'multi_model_image_disagreements.csv';
+  static const String imageDisagreements =
+      'multi_model_image_disagreements.csv';
   static const String regressionMatrix = 'multi_model_regression_matrix.csv';
   static const String xlsx = 'multi_model_comparison.xlsx';
   static const String pdf = 'multi_model_comparison.pdf';
@@ -65,6 +66,7 @@ class MultiModelReportBuilder {
     bool includeXlsx = true,
     bool includePdf = true,
     DateTime? generatedAt,
+    pw.ThemeData? pdfTheme,
   }) async {
     final AppLocalizations l = AppLocalizations.forLocale(locale);
     final DateTime timestamp = generatedAt ?? result.generatedAt;
@@ -81,8 +83,9 @@ class MultiModelReportBuilder {
 
     final Map<String, List<int>> binaryFiles = {};
     if (includeXlsx) {
-      binaryFiles[MultiModelReportFileNames.xlsx] =
-          xlsxBuilder.buildWorkbook(buildXlsxData(result));
+      binaryFiles[MultiModelReportFileNames.xlsx] = xlsxBuilder.buildWorkbook(
+        buildXlsxData(result, localizations: l),
+      );
     }
     if (includePdf) {
       binaryFiles[MultiModelReportFileNames.pdf] = await buildPdf(
@@ -90,6 +93,7 @@ class MultiModelReportBuilder {
         projectName: projectName,
         l: l,
         generatedAt: timestamp,
+        theme: pdfTheme,
       );
     }
 
@@ -310,23 +314,28 @@ class MultiModelReportBuilder {
 
   // ── XLSX ────────────────────────────────────────────────────────────────
 
-  XlsxWorkbookData buildXlsxData(MultiModelComparisonResult result) {
+  XlsxWorkbookData buildXlsxData(
+    MultiModelComparisonResult result, {
+    AppLocalizations? localizations,
+  }) {
+    final AppLocalizations l =
+        localizations ?? AppLocalizations.forLocale(AppLocale.en);
     return XlsxWorkbookData(
       sheets: [
         XlsxSheetData(
-          name: 'Multi Leaderboard',
+          name: l.t(MessageKey.mmLeaderboard),
           rows: leaderboardRows(result),
         ),
         XlsxSheetData(
-          name: 'Multi Per-Class',
+          name: l.t(MessageKey.mmPerClassRanking),
           rows: perClassRows(result),
         ),
         XlsxSheetData(
-          name: 'Multi Disagreement',
+          name: l.t(MessageKey.mmImageDisagreement),
           rows: imageDisagreementRows(result),
         ),
         XlsxSheetData(
-          name: 'Regression Matrix',
+          name: l.t(MessageKey.mmRegressionMatrix),
           rows: regressionMatrixRows(result),
         ),
       ],
@@ -464,8 +473,9 @@ class MultiModelReportBuilder {
     required String projectName,
     required AppLocalizations l,
     required DateTime generatedAt,
+    pw.ThemeData? theme,
   }) async {
-    final pw.Document doc = pw.Document();
+    final pw.Document doc = pw.Document(theme: theme);
     final List<pw.Widget> content = [];
 
     content.add(
@@ -524,8 +534,7 @@ class MultiModelReportBuilder {
             l.t(MessageKey.mmF1Spread),
           ],
           data: [
-            for (final ClassModelRanking r
-                in result.perClassRankings.take(10))
+            for (final ClassModelRanking r in result.perClassRankings.take(10))
               [
                 r.categoryName,
                 _runName(result, r.bestModelRunId),
@@ -613,7 +622,9 @@ class MultiModelReportBuilder {
   String _f(double v) => '${(v * 100).toStringAsFixed(1)}%';
   String _signedF(double v) {
     final double pct = v * 100;
-    return pct >= 0 ? '+${pct.toStringAsFixed(1)}%' : '${pct.toStringAsFixed(1)}%';
+    return pct >= 0
+        ? '+${pct.toStringAsFixed(1)}%'
+        : '${pct.toStringAsFixed(1)}%';
   }
 
   String _ap(double? v) => v == null ? '-' : '${(v * 100).toStringAsFixed(1)}%';

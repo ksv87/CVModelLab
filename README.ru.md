@@ -15,38 +15,6 @@ CV Model Lab помогает разбирать качество датасет
 - понять, связаны ли ошибки с моделью, class imbalance, missing images, suspicious boxes или small objects;
 - экспортировать отчеты для ревью датасета и модели.
 
-## Главное в релизе the current version
-
-CV Model Lab the current version — баг-фиксы и UX-улучшения поверх multi-model comparison:
-
-- **Recent Projects** теперь загружает все файлы по сохранённым путям автоматически. Режим восстановления (повторный выбор файлов) активируется только если файл перемещён или удалён.
-- **AP eval results** корректно сохраняются и восстанавливаются для каждой модели в multi-run проекте. Ранее при перезагрузке оставались только метрики последней модели.
-- **Форматирование метрик** единообразно во всех человекочитаемых отчётах (PDF, HTML, comparison): Precision, Recall, F1 и AP-метрики показаны как `xx.x%`. CSV и XLSX сохраняют сырые double для machine-readable compatibility.
-- **Переименование model run**: кнопка-карандаш в AppBar workspace переименовывает активный запуск; дубликаты имён разрешаются автоматически.
-- **Переименование проекта**: двойной клик по названию проекта в заголовке AppBar.
-- **Исправление Compare screen**: открытие Compare больше не падает, если ранее сохранённая ranking metric недоступна в per-class dropdown.
-- **CI**: build-джобы запускаются только при пуше тегов; обычный push/PR запускает только analyze и тесты.
-
-## Главное в релизе the current version
-
-CV Model Lab the current version добавлял сравнение трёх и более запусков моделей:
-
-- На экране Model Compare появились режимы **Pairwise** и **Multi-model**;
-  существующий попарный workflow, отчёты и тесты не изменены.
-- Leaderboard ранжирует запуски по выбираемой метрике с безопасной обработкой отсутствующих AP-метрик.
-- Per-class ranking, анализ расхождений по изображениям, pairwise regression matrix и Compare Viewer для 3+ моделей.
-- Multi-model отчёты в HTML, CSV, XLSX и PDF с EN/RU заголовками.
-
-Линейка v0.4.x–v0.5.x закрывает полный цикл анализа COCO detection:
-
-- Профессиональные COCO AP metrics (AP@[.5:.95], AP50/75, AP/AR по размеру, per-class AP) через pycocotools sidecar на desktop, либо импорт precomputed AP JSON.
-- Экспорт отчетов в HTML, CSV, XLSX и PDF.
-- Rule-based Recommendations, Dataset Health, Worst Cases и Confusion Matrix.
-- Model Comparison с AP diff.
-- Annotated Image Export, desktop project save/load и Web/PWA restore mode.
-- EN/RU локализация Recommendations, Dataset Health issues, parser warnings, friendly errors и заголовков отчётов.
-- Понятные empty/error states, progress/cancel, Recent Projects, last-folder preferences, thumbnail cache и generated app icons.
-
 ## Возможности
 
 - Загрузка COCO annotations.
@@ -74,17 +42,21 @@ CV Model Lab the current version добавлял сравнение трёх и
 - Desktop Recent Projects и last-used folder preferences.
 - Image Browser thumbnail cache с web-safe fallback.
 - Web/PWA restore mode для браузерных сценариев.
-- Desktop + PWA support из одного Flutter UI и pure Dart evaluation core.
+- Desktop и Web/PWA support из одного приложения.
 
-## Скриншоты
+## Примеры отчётов
 
-Скриншоты пока не добавлены. Папка-заготовка: [docs/screenshots](docs/screenshots/).
+В репозитории есть сгенерированные примеры отчётов для синтетического Showcase Demo dataset.
+Их можно показывать публично: изображения сгенерированы геометрически, без реальных данных.
 
-<!-- TODO: add screenshot: Dashboard -->
-<!-- TODO: add screenshot: Error Browser -->
-<!-- TODO: add screenshot: Model Compare -->
-<!-- TODO: add screenshot: Dataset Health -->
-<!-- TODO: add screenshot: Confusion Matrix -->
+Рекомендуемые примеры:
+- Full evaluation: `demo/showcase_coco/reports/en/all reports/cv_model_lab_report.html`
+- Pairwise compare: `demo/showcase_coco/reports/en/pairwise compare/cv_model_lab_report.html`
+- Multi-model compare: `demo/showcase_coco/reports/en/multi-model compare/cv_model_lab_report.html`
+- RU multi-model: `demo/showcase_coco/reports/ru/multi-model compare/cv_model_lab_report.html`
+
+В папке также лежат CSV, XLSX и PDF exports. CSV-заголовки намеренно остаются английскими для machine-readable compatibility.
+Подробности: [docs/ru/showcase_demo.md](docs/ru/showcase_demo.md) и [demo/showcase_coco/reports/README.md](demo/showcase_coco/reports/README.md).
 
 ## Поддерживаемые платформы
 
@@ -106,22 +78,10 @@ Desktop builds требуют соответствующий Flutter desktop too
 
 ## Быстрый старт
 
-```bash
-flutter pub get
-flutter analyze
-flutter test
-flutter run -d chrome
-```
-
-Desktop для текущей ОС:
-
-```bash
-flutter run -d linux
-flutter run -d macos
-flutter run -d windows
-```
-
-Используйте команду, которая соответствует вашей ОС и установленной поддержке Flutter desktop.
+1. Скачайте последнюю desktop-сборку со страницы публичного релиза или откройте hosted Web/PWA build, если он доступен.
+2. Запустите CV Model Lab.
+3. Чтобы попробовать showcase dataset, нажмите **Open project** и выберите `demo/showcase_coco/showcase_coco.cvmlab.json`.
+4. Для своих данных откройте COCO annotations, prediction JSON и директорию с изображениями или выбранные image files.
 
 ## Типичный workflow
 
@@ -139,6 +99,11 @@ flutter run -d windows
 12. Сохранить проект на desktop или использовать Web/PWA restore mode.
 
 Руководство: [Руководство пользователя](docs/ru/user_guide.md) / [User Guide](docs/user_guide.md).
+
+> **Showcase dataset:** нажмите **Open project** на стартовом экране и выберите
+> `demo/showcase_coco/showcase_coco.cvmlab.json`, чтобы загрузить синтетический
+> road-scene dataset с тремя моделями и precomputed AP metrics.
+> Подробности: [Showcase Demo](docs/ru/showcase_demo.md).
 
 ## Метрики
 
@@ -205,45 +170,6 @@ CV Model Lab поддерживает:
 - PDF report export с overall metrics, per-class таблицами, confusion matrix, recommendations, AP metrics и comparison summaries.
 - Annotated Image Export с overlay images.
 
-## Архитектура
-
-```text
-Pure Dart core
-  ↓
-Platform I/O adapters
-  ↓
-Flutter UI
-```
-
-Core не импортирует `dart:io`, `dart:html` или Flutter UI. Parsing, evaluation, matching, metrics, comparison, health checks, worst-case mining и report generation находятся в тестируемых pure Dart modules. Platform-specific file picking, image loading, project save/load, report saving, browser downloads и annotated image saving находятся за adapters.
-
-Подробнее: [Архитектура](docs/ru/architecture.md) / [Architecture](docs/architecture.md).
-
-## Тестирование
-
-```bash
-flutter analyze
-flutter test
-```
-
-Тесты покрывают IoU, parsers, matcher behavior, metrics, small-object stats, confusion data, model comparison, project serialization, report/CSV/XLSX/PDF generation, Dataset Health Check, Worst Cases, annotated export selection, AP result parsing, AP export, AP project serialization и guard встроенного sidecar-скрипта.
-
-## Сборка
-
-```bash
-flutter build web
-flutter build linux
-flutter build windows
-flutter build macos
-```
-
-Build scripts находятся в [scripts](scripts/). Desktop builds запускаются на host OS, которая поддерживает нужный target.
-
-## Roadmap
-
-- Release screenshots и sample exported reports.
-- Desktop installers и macOS signing/notarization.
-
 ## Лицензия
 
 Этот проект распространяется по лицензии MIT. Подробности см. в [LICENSE](LICENSE).
@@ -253,6 +179,8 @@ Build scripts находятся в [scripts](scripts/). Desktop builds запу
 Синтетические demo и test datasets в каталогах `demo/` и `test_data/` распространяются по CC0 1.0 Universal, если в README конкретного датасета явно не указано иное.
 
 ## Сторонние компоненты и данные
+
+Встроенные файлы шрифта DejaVu Sans в `assets/fonts/` распространяются по DejaVu Fonts License; см. `assets/fonts/LICENSE.DejaVu`.
 
 Репозиторий может ссылаться на сторонние модели, датасеты, runtimes, SDK и зависимости или интегрироваться с ними. На них распространяются их собственные лицензии.
 

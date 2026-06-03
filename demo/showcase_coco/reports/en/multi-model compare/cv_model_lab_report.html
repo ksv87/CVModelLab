@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8">
+<title>Multi-model Comparison</title>
+<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#222;}
+h1{color:#283593;}
+h2{color:#3949AB;margin-top:24px;border-bottom:1px solid #e0e0e0;padding-bottom:4px;}
+table{border-collapse:collapse;margin:8px 0;font-size:13px;}
+th,td{border:1px solid #ccc;padding:4px 8px;text-align:right;}
+th:first-child,td:first-child{text-align:left;}
+thead th{background:#E8EAF6;color:#1A237E;}
+.muted{color:#888;}
+</style></head><body>
+<h1>Multi-model Comparison</h1>
+<p class="muted">Showcase Demo — 2026-06-03T10:49:38.999129</p>
+<h2>Leaderboard</h2>
+<table><thead><tr><th>Rank</th><th>Model</th><th>AP</th><th>AP50</th><th>P</th><th>R</th><th>F1</th><th>TP</th><th>FP</th><th>FN</th><th>Images with errors</th><th>Small recall</th></tr></thead><tbody>
+<tr><td>1</td><td>Model C — High Precision</td><td>61.2%</td><td>82.2%</td><td>100.0%</td><td>80.5%</td><td>89.2%</td><td>70</td><td>0</td><td>17</td><td>10</td><td>47.6%</td></tr>
+<tr><td>2</td><td>Model A — Baseline</td><td>52.4%</td><td>74.1%</td><td>88.9%</td><td>73.6%</td><td>80.5%</td><td>64</td><td>8</td><td>23</td><td>18</td><td>52.4%</td></tr>
+<tr><td>3</td><td>Model B — High Recall</td><td>47.1%</td><td>69.5%</td><td>67.9%</td><td>82.8%</td><td>74.6%</td><td>72</td><td>34</td><td>15</td><td>21</td><td>95.2%</td></tr>
+</tbody></table>
+<h2>Per-Class Ranking</h2>
+<table><thead><tr><th>Class</th><th>Best model</th><th>Worst model</th><th>F1 spread</th></tr></thead><tbody>
+<tr><td>yellow_light</td><td>Model C — High Precision</td><td>Model B — High Recall</td><td>46.7%</td></tr>
+<tr><td>background_distractor</td><td>Model B — High Recall</td><td>Model C — High Precision</td><td>37.9%</td></tr>
+<tr><td>green_light</td><td>Model C — High Precision</td><td>Model B — High Recall</td><td>28.0%</td></tr>
+<tr><td>pedestrian_sign</td><td>Model A — Baseline</td><td>Model B — High Recall</td><td>23.1%</td></tr>
+<tr><td>red_light</td><td>Model C — High Precision</td><td>Model B — High Recall</td><td>18.2%</td></tr>
+</tbody></table>
+<h2>Image Disagreement</h2>
+<table><thead><tr><th>Image</th><th>Type</th><th>Correct models</th><th>Wrong models</th><th>Error spread</th></tr></thead><tbody>
+<tr><td>scene_018.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>4</td></tr>
+<tr><td>scene_023.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>4</td></tr>
+<tr><td>scene_016.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>3</td></tr>
+<tr><td>scene_017.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_022.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_024.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_026.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_032.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_038.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_039.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>2</td></tr>
+<tr><td>scene_034.png</td><td>Only one model correct</td><td>1</td><td>2</td><td>1</td></tr>
+<tr><td>scene_029.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>3</td></tr>
+<tr><td>scene_030.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>3</td></tr>
+<tr><td>scene_033.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>3</td></tr>
+<tr><td>scene_009.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>2</td></tr>
+<tr><td>scene_013.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>2</td></tr>
+<tr><td>scene_014.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>2</td></tr>
+<tr><td>scene_027.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>2</td></tr>
+<tr><td>scene_028.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>2</td></tr>
+<tr><td>scene_001.png</td><td>Only one model wrong</td><td>2</td><td>1</td><td>1</td></tr>
+</tbody></table>
+<h2>Regression Matrix</h2>
+<table><thead><tr><th>Model</th>
+<th>Model C — High Precision</th>
+<th>Model A — Baseline</th>
+<th>Model B — High Recall</th>
+</tr></thead><tbody>
+<tr><th>Model C — High Precision</th>
+<td class="muted">—</td>
+<td>-8.7%</td>
+<td>-14.6%</td>
+</tr>
+<tr><th>Model A — Baseline</th>
+<td>+8.7%</td>
+<td class="muted">—</td>
+<td>-5.9%</td>
+</tr>
+<tr><th>Model B — High Recall</th>
+<td>+14.6%</td>
+<td>+5.9%</td>
+<td class="muted">—</td>
+</tr>
+</tbody></table>
+</body></html>

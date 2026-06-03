@@ -57,8 +57,22 @@ Use the Export report dialog to save reports in any combination of formats:
 
 Annotated Image Export saves visual overlays for selected images.
 
+## Open the Showcase Dataset
+
+On the project open screen, click **Open project** and select
+`demo/showcase_coco/showcase_coco.cvmlab.json`. The saved project loads a
+synthetic road-scene dataset with three model runs (A — Baseline, B — High
+Recall, C — High Precision) and precomputed COCO AP metrics for all three.
+
+The showcase dataset is designed to demonstrate every major feature: TP/FP/FN,
+class confusion (yellow→green, red→yellow), small-object recall differences,
+false positives on background distractors, and multi-model comparison.
+
+See [docs/showcase_demo.md](showcase_demo.md) for a full description of each
+scenario and which screens to inspect.
+
 ## Save and Reopen a Project
 
 Desktop workflows can save a project file (`.cvmlab.json`) with dataset paths, image root, all model runs, evaluation config, and COCO AP metrics for every run. Click **Save** in the AppBar.
 
-Reopen via **File → Open project** (direct file open) or via **Recent Projects** on the home screen. Both paths auto-load all files from saved absolute paths without asking you to re-pick them. If a file has moved or is missing, the app falls back to restore mode where you can pick the files again.
+Reopen via **Open project** on the project open screen or via **Recent Projects** on the home screen. Both paths auto-load all files from saved paths without asking you to re-pick them. If a file has moved or is missing, the app falls back to restore mode where you can pick the files again.

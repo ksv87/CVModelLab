@@ -57,8 +57,21 @@
 
 Annotated Image Export сохраняет visual overlays для выбранных изображений.
 
+## Открыть showcase dataset
+
+На экране открытия проекта нажмите **Open project** и выберите
+`demo/showcase_coco/showcase_coco.cvmlab.json`. Сохранённый project загружает
+синтетический road-scene dataset с тремя model runs (A — Baseline, B — High
+Recall, C — High Precision) и предвычисленными COCO AP-метриками для всех трёх.
+
+Датасет создан чтобы демонстрировать все ключевые функции: TP/FP/FN,
+классовую путаницу (yellow→green, red→yellow), различия в recall малых объектов,
+FP на фоновых дистракторах и multi-model сравнение.
+
+Подробности — в [docs/ru/showcase_demo.md](showcase_demo.md).
+
 ## Сохранить и открыть проект
 
 Desktop workflows могут сохранять project file (`.cvmlab.json`) с dataset paths, image root, всеми model runs, evaluation config и COCO AP metrics для каждого запуска. Нажмите **Save** в AppBar.
 
-Открыть снова можно через **File → Open project** (прямое открытие файла) или через **Recent Projects** на home screen. Оба пути загружают все файлы по сохранённым абсолютным путям автоматически без повторного выбора. Если файл перемещён или недоступен — приложение переходит в restore mode, где можно выбрать файлы заново.
+Открыть снова можно через **Open project** на стартовом экране или через **Recent Projects**. Оба пути загружают все файлы по сохранённым путям автоматически без повторного выбора. Если файл перемещён или недоступен — приложение переходит в restore mode, где можно выбрать файлы заново.

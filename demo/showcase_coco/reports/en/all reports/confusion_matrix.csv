@@ -1,0 +1,15 @@
+gt_class,pred_class,count
+__background_fp__,green_light,2
+__background_fp__,red_light,2
+background_distractor,__missed__,8
+background_distractor,background_distractor,10
+background_distractor,green_light,1
+background_distractor,red_light,1
+green_light,__missed__,6
+green_light,green_light,19
+pedestrian_sign,pedestrian_sign,8
+red_light,__missed__,3
+red_light,red_light,19
+yellow_light,__missed__,2
+yellow_light,green_light,2
+yellow_light,yellow_light,8
