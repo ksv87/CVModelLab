@@ -4,6 +4,11 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Theme support and PWA connection handling
+
+- Added light, dark, and system theme modes with persisted user preference.
+- Fixed PWA/server URL handling so backend-served builds auto-detect the same-origin server while standalone web remains editable.
+
 ## Server mode and remote project access
 
 - Added the optional FastAPI server mode with allowed-root browsing, server-side COCO parsing/evaluation, image/thumbnails APIs, cache management, AP metrics, and static PWA serving.

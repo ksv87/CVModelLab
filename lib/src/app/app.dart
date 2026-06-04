@@ -4,6 +4,7 @@ import '../platform_io/user_preferences.dart';
 import '../ui/screens/project_open_screen.dart';
 import '../ui/l10n/app_locale_scope.dart';
 import '../ui/l10n/app_localizations.dart';
+import '../ui/l10n/app_theme_scope.dart';
 import 'package:cv_model_lab/cv_model_lab.dart';
 
 class CvModelLabApp extends StatefulWidget {
@@ -16,11 +17,13 @@ class CvModelLabApp extends StatefulWidget {
 class _CvModelLabAppState extends State<CvModelLabApp> {
   final UserPreferencesStore _preferences = createUserPreferencesStore();
   AppLocale _locale = AppLocale.system;
+  AppTheme _theme = AppTheme.system;
 
   @override
   void initState() {
     super.initState();
     _loadLocale();
+    _loadTheme();
   }
 
   Future<void> _loadLocale() async {
@@ -46,6 +49,29 @@ class _CvModelLabAppState extends State<CvModelLabApp> {
     }
   }
 
+  Future<void> _loadTheme() async {
+    final String? saved =
+        await _preferences.getString(PreferenceKeys.appTheme);
+    final AppTheme theme = AppTheme.values.firstWhere(
+      (AppTheme value) => value.name == saved,
+      orElse: () => AppTheme.system,
+    );
+    if (mounted) {
+      setState(() => _theme = theme);
+    }
+  }
+
+  Future<void> _setTheme(AppTheme theme) async {
+    if (theme == AppTheme.system) {
+      await _preferences.remove(PreferenceKeys.appTheme);
+    } else {
+      await _preferences.setString(PreferenceKeys.appTheme, theme.name);
+    }
+    if (mounted) {
+      setState(() => _theme = theme);
+    }
+  }
+
   AppLocale _effectiveLocale() {
     if (_locale != AppLocale.system) {
       return _locale;
@@ -63,18 +89,17 @@ class _CvModelLabAppState extends State<CvModelLabApp> {
       locale: _locale,
       localizations: localizations,
       setLocale: _setLocale,
-      child: MaterialApp(
-        title: 'CV Model Lab',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xff2563eb),
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          visualDensity: VisualDensity.compact,
+      child: AppThemeScope(
+        theme: _theme,
+        setTheme: _setTheme,
+        child: MaterialApp(
+          title: 'CV Model Lab',
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(Brightness.light),
+          darkTheme: buildAppTheme(Brightness.dark),
+          themeMode: themeModeFor(_theme),
+          home: const ProjectOpenScreen(),
         ),
-        home: const ProjectOpenScreen(),
       ),
     );
   }

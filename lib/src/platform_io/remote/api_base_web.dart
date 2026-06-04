@@ -9,7 +9,3 @@ String? sameOriginServerUrl() {
   }
   return origin;
 }
-
-/// On the web the app is always served from some origin; in server mode that
-/// origin is the CV Model Lab server.
-bool get isServedFromServer => true;

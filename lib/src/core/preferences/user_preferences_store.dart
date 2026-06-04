@@ -36,6 +36,7 @@ class PreferenceKeys {
       'last_ap_metrics_import_directory';
   static const String recentProjects = 'recent_projects';
   static const String appLocale = 'app_locale';
+  static const String appTheme = 'app_theme';
 
   /// Last selected Model Compare mode ('pairwise' or 'multi').
   static const String lastCompareMode = 'last_compare_mode';

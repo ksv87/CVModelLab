@@ -40,6 +40,10 @@ class AppLocalizationsEn extends AppLocalizations {
       MessageKey.remoteForgetApiKey => 'Forget saved key',
       MessageKey.remoteApiKeyCleared => 'Saved API key removed',
       MessageKey.remoteApiKeyInvalid => 'Invalid API key.',
+      MessageKey.themeTooltip => 'Theme',
+      MessageKey.themeSystem => 'System',
+      MessageKey.themeLight => 'Light',
+      MessageKey.themeDark => 'Dark',
       MessageKey.parseInvalidJson => 'Invalid JSON: ${p['error'] ?? ''}',
       MessageKey.parseAnnotationsRootMustBeObject =>
         'COCO annotations root must be an object',

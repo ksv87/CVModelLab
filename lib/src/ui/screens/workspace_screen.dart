@@ -27,6 +27,7 @@ import '../widgets/detection_image_viewer.dart';
 import '../widgets/export_report_dialog.dart';
 import '../widgets/image_browser_panel.dart';
 import '../widgets/language_selector.dart';
+import '../widgets/theme_selector.dart';
 import '../widgets/status_views.dart';
 import 'confusion_matrix_screen.dart';
 import 'dataset_health_screen.dart';
@@ -618,6 +619,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           label: const Text('Export report'),
         ),
       const SizedBox(width: 8),
+      const Center(child: ThemeSelector()),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 8),
         child: Center(child: LanguageSelector()),

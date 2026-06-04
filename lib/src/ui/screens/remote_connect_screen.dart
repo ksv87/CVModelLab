@@ -54,16 +54,26 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
   ServerClientConfig? _serverConfig;
   RemoteServerConnection? _connection;
   List<ServerManifestSummary> _manifests = const [];
-  final bool _isWeb = isServedFromServer;
+
+  /// Confirmed by probing the current origin: the PWA is being served by a CV
+  /// Model Lab backend, so the server URL is fixed to that origin.
+  bool _servedFromBackend = false;
+
+  /// True while the startup probe is still deciding whether this web build is
+  /// served by a backend (URL stays locked until the probe resolves).
+  bool _probing = false;
 
   @override
   void initState() {
     super.initState();
-    final String? sameOrigin = sameOriginServerUrl();
+    final String? origin = sameOriginServerUrl();
     if (widget.reopen != null) {
       _urlController.text = widget.reopen!.serverUrl;
-    } else if (sameOrigin != null) {
-      _urlController.text = sameOrigin;
+    } else if (origin != null) {
+      // Web: optimistically show the origin while we probe whether a backend
+      // actually serves this app. Keep the field locked during the probe.
+      _urlController.text = origin;
+      _probing = true;
     }
     _urlController.addListener(_onUrlChanged);
     _apiKeyController.addListener(_invalidateActiveConnection);
@@ -73,7 +83,39 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
     }
     if (widget.reopen != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
+    } else if (origin != null) {
+      _detectServedMode(origin);
     }
+  }
+
+  /// Decides whether the web build is served by a CV Model Lab backend by
+  /// probing `/api/config` at [origin]. A valid config (200) or a 401 (server
+  /// present but requires a key) means the backend serves this app, so the URL
+  /// is fixed. Anything else — a 404, a network error, or an HTML page from the
+  /// `flutter run` dev server / a separate host — means standalone web, where
+  /// the user types the server address manually like on desktop.
+  Future<void> _detectServedMode(String origin) async {
+    bool served;
+    try {
+      await RemoteServerConnection(
+        client: HttpCvmlApiClient(baseUrl: origin),
+      ).fetchConfig();
+      served = true;
+    } on RemoteApiException catch (e) {
+      served = e.isUnauthorized;
+    } on Object {
+      served = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _probing = false;
+      _servedFromBackend = served;
+      if (!served) {
+        // The origin is not a backend (dev server / separate host): clear the
+        // prefilled origin so the user enters the real server address.
+        _urlController.clear();
+      }
+    });
   }
 
   @override
@@ -404,10 +446,20 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
             children: [
               TextField(
                 controller: _urlController,
-                enabled: !_isWeb && widget.reopen == null,
+                enabled: !_servedFromBackend && !_probing && widget.reopen == null,
                 decoration: InputDecoration(
                   labelText: l10n.t(MessageKey.remoteServerUrl),
                   hintText: 'http://localhost:8080',
+                  suffixIcon: _probing
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(height: 12),

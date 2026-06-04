@@ -4,6 +4,12 @@ enum AppLocale {
   ru,
 }
 
+enum AppTheme {
+  system,
+  light,
+  dark,
+}
+
 enum MessageKey {
   // Parser / validation.
   parseInvalidJson,
@@ -147,4 +153,10 @@ enum MessageKey {
   remoteForgetApiKey,
   remoteApiKeyCleared,
   remoteApiKeyInvalid,
+
+  // Theme switcher.
+  themeTooltip,
+  themeSystem,
+  themeLight,
+  themeDark,
 }

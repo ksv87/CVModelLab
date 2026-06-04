@@ -38,6 +38,10 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.remoteForgetApiKey => 'Забыть сохранённый ключ',
       MessageKey.remoteApiKeyCleared => 'Сохранённый API-ключ удалён',
       MessageKey.remoteApiKeyInvalid => 'Неверный API-ключ.',
+      MessageKey.themeTooltip => 'Тема',
+      MessageKey.themeSystem => 'Системная',
+      MessageKey.themeLight => 'Светлая',
+      MessageKey.themeDark => 'Тёмная',
       MessageKey.parseInvalidJson => 'Некорректный JSON: ${p['error'] ?? ''}',
       MessageKey.parseAnnotationsRootMustBeObject =>
         'Корень COCO annotations должен быть объектом',

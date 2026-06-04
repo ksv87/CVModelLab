@@ -4,6 +4,11 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Темы и PWA connection handling
+
+- Добавлены light, dark и system theme modes с сохранением user preference.
+- Исправлено PWA/server URL handling: backend-served builds auto-detect same-origin server, standalone web остаётся editable.
+
 ## Серверный режим и remote projects
 
 - Добавлен optional FastAPI server mode с allowed-root browsing, server-side COCO parsing/evaluation, image/thumbnails APIs, cache management, AP metrics и static PWA serving.

@@ -10,6 +10,7 @@ import '../../platform_io/recent_projects_io.dart';
 import '../../platform_io/user_preferences.dart';
 import '../widgets/status_views.dart';
 import '../widgets/language_selector.dart';
+import '../widgets/theme_selector.dart';
 import '../l10n/app_locale_scope.dart';
 import 'remote_connect_screen.dart';
 import 'workspace_screen.dart';
@@ -78,6 +79,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
       appBar: AppBar(
         title: const Text('CV Model Lab'),
         actions: const [
+          Center(child: ThemeSelector()),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
             child: Center(child: LanguageSelector()),

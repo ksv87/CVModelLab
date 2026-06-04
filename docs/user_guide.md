@@ -76,3 +76,7 @@ scenario and which screens to inspect.
 Desktop workflows can save a project file (`.cvmlab.json`) with dataset paths, image root, all model runs, evaluation config, and COCO AP metrics for every run. Click **Save** in the AppBar.
 
 Reopen via **Open project** on the project open screen or via **Recent Projects** on the home screen. Both paths auto-load all files from saved paths without asking you to re-pick them. If a file has moved or is missing, the app falls back to restore mode where you can pick the files again.
+
+## Switch Theme
+
+Use the theme button in the app bar to choose between **System**, **Light**, and **Dark**. The current mode is shown by the button icon, and the active option is checked in the menu. Your choice is saved and restored on the next launch; **System** follows your operating system's appearance and updates live when you change it, without a restart. The switcher sits next to the language selector on both the project open screen and the workspace.

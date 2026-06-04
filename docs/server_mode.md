@@ -118,6 +118,16 @@ same origin for the API, so a PWA served by a server only talks to that server.
 If the web build is missing, the API still runs and the root shows a short help
 message.
 
+When a PWA opens the **Connect to Server** screen, it probes `/api/config` at its
+own origin to decide how the server URL field behaves:
+
+- **Served by a CV Model Lab backend** (the probe succeeds, or returns `401`
+  because a key is required): the server URL is fixed to that origin and the
+  field is read-only — the PWA only ever talks to its own server.
+- **Standalone web** — a build opened via `flutter run` or hosted separately
+  from any backend (the probe finds no API): the field is editable and you type
+  the server URL manually, just like the Desktop app.
+
 ## Connecting from the Desktop app
 
 1. On the Open screen, choose **Connect to Server**.
