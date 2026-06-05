@@ -110,6 +110,7 @@ class BrowserDashboardTabs extends StatelessWidget {
     this.onRunApEval,
     this.onImportApMetrics,
     this.apEvalUnavailableReason,
+    this.onLocateSelectedInList,
     super.key,
   });
 
@@ -125,6 +126,10 @@ class BrowserDashboardTabs extends StatelessWidget {
   final VoidCallback? onRunApEval;
   final VoidCallback? onImportApMetrics;
   final String? apEvalUnavailableReason;
+
+  /// Scrolls the image list to the currently selected image. Null disables the
+  /// locate action (e.g. when nothing is selected).
+  final VoidCallback? onLocateSelectedInList;
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +162,7 @@ class BrowserDashboardTabs extends StatelessWidget {
                   selectedImage: selectedImage,
                   selectedMatches: selectedMatches,
                   selectedMatch: selectedMatch,
+                  onLocateInList: onLocateSelectedInList,
                 ),
               ],
             ),
@@ -244,21 +250,36 @@ class _SelectedDetailsView extends StatelessWidget {
     required this.selectedImage,
     required this.selectedMatches,
     required this.selectedMatch,
+    this.onLocateInList,
   });
 
   final CocoDataset dataset;
   final ImageRecord? selectedImage;
   final List<DetectionMatch> selectedMatches;
   final DetectionMatch? selectedMatch;
+  final VoidCallback? onLocateInList;
 
   @override
   Widget build(BuildContext context) {
+    final bool canLocate = selectedImage != null && onLocateInList != null;
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Text(
-          'Selected Image',
-          style: Theme.of(context).textTheme.titleLarge,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Selected Image',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            if (canLocate)
+              IconButton(
+                tooltip: 'Scroll the image list to this image',
+                icon: const Icon(Icons.my_location),
+                onPressed: onLocateInList,
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         _SelectedImageDetails(

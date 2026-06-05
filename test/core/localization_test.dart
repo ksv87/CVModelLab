@@ -19,7 +19,7 @@ void main() {
     final ru = AppLocalizations.forLocale(AppLocale.ru);
 
     expect(en.recommendationTitle(recommendation), contains('Low recall'));
-    expect(ru.recommendationTitle(recommendation), contains('Низкий recall'));
+    expect(ru.recommendationTitle(recommendation), contains('Низкая полнота'));
     expect(en.recommendationAction(recommendation), isNotEmpty);
     expect(ru.recommendationAction(recommendation), isNotEmpty);
   });
@@ -87,7 +87,7 @@ void main() {
       modelRunName: 'Run 1',
     );
 
-    expect(bundle.htmlReport, contains('Отчет CV Model Lab'));
+    expect(bundle.htmlReport, contains('Отчёт CV Model Lab'));
     expect(bundle.htmlReport, contains('Сводка датасета'));
   });
 

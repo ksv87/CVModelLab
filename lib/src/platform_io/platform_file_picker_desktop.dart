@@ -10,6 +10,9 @@ import 'image_source.dart';
 import 'platform_file_picker_stub.dart';
 
 PlatformFilePicker createPlatformFilePicker() {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return const UnsupportedPlatformFilePicker();
+  }
   return const DesktopPlatformFilePicker();
 }
 

@@ -51,5 +51,6 @@ export 'src/core/report/report_models.dart';
 export 'src/core/task/long_running_task.dart';
 export 'src/core/thumbnail/thumbnail_cache.dart';
 export 'src/core/ui_state/empty_error_state.dart';
+export 'src/core/ui_state/responsive_layout.dart';
 export 'src/core/report/xlsx_report_builder.dart';
 export 'src/core/report/xlsx_report_data.dart';

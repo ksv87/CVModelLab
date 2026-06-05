@@ -8,7 +8,12 @@ import 'package:file_picker/file_picker.dart';
 import '../core/report/report_bundle.dart';
 import 'report_saver_stub.dart';
 
-ReportSaver createReportSaver() => const DesktopReportSaver();
+ReportSaver createReportSaver() {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return const UnsupportedReportSaver();
+  }
+  return const DesktopReportSaver();
+}
 
 class DesktopReportSaver implements ReportSaver {
   const DesktopReportSaver();

@@ -4,6 +4,13 @@
 
 This changelog lists project changes available up to the current commit.
 
+## Responsive mobile and remote-only clients
+
+- Added responsive compact/medium/expanded layouts, compact bottom navigation, mobile image viewer, bottom-sheet filters/details, and mobile-friendly analysis screens.
+- Added Android and iOS remote-only clients with platform capability gates, native mobile remote home, recent remote projects, and mobile connect-to-server flow.
+- Disabled unsupported local dataset, local project, local AP, and broad local export workflows on Android/iOS.
+- Added DejaVu font license notice, root third-party licensing notes, and hardened ignore rules for local secrets.
+
 ## Theme support and PWA connection handling
 
 - Added light, dark, and system theme modes with persisted user preference.

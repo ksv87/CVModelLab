@@ -273,31 +273,30 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            SegmentedButton<_CompareMode>(
-              segments: [
-                ButtonSegment(
-                  value: _CompareMode.pairwise,
-                  label: Text(l.t(MessageKey.mmPairwiseMode)),
-                  icon: const Icon(Icons.compare),
-                ),
-                ButtonSegment(
-                  value: _CompareMode.multi,
-                  label: Text(l.t(MessageKey.mmMultiModelMode)),
-                  icon: const Icon(Icons.leaderboard),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (s) {
-                setState(() => _mode = s.first);
-                _preferences.setString(
-                  PreferenceKeys.lastCompareMode,
-                  _mode == _CompareMode.multi ? 'multi' : 'pairwise',
-                );
-              },
-            ),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<_CompareMode>(
+            segments: [
+              ButtonSegment(
+                value: _CompareMode.pairwise,
+                label: Text(l.t(MessageKey.mmPairwiseMode)),
+                icon: const Icon(Icons.compare),
+              ),
+              ButtonSegment(
+                value: _CompareMode.multi,
+                label: Text(l.t(MessageKey.mmMultiModelMode)),
+                icon: const Icon(Icons.leaderboard),
+              ),
+            ],
+            selected: {_mode},
+            onSelectionChanged: (s) {
+              setState(() => _mode = s.first);
+              _preferences.setString(
+                PreferenceKeys.lastCompareMode,
+                _mode == _CompareMode.multi ? 'multi' : 'pairwise',
+              );
+            },
+          ),
         ),
       ),
     );
@@ -346,52 +345,64 @@ class _ModelCompareScreenState extends State<ModelCompareScreen>
       for (int i = 0; i < widget.modelRunEntries.length; i++)
         DropdownMenuItem<int>(
           value: i,
-          child: Text(widget.modelRunEntries[i].modelRun.name),
+          child: Text(
+            widget.modelRunEntries[i].modelRun.name,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
     ];
+    Widget selector(String label, int value, ValueChanged<int?> onChanged) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 200),
+            child: DropdownButton<int>(
+              value: value,
+              isExpanded: true,
+              items: items,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerHigh,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
+        child: Wrap(
+          spacing: 24,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text('Base model:'),
-            const SizedBox(width: 8),
-            DropdownButton<int>(
-              value: _baseIndex,
-              items: items,
-              onChanged: (int? v) {
-                if (v == null || v == _baseIndex) {
-                  return;
+            selector('Base model:', _baseIndex, (int? v) {
+              if (v == null || v == _baseIndex) {
+                return;
+              }
+              setState(() {
+                _baseIndex = v;
+                if (_candidateIndex == _baseIndex) {
+                  _candidateIndex = _baseIndex == 0 ? 1 : 0;
                 }
-                setState(() {
-                  _baseIndex = v;
-                  if (_candidateIndex == _baseIndex) {
-                    _candidateIndex = _baseIndex == 0 ? 1 : 0;
-                  }
-                });
-                _computePairwise();
-              },
-            ),
-            const SizedBox(width: 24),
-            const Text('Candidate model:'),
-            const SizedBox(width: 8),
-            DropdownButton<int>(
-              value: _candidateIndex,
-              items: items,
-              onChanged: (int? v) {
-                if (v == null || v == _candidateIndex) {
-                  return;
+              });
+              _computePairwise();
+            }),
+            selector('Candidate model:', _candidateIndex, (int? v) {
+              if (v == null || v == _candidateIndex) {
+                return;
+              }
+              setState(() {
+                _candidateIndex = v;
+                if (_baseIndex == _candidateIndex) {
+                  _baseIndex = _candidateIndex == 0 ? 1 : 0;
                 }
-                setState(() {
-                  _candidateIndex = v;
-                  if (_baseIndex == _candidateIndex) {
-                    _baseIndex = _candidateIndex == 0 ? 1 : 0;
-                  }
-                });
-                _computePairwise();
-              },
-            ),
+              });
+              _computePairwise();
+            }),
           ],
         ),
       ),

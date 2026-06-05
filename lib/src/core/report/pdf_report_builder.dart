@@ -396,7 +396,7 @@ class PdfReportBuilder {
             rows: [
               for (final ClassApMetric cls in top)
                 [
-                  _clip(cls.categoryName, 32),
+                  cls.categoryName,
                   _opt(cls.ap),
                   _opt(cls.ap50),
                   _opt(cls.ap75),
@@ -447,7 +447,7 @@ class PdfReportBuilder {
     List<List<String>> classRows(List<ClassStats> stats) => [
           for (final s in stats)
             [
-              _clip(s.categoryName, 32),
+              s.categoryName,
               '${s.gtCount}',
               '${s.predCount}',
               '${s.tp}',
@@ -531,8 +531,8 @@ class PdfReportBuilder {
               [
                 l10n.severity(i.severity),
                 i.type.name,
-                _clip(i.fileName ?? '', 28),
-                _clip(l10n.datasetIssueMessage(i), 60),
+                i.fileName ?? '',
+                l10n.datasetIssueMessage(i),
               ],
           ],
           colWidths: const {
@@ -585,8 +585,8 @@ class PdfReportBuilder {
             rows: [
               for (final item in top10)
                 [
-                  _clip(item.fileName, 38),
-                  _clip(item.reason, 38),
+                  item.fileName,
+                  item.reason,
                   '${item.tp}',
                   '${item.fp}',
                   '${item.fn}',
@@ -623,8 +623,8 @@ class PdfReportBuilder {
           rows: [
             for (final p in pairs)
               [
-                _clip(p.gtClass, 30),
-                _clip(p.predClass, 30),
+                p.gtClass,
+                p.predClass,
                 '${p.count}',
                 _pct(p.rowPercent),
               ],
@@ -711,7 +711,7 @@ class PdfReportBuilder {
           rows: [
             for (final item in top10Reg)
               [
-                _clip(item.categoryName, 30),
+                item.categoryName,
                 _sPct(item.diff.deltaF1),
                 _sPct(item.diff.deltaRecall),
                 _sPct(item.diff.deltaPrecision),
@@ -762,7 +762,7 @@ class PdfReportBuilder {
           for (final e in result.leaderboard)
             [
               '${e.rank}',
-              _clip(e.modelRunName, 28),
+              e.modelRunName,
               _pct(e.precision),
               _pct(e.recall),
               _pct(e.f1),
@@ -798,9 +798,9 @@ class PdfReportBuilder {
                 (a, b) => (b.f1Spread).compareTo(a.f1Spread),
               ))
               [
-                _clip(r.categoryName, 30),
-                _clip(_runNameInLeaderboard(result, r.bestModelRunId), 24),
-                _clip(_runNameInLeaderboard(result, r.worstModelRunId), 24),
+                r.categoryName,
+                _runNameInLeaderboard(result, r.bestModelRunId),
+                _runNameInLeaderboard(result, r.worstModelRunId),
                 _pct(r.f1Spread),
               ],
           ],
@@ -861,9 +861,9 @@ class PdfReportBuilder {
             rows: [
               for (final r in group)
                 [
-                  _clip(l10n.recommendationTitle(r), 40),
-                  _clip(l10n.recommendationMessage(r), 70),
-                  _clip(l10n.recommendationAction(r), 70),
+                  l10n.recommendationTitle(r),
+                  l10n.recommendationMessage(r),
+                  l10n.recommendationAction(r),
                 ],
             ],
             colWidths: recColWidths,

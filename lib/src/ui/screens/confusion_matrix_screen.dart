@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/responsive.dart';
 import '../widgets/status_views.dart';
 
 enum ConfusionValueMode {
@@ -38,6 +39,7 @@ class _ConfusionMatrixScreenState extends State<ConfusionMatrixScreen> {
   bool _hideDiagonal = false;
   bool _errorsOnly = false;
   bool _topPairsOnly = false;
+  bool _topPairsDefaulted = false;
   String? _selectedRow;
   String? _selectedColumn;
   int? _previewImageId;
@@ -59,87 +61,111 @@ class _ConfusionMatrixScreenState extends State<ConfusionMatrixScreen> {
         ? const <ConfusionCellExample>[]
         : widget.details.examples(_selectedRow!, _selectedColumn!);
 
+    final bool compact = context.isCompactWidth;
+    // On compact layouts the full matrix is not the primary view: default to
+    // the top confused pairs list (the user can still switch to the matrix).
+    if (compact && !_topPairsDefaulted) {
+      _topPairsOnly = true;
+      _topPairsDefaulted = true;
+    }
+
+    void onSelect(String row, String column) {
+      if (compact) {
+        _openExamplesSheet(row, column);
+      } else {
+        _selectCell(row, column);
+      }
+    }
+
+    final Widget mainPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Confusion Matrix',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            SegmentedButton<ConfusionValueMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ConfusionValueMode.counts,
+                  label: Text('Counts'),
+                ),
+                ButtonSegment(
+                  value: ConfusionValueMode.rowPercent,
+                  label: Text('Row % (recall)'),
+                  tooltip: 'count / GT-row total · diagonal = recall',
+                ),
+                ButtonSegment(
+                  value: ConfusionValueMode.columnPercent,
+                  label: Text('Col % (precision)'),
+                  tooltip: 'count / Pred-column total · diagonal = precision',
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (Set<ConfusionValueMode> values) {
+                setState(() => _mode = values.first);
+              },
+            ),
+            FilterChip(
+              label: const Text('Hide diagonal'),
+              selected: _hideDiagonal,
+              onSelected: (v) => setState(() => _hideDiagonal = v),
+            ),
+            FilterChip(
+              label: const Text('Errors only'),
+              selected: _errorsOnly,
+              onSelected: (v) => setState(() => _errorsOnly = v),
+            ),
+            FilterChip(
+              label: const Text('Top pairs'),
+              selected: _topPairsOnly,
+              onSelected: (v) => setState(() {
+                _topPairsOnly = v;
+                _topPairsDefaulted = true;
+              }),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _topPairsOnly
+              ? _TopPairsTable(
+                  pairs: widget.details.pairs(
+                    includeDiagonal: !_hideDiagonal,
+                  ),
+                  onPairSelected: onSelect,
+                )
+              : _MatrixTable(
+                  labels: labels,
+                  details: widget.details,
+                  mode: _mode,
+                  hideDiagonal: _hideDiagonal,
+                  errorsOnly: _errorsOnly,
+                  selectedRow: _selectedRow,
+                  selectedColumn: _selectedColumn,
+                  onCellSelected: onSelect,
+                ),
+        ),
+      ],
+    );
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: mainPanel,
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           flex: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Confusion Matrix',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SegmentedButton<ConfusionValueMode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: ConfusionValueMode.counts,
-                          label: Text('Counts'),
-                        ),
-                        ButtonSegment(
-                          value: ConfusionValueMode.rowPercent,
-                          label: Text('Row % (recall)'),
-                          tooltip: 'count / GT-row total · diagonal = recall',
-                        ),
-                        ButtonSegment(
-                          value: ConfusionValueMode.columnPercent,
-                          label: Text('Col % (precision)'),
-                          tooltip:
-                              'count / Pred-column total · diagonal = precision',
-                        ),
-                      ],
-                      selected: {_mode},
-                      onSelectionChanged: (Set<ConfusionValueMode> values) {
-                        setState(() => _mode = values.first);
-                      },
-                    ),
-                    FilterChip(
-                      label: const Text('Hide diagonal'),
-                      selected: _hideDiagonal,
-                      onSelected: (v) => setState(() => _hideDiagonal = v),
-                    ),
-                    FilterChip(
-                      label: const Text('Errors only'),
-                      selected: _errorsOnly,
-                      onSelected: (v) => setState(() => _errorsOnly = v),
-                    ),
-                    FilterChip(
-                      label: const Text('Top pairs'),
-                      selected: _topPairsOnly,
-                      onSelected: (v) => setState(() => _topPairsOnly = v),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: _topPairsOnly
-                      ? _TopPairsTable(
-                          pairs: widget.details.pairs(
-                            includeDiagonal: !_hideDiagonal,
-                          ),
-                          onPairSelected: _selectCell,
-                        )
-                      : _MatrixTable(
-                          labels: labels,
-                          details: widget.details,
-                          mode: _mode,
-                          hideDiagonal: _hideDiagonal,
-                          errorsOnly: _errorsOnly,
-                          selectedRow: _selectedRow,
-                          selectedColumn: _selectedColumn,
-                          onCellSelected: _selectCell,
-                        ),
-                ),
-              ],
-            ),
-          ),
+          child: Padding(padding: const EdgeInsets.all(16), child: mainPanel),
         ),
         const VerticalDivider(width: 1),
         SizedBox(
@@ -169,6 +195,69 @@ class _ConfusionMatrixScreenState extends State<ConfusionMatrixScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openExamplesSheet(String row, String column) async {
+    setState(() {
+      _selectedRow = row;
+      _selectedColumn = column;
+    });
+    final List<ConfusionCellExample> examples =
+        widget.details.examples(row, column);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    '$row → $column',
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                ),
+                Flexible(
+                  child: examples.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('No examples for this pair.'),
+                        )
+                      : ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (final ConfusionCellExample example in examples)
+                              ListTile(
+                                leading: const Icon(Icons.image_outlined),
+                                title: Text('Image #${example.imageId}'),
+                                subtitle: Text(
+                                  '${example.gtClass} → ${example.predClass}',
+                                ),
+                                onTap: () {
+                                  Navigator.of(sheetContext).pop();
+                                  widget.onImageSelected(example.imageId);
+                                },
+                              ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -956,35 +1045,109 @@ class _TopPairsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<ConfusionPair> top = pairs.take(50).toList();
+    final Color dividerColor = Theme.of(context).dividerColor;
     return Scrollbar(
       thumbVisibility: true,
       interactive: false,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('GT')),
-            DataColumn(label: Text('Pred')),
-            DataColumn(label: Text('Count')),
-            DataColumn(label: Text('Row %')),
-          ],
-          rows: [
-            for (final ConfusionPair pair in top)
-              DataRow(
-                onSelectChanged: (_) =>
-                    onPairSelected(pair.gtClass, pair.predClass),
-                cells: [
-                  DataCell(Text(pair.gtClass)),
-                  DataCell(Text(pair.predClass)),
-                  DataCell(Text('${pair.count}')),
-                  DataCell(
-                    Text('${(pair.rowPercent * 100).toStringAsFixed(1)}%'),
-                  ),
-                ],
+      child: ListView(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: dividerColor)),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: _TopPairRow(
+                gt: 'GT',
+                pred: 'Pred',
+                count: 'Count',
+                rowPercent: 'Row %',
+                header: true,
               ),
-          ],
-        ),
+            ),
+          ),
+          for (final ConfusionPair pair in top)
+            InkWell(
+              onTap: () => onPairSelected(pair.gtClass, pair.predClass),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: dividerColor)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: _TopPairRow(
+                    gt: pair.gtClass,
+                    pred: pair.predClass,
+                    count: '${pair.count}',
+                    rowPercent:
+                        '${(pair.rowPercent * 100).toStringAsFixed(1)}%',
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+}
+
+class _TopPairRow extends StatelessWidget {
+  const _TopPairRow({
+    required this.gt,
+    required this.pred,
+    required this.count,
+    required this.rowPercent,
+    this.header = false,
+  });
+
+  final String gt;
+  final String pred;
+  final String count;
+  final String rowPercent;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(flex: 3, child: _TopPairCell(text: gt, header: header)),
+        const SizedBox(width: 8),
+        Expanded(flex: 3, child: _TopPairCell(text: pred, header: header)),
+        const SizedBox(width: 8),
+        Expanded(flex: 2, child: _TopPairCell(text: count, header: header)),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: _TopPairCell(text: rowPercent, header: header),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopPairCell extends StatelessWidget {
+  const _TopPairCell({
+    required this.text,
+    this.header = false,
+  });
+
+  final String text;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: header
+          ? Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              )
+          : null,
     );
   }
 }

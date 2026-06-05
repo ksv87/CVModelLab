@@ -11,8 +11,12 @@ import 'package:file_picker/file_picker.dart';
 
 import 'annotated_image_saver_stub.dart';
 
-AnnotatedImageSaver createAnnotatedImageSaver() =>
-    const DesktopAnnotatedImageSaver();
+AnnotatedImageSaver createAnnotatedImageSaver() {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return const StubAnnotatedImageSaver();
+  }
+  return const DesktopAnnotatedImageSaver();
+}
 
 class DesktopAnnotatedImageSaver implements AnnotatedImageSaver {
   const DesktopAnnotatedImageSaver();

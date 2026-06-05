@@ -4,6 +4,13 @@
 
 Этот журнал содержит изменения проекта, доступные к текущему коммиту.
 
+## Адаптивный mobile и remote-only clients
+
+- Добавлены responsive compact/medium/expanded layouts, compact bottom navigation, mobile image viewer, bottom-sheet filters/details и mobile-friendly analysis screens.
+- Добавлены Android и iOS remote-only clients с platform capability gates, native mobile remote home, recent remote projects и mobile connect-to-server flow.
+- Отключены unsupported local dataset, local project, local AP и broad local export workflows на Android/iOS.
+- Добавлены DejaVu font license notice, root third-party licensing notes и hardened ignore rules для local secrets.
+
 ## Темы и PWA connection handling
 
 - Добавлены light, dark и system theme modes с сохранением user preference.

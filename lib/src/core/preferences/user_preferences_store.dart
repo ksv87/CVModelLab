@@ -35,6 +35,7 @@ class PreferenceKeys {
   static const String lastApMetricsImportDirectory =
       'last_ap_metrics_import_directory';
   static const String recentProjects = 'recent_projects';
+  static const String recentRemoteProjects = 'recent_remote_projects';
   static const String appLocale = 'app_locale';
   static const String appTheme = 'app_theme';
 

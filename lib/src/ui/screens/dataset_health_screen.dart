@@ -4,8 +4,10 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/responsive.dart';
 import '../widgets/status_views.dart';
 import '../l10n/app_locale_scope.dart';
+import '../l10n/app_localizations.dart';
 
 enum DatasetHealthUiFilter {
   all,
@@ -49,6 +51,76 @@ class _DatasetHealthScreenState extends State<DatasetHealthScreen> {
   Widget build(BuildContext context) {
     final List<DatasetHealthIssue> issues = _filteredIssues();
     final l10n = AppLocaleScope.l10n(context);
+    final bool compact = context.isCompactWidth;
+
+    final Widget emptyState = EmptyStateView(
+      title: widget.report.issues.isEmpty
+          ? 'No dataset health issues'
+          : 'No health issues for this filter',
+      explanation: widget.report.issues.isEmpty
+          ? 'The loaded dataset did not trigger missing-image, invalid-box, imbalance, or annotation-quality warnings.'
+          : 'The selected health filter did not match any issues. Switch back to All to review the full report.',
+      actionLabel: widget.report.issues.isEmpty ? null : 'Show all issues',
+      onAction: widget.report.issues.isEmpty
+          ? null
+          : () => setState(() => _filter = DatasetHealthUiFilter.all),
+      icon: Icons.check_circle_outline,
+    );
+
+    final Widget header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Dataset Health',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        _SummaryGrid(report: widget.report),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<DatasetHealthUiFilter>(
+          initialValue: _filter,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Filter',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: [
+            for (final DatasetHealthUiFilter filter
+                in DatasetHealthUiFilter.values)
+              DropdownMenuItem(
+                value: filter,
+                child: Text(_filterLabel(filter)),
+              ),
+          ],
+          onChanged: (DatasetHealthUiFilter? value) {
+            if (value != null) {
+              setState(() => _filter = value);
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+
+    if (compact) {
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          header,
+          if (issues.isEmpty)
+            emptyState
+          else
+            for (final DatasetHealthIssue issue in issues)
+              _IssueCard(
+                issue: issue,
+                localizations: l10n,
+                onTap: () => _openIssueSheet(issue),
+              ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(
@@ -56,51 +128,9 @@ class _DatasetHealthScreenState extends State<DatasetHealthScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
-                'Dataset Health',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              _SummaryGrid(report: widget.report),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<DatasetHealthUiFilter>(
-                initialValue: _filter,
-                decoration: const InputDecoration(
-                  labelText: 'Filter',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: [
-                  for (final DatasetHealthUiFilter filter
-                      in DatasetHealthUiFilter.values)
-                    DropdownMenuItem(
-                      value: filter,
-                      child: Text(_filterLabel(filter)),
-                    ),
-                ],
-                onChanged: (DatasetHealthUiFilter? value) {
-                  if (value != null) {
-                    setState(() => _filter = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
+              header,
               if (issues.isEmpty)
-                EmptyStateView(
-                  title: widget.report.issues.isEmpty
-                      ? 'No dataset health issues'
-                      : 'No health issues for this filter',
-                  explanation: widget.report.issues.isEmpty
-                      ? 'The loaded dataset did not trigger missing-image, invalid-box, imbalance, or annotation-quality warnings.'
-                      : 'The selected health filter did not match any issues. Switch back to All to review the full report.',
-                  actionLabel:
-                      widget.report.issues.isEmpty ? null : 'Show all issues',
-                  onAction: widget.report.issues.isEmpty
-                      ? null
-                      : () =>
-                          setState(() => _filter = DatasetHealthUiFilter.all),
-                  icon: Icons.check_circle_outline,
-                )
+                emptyState
               else
                 _IssueTable(
                   issues: issues,
@@ -136,6 +166,48 @@ class _DatasetHealthScreenState extends State<DatasetHealthScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openIssueSheet(DatasetHealthIssue issue) async {
+    setState(() {
+      _selectedIssue = issue;
+      _previewImageId = issue.imageId;
+    });
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.75,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(child: _IssueDetails(issue: issue)),
+                if (issue.imageId != null)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          widget.onImageSelected(issue.imageId!);
+                        },
+                        icon: const Icon(Icons.photo_library),
+                        label: const Text('Open image'),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -205,37 +277,52 @@ class _SummaryGrid extends StatelessWidget {
       ('Rare classes', report.rareClassCount),
       ('Unused files', report.unusedImageFileCount),
     ];
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisExtent: 64,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(8),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        final int crossAxisCount = width < 360
+            ? 2
+            : width < 560
+                ? 3
+                : 4;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisExtent: 64,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(item.$1, style: Theme.of(context).textTheme.labelMedium),
-                Text(
-                  '${item.$2}',
-                  style: Theme.of(context).textTheme.titleMedium,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      item.$1,
+                      style: Theme.of(context).textTheme.labelMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${item.$2}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -307,6 +394,57 @@ class _IssueTable extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _IssueCard extends StatelessWidget {
+  const _IssueCard({
+    required this.issue,
+    required this.localizations,
+    required this.onTap,
+  });
+
+  final DatasetHealthIssue issue;
+  final AppLocalizations localizations;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color color = switch (issue.severity) {
+      DatasetIssueSeverity.error => scheme.error,
+      DatasetIssueSeverity.warning => scheme.tertiary,
+      DatasetIssueSeverity.info => scheme.primary,
+    };
+    final String? location = issue.fileName ??
+        (issue.imageId != null ? 'image #${issue.imageId}' : null);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(Icons.circle, size: 14, color: color),
+        title: Text(localizations.datasetIssueTitle(issue)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              localizations.datasetIssueMessage(issue),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (location != null)
+              Text(
+                location,
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+        ),
+        isThreeLine: location != null,
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }

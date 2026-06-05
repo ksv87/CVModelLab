@@ -12,3 +12,4 @@ build/
 *.env
 *.local
 *.local.*
+/server/uv.lock

@@ -1,8 +1,11 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/platform/platform_capabilities.dart';
+import '../../core/preferences/recent_remote_projects.dart';
 import '../../platform_io/file_pick_result.dart';
 import '../../platform_io/image_source.dart';
+import '../../platform_io/platform_capabilities.dart';
 import '../../platform_io/platform_file_picker.dart';
 import '../../platform_io/project_file_io.dart';
 import '../../platform_io/project_loader.dart';
@@ -12,11 +15,14 @@ import '../widgets/status_views.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/theme_selector.dart';
 import '../l10n/app_locale_scope.dart';
+import '../l10n/app_localizations.dart';
 import 'remote_connect_screen.dart';
 import 'workspace_screen.dart';
 
 class ProjectOpenScreen extends StatefulWidget {
-  const ProjectOpenScreen({super.key});
+  const ProjectOpenScreen({this.capabilities, super.key});
+
+  final PlatformCapabilities? capabilities;
 
   @override
   State<ProjectOpenScreen> createState() => _ProjectOpenScreenState();
@@ -29,6 +35,10 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   final UserPreferencesStore _preferences = createUserPreferencesStore();
   late final RecentProjectsManager _recentProjectsManager =
       createRecentProjectsManager(_preferences);
+  late final RecentRemoteProjectsManager _recentRemoteProjectsManager =
+      RecentRemoteProjectsManager(store: _preferences);
+  late final PlatformCapabilities _capabilities =
+      widget.capabilities ?? currentPlatformCapabilities();
 
   // ── Normal open mode ──────────────────────────────────────────────────────
   PickedDataFile? _annotationsFile;
@@ -50,6 +60,8 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   LongRunningTaskProgress? _taskProgress;
   CancellationToken? _cancellationToken;
   List<RecentProjectEntry> _recentProjects = const <RecentProjectEntry>[];
+  List<RecentRemoteProjectEntry> _recentRemoteProjects =
+      const <RecentRemoteProjectEntry>[];
 
   bool get _inRestoreMode => _pendingProject != null;
 
@@ -64,6 +76,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   void initState() {
     super.initState();
     _loadRecentProjects();
+    _loadRecentRemoteProjects();
   }
 
   @override
@@ -93,9 +106,11 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
               constraints: const BoxConstraints(maxWidth: 980),
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: _inRestoreMode
-                    ? _buildRestoreMode(context)
-                    : _buildNormalMode(context),
+                child: _capabilities.isMobile
+                    ? _buildMobileRemoteHome(context)
+                    : _inRestoreMode
+                        ? _buildRestoreMode(context)
+                        : _buildNormalMode(context),
               ),
             ),
           ),
@@ -110,6 +125,47 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   }
 
   // ── Normal mode ───────────────────────────────────────────────────────────
+
+  Widget _buildMobileRemoteHome(BuildContext context) {
+    final AppLocalizations l10n = AppLocaleScope.l10n(context);
+    return ListView(
+      children: [
+        Text(
+          l10n.t(MessageKey.mobileRemoteClientMode),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Text(l10n.t(MessageKey.mobileRemoteClientExplanation)),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: _loading ? null : _connectToServer,
+          icon: const Icon(Icons.cloud_outlined),
+          label: Text(l10n.t(MessageKey.remoteConnectToServer)),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _recentRemoteProjects.isEmpty
+              ? null
+              : () => _openRecentRemoteProject(_recentRemoteProjects.first),
+          icon: const Icon(Icons.history),
+          label: Text(l10n.t(MessageKey.mobileOpenRecentRemoteProject)),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 360,
+          child: _RecentRemoteProjectsPanel(
+            entries: _recentRemoteProjects,
+            onOpen: _loading ? null : _openRecentRemoteProject,
+            onRemove: _loading ? null : _removeRecentRemoteProject,
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          FriendlyErrorView(error: _error!),
+        ],
+      ],
+    );
+  }
 
   Widget _buildNormalMode(BuildContext context) {
     return Column(
@@ -172,7 +228,8 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
               onPressed: _loading ? null : _connectToServer,
               icon: const Icon(Icons.cloud_outlined),
               label: Text(
-                AppLocaleScope.l10n(context).t(MessageKey.remoteConnectToServer),
+                AppLocaleScope.l10n(context)
+                    .t(MessageKey.remoteConnectToServer),
               ),
             ),
             if (_loadResult?.canOpen ?? false)
@@ -687,11 +744,13 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
   }
 
   void _connectToServer() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const RemoteConnectScreen(),
-      ),
-    );
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => const RemoteConnectScreen(),
+          ),
+        )
+        .then((_) => _loadRecentRemoteProjects());
   }
 
   void _openRemoteProject(CvmlProject project) {
@@ -720,7 +779,37 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     );
   }
 
+  void _openRecentRemoteProject(RecentRemoteProjectEntry entry) {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => RemoteConnectScreen(
+              reopen: RemoteReopenRequest(
+                serverUrl: entry.serverUrl,
+                descriptor: entry.descriptor,
+                activeModelRunId: entry.activeModelRunId,
+                defaultEvalConfig: entry.defaultEvalConfig,
+              ),
+            ),
+          ),
+        )
+        .then((_) => _loadRecentRemoteProjects());
+  }
+
   Future<void> _openSavedProject() async {
+    if (!_capabilities.supportsLocalStandaloneProjects) {
+      setState(
+        () => _error = FriendlyError(
+          title: AppLocaleScope.l10n(context).t(
+            MessageKey.mobileLocalUnavailable,
+          ),
+          message: AppLocaleScope.l10n(context).t(
+            MessageKey.mobileRemoteClientExplanation,
+          ),
+        ),
+      );
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -1037,6 +1126,21 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
     }
   }
 
+  Future<void> _loadRecentRemoteProjects() async {
+    final List<RecentRemoteProjectEntry> entries =
+        await _recentRemoteProjectsManager.list();
+    if (mounted) {
+      setState(() => _recentRemoteProjects = entries);
+    }
+  }
+
+  Future<void> _removeRecentRemoteProject(
+    RecentRemoteProjectEntry entry,
+  ) async {
+    await _recentRemoteProjectsManager.remove(entry.key);
+    await _loadRecentRemoteProjects();
+  }
+
   Future<void> _openRecentProject(RecentProjectEntry entry) async {
     setState(() {
       _loading = true;
@@ -1067,8 +1171,7 @@ class _ProjectOpenScreenState extends State<ProjectOpenScreen> {
 
       final CvmlProject project;
       try {
-        project =
-            const ProjectSerializer().fromJsonString(file.readAsString());
+        project = const ProjectSerializer().fromJsonString(file.readAsString());
       } on ProjectSerializationException catch (e) {
         setState(
           () => _error = FriendlyError(
@@ -1374,6 +1477,84 @@ class _RecentProjectsPanel extends StatelessWidget {
   }
 }
 
+class _RecentRemoteProjectsPanel extends StatelessWidget {
+  const _RecentRemoteProjectsPanel({
+    required this.entries,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final List<RecentRemoteProjectEntry> entries;
+  final ValueChanged<RecentRemoteProjectEntry>? onOpen;
+  final ValueChanged<RecentRemoteProjectEntry>? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = AppLocaleScope.l10n(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.t(MessageKey.mobileOpenRecentRemoteProject),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: entries.isEmpty
+                  ? EmptyStateView(
+                      title: l10n.t(MessageKey.remoteProject),
+                      explanation: l10n.t(
+                        MessageKey.mobileRemoteClientExplanation,
+                      ),
+                      icon: Icons.cloud_outlined,
+                    )
+                  : ListView.separated(
+                      itemCount: entries.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (BuildContext context, int index) {
+                        final RecentRemoteProjectEntry entry = entries[index];
+                        final String source = entry.descriptor.isManifest
+                            ? entry.descriptor.manifestId ?? 'manifest'
+                            : entry.descriptor.annotationsPath ??
+                                'custom paths';
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.cloud_queue),
+                          title: Text(
+                            entry.projectName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${entry.serverUrl}\n$source',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remove from recent',
+                            onPressed: onRemove == null
+                                ? null
+                                : () => onRemove!(entry),
+                            icon: const Icon(Icons.close),
+                          ),
+                          onTap: onOpen == null ? null : () => onOpen!(entry),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _IssueList extends StatelessWidget {
   const _IssueList({required this.issues});
 
@@ -1400,4 +1581,3 @@ class _IssueList extends StatelessWidget {
     );
   }
 }
-

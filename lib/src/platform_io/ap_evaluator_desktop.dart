@@ -17,6 +17,8 @@ bool _runnerDetected = false;
 class _DesktopApEvaluator implements ApEvaluator {
   const _DesktopApEvaluator();
 
+  bool get _isNativeMobile => Platform.isAndroid || Platform.isIOS;
+
   Future<_Runner?> _detectRunner() async {
     if (_runnerDetected) return _detectedRunner;
     _runnerDetected = true;
@@ -106,12 +108,16 @@ class _DesktopApEvaluator implements ApEvaluator {
 
   @override
   Future<String?> checkAvailability() async {
+    if (_isNativeMobile) {
+      return 'COCO AP evaluation runs on the server for Android/iOS clients. '
+          'Local AP evaluation is not available on mobile.';
+    }
     final _Runner? runner = await _detectRunner();
     if (runner != null) return null;
     return 'AP evaluation requires one of:\n'
-        '• uv (recommended) — install from https://docs.astral.sh/uv/\n'
+        '- uv (recommended) — install from https://docs.astral.sh/uv/\n'
         '  uv handles Python and pycocotools automatically.\n'
-        '• Python 3.8+ with pycocotools — run: pip install pycocotools';
+        '- Python 3.8+ with pycocotools — run: pip install pycocotools';
   }
 
   @override
@@ -120,6 +126,9 @@ class _DesktopApEvaluator implements ApEvaluator {
     required String predictionsPath,
     ApEvalConfig config = const ApEvalConfig(),
   }) async {
+    if (_isNativeMobile) {
+      throw Exception('Local AP evaluation is not available on mobile.');
+    }
     final _Runner? runner = await _detectRunner();
     if (runner == null) throw Exception(await checkAvailability());
 
@@ -202,6 +211,9 @@ class _DesktopApEvaluator implements ApEvaluator {
     required String predictionsJson,
     ApEvalConfig config = const ApEvalConfig(),
   }) async {
+    if (_isNativeMobile) {
+      throw Exception('Local AP evaluation is not available on mobile.');
+    }
     final String ts = DateTime.now().millisecondsSinceEpoch.toString();
     final String annPath = '${Directory.systemTemp.path}/cvmlab_ann_$ts.json';
     final String predPath = '${Directory.systemTemp.path}/cvmlab_pred_$ts.json';

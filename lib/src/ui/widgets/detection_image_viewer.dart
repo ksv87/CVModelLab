@@ -154,6 +154,7 @@ class _DetectionImageViewerState extends State<DetectionImageViewer> {
                       matches: _visibleOverlayMatches(),
                       selectedMatch: widget.selectedMatch,
                       imageBytesAvailable: widget.imageBytes != null,
+                      loading: widget.loadingImage,
                       showGt: _showGt,
                       showPredictions: _showPred,
                       showLabels: _showLabels,
@@ -189,7 +190,7 @@ class _DetectionImageViewerState extends State<DetectionImageViewer> {
 
   DetectionMatch? _hitTestMatch(Offset position, Size size) {
     final ImageRecord image = widget.image!;
-    final _ContainTransform transform = _transformFor(image, size);
+    final ContainTransform transform = containTransformFor(image, size);
     final List<DetectionMatch> visible = _visibleOverlayMatches();
     for (final DetectionMatch match in visible.reversed) {
       if (_showPred &&
@@ -266,6 +267,7 @@ class BBoxPainter extends CustomPainter {
     required this.showLabels,
     required this.showScores,
     required this.showIou,
+    this.loading = false,
   });
 
   final ImageRecord image;
@@ -273,6 +275,11 @@ class BBoxPainter extends CustomPainter {
   final List<DetectionMatch> matches;
   final DetectionMatch? selectedMatch;
   final bool imageBytesAvailable;
+
+  /// Whether the image bytes are still loading. While loading the placeholder
+  /// shows a neutral frame instead of a "Missing image" label, so a slow load
+  /// no longer flashes as a missing image.
+  final bool loading;
   final bool showGt;
   final bool showPredictions;
   final bool showLabels;
@@ -281,7 +288,7 @@ class BBoxPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final _ContainTransform transform = _transformFor(image, size);
+    final ContainTransform transform = containTransformFor(image, size);
 
     if (!imageBytesAvailable) {
       _paintPlaceholder(canvas, size, transform);
@@ -317,7 +324,7 @@ class BBoxPainter extends CustomPainter {
   void _paintPlaceholder(
     Canvas canvas,
     Size size,
-    _ContainTransform transform,
+    ContainTransform transform,
   ) {
     final Paint background = Paint()..color = const Color(0xfff8fafc);
     canvas.drawRect(Offset.zero & size, background);
@@ -328,6 +335,11 @@ class BBoxPainter extends CustomPainter {
       ..strokeWidth = 1
       ..color = const Color(0xff94a3b8);
     canvas.drawRect(transform.imageRect, border);
+    // While the bytes are still loading, leave a neutral frame (a spinner is
+    // shown elsewhere); only label it as missing once the load has finished.
+    if (loading) {
+      return;
+    }
     final TextPainter textPainter = TextPainter(
       text: TextSpan(
         text: 'Missing image: ${image.fileName}',
@@ -345,7 +357,7 @@ class BBoxPainter extends CustomPainter {
 
   void _paintBox({
     required Canvas canvas,
-    required _ContainTransform transform,
+    required ContainTransform transform,
     required BBox bbox,
     required Color color,
     required double strokeWidth,
@@ -469,6 +481,7 @@ class BBoxPainter extends CustomPainter {
         oldDelegate.matches != matches ||
         oldDelegate.selectedMatch != selectedMatch ||
         oldDelegate.imageBytesAvailable != imageBytesAvailable ||
+        oldDelegate.loading != loading ||
         oldDelegate.showGt != showGt ||
         oldDelegate.showPredictions != showPredictions ||
         oldDelegate.showLabels != showLabels ||
@@ -477,8 +490,8 @@ class BBoxPainter extends CustomPainter {
   }
 }
 
-class _ContainTransform {
-  const _ContainTransform({
+class ContainTransform {
+  const ContainTransform({
     required this.scale,
     required this.offset,
     required this.imageRect,
@@ -498,7 +511,7 @@ class _ContainTransform {
   }
 }
 
-_ContainTransform _transformFor(ImageRecord image, Size canvasSize) {
+ContainTransform containTransformFor(ImageRecord image, Size canvasSize) {
   final double imageWidth = (image.width ?? 640).toDouble();
   final double imageHeight = (image.height ?? 480).toDouble();
   final double scale =
@@ -511,7 +524,7 @@ _ContainTransform _transformFor(ImageRecord image, Size canvasSize) {
     (canvasSize.width - displayWidth) / 2,
     (canvasSize.height - displayHeight) / 2,
   );
-  return _ContainTransform(
+  return ContainTransform(
     scale: scale,
     offset: offset,
     imageRect: offset & Size(displayWidth, displayHeight),

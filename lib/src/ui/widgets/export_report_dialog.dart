@@ -1,6 +1,9 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale_scope.dart';
+import 'responsive.dart';
+
 /// User selections collected by [ExportReportDialog].
 class ExportReportRequest {
   const ExportReportRequest({
@@ -95,14 +98,21 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool compact = context.isCompactWidth;
     return AlertDialog(
+      insetPadding: compact
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 24)
+          : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       title: const Text('Export Report'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Include:', style: Theme.of(context).textTheme.titleSmall),
+      content: SizedBox(
+        width: compact ? double.maxFinite : 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (compact) _MobileExportWarning(),
+              Text('Include:', style: Theme.of(context).textTheme.titleSmall),
             _checkbox(
               label: 'HTML report',
               value: _html,
@@ -314,7 +324,8 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -388,5 +399,26 @@ class _ExportReportDialogState extends State<ExportReportDialog> {
       onChanged: enabled ? (bool? v) => onChanged(v ?? false) : null,
     );
     return tooltip == null ? tile : Tooltip(message: tooltip, child: tile);
+  }
+}
+
+class _MobileExportWarning extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final String text =
+        AppLocaleScope.l10n(context).t(MessageKey.mobileLargeExportWarning);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      ),
+    );
   }
 }

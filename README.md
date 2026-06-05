@@ -42,7 +42,8 @@ Object detection model failures are hard to understand from aggregate metrics al
 - Desktop Recent Projects and last-used folder preferences.
 - Image Browser thumbnail cache with web-safe fallback.
 - Web/PWA restore mode for browser workflows.
-- Desktop and Web/PWA support from the same app experience.
+- Desktop, Web/PWA, and Android/iOS remote-client support from the same app
+  experience.
 
 ## Sample Reports
 
@@ -60,12 +61,40 @@ See [docs/showcase_demo.md](docs/showcase_demo.md) and [demo/showcase_coco/repor
 
 ## Supported Platforms
 
-- Linux desktop.
-- Windows desktop.
-- macOS desktop.
-- Web/PWA in a browser.
+| Platform | Local standalone datasets | Remote server projects |
+|----------|---------------------------|------------------------|
+| Linux / Windows / macOS desktop | Yes | Yes |
+| Web/PWA | Yes, through browser-selected files | Yes |
+| Android / iOS apps | No | Yes, remote only |
 
 Desktop builds require the corresponding Flutter desktop toolchain on the target host. The web build runs without a backend and uses browser file selection APIs.
+
+## Android and iOS Apps
+
+Android and iOS apps are remote-only clients for CV Model Lab Server. They start
+in **Remote client mode**, connect to a manually entered server URL, and open
+server manifest projects or custom server paths through the server file
+browser. They do not request broad storage permissions and do not open local
+COCO annotations, predictions, image folders, local project files, or the local
+AP evaluator from the device.
+
+Details: [Android and iOS Remote Clients](docs/mobile_apps.md) /
+[Android и iOS как удалённые клиенты](docs/ru/mobile_apps.md).
+
+## Mobile PWA
+
+The Web/PWA build is responsive and adapts to narrow and mobile screens. On
+compact widths it switches to a mobile-first layout with bottom navigation
+(Project, Images, Metrics, Compare, Reports, More), a full-screen image viewer
+with pinch/pan and overlay options, filters in bottom sheets, a mobile-friendly
+Confusion Matrix top-pairs view, and a narrow-screen export dialog. The
+desktop layout is preserved on wide screens.
+
+This works on Android Chrome, iOS Safari, an installed PWA, and a resized
+desktop browser window. Native Android and iOS apps use the separate remote-only
+client mode described above.
+
+Details: [Mobile PWA](docs/mobile_pwa.md) / [Мобильный PWA](docs/ru/mobile_pwa.md).
 
 ## Supported Formats
 

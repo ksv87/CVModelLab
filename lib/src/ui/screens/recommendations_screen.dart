@@ -2,6 +2,7 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../widgets/responsive.dart';
 import '../widgets/status_views.dart';
 
 enum RecommendationUiFilter {
@@ -40,47 +41,47 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Recommendation> recommendations = _filtered();
-    return Row(
+    final bool compact = context.isCompactWidth;
+    final Widget list = ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        Expanded(
-          flex: 3,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Recommendations',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 220,
-                    child: DropdownButtonFormField<RecommendationUiFilter>(
-                      initialValue: _filter,
-                      decoration: const InputDecoration(
-                        labelText: 'Filter',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      items: [
-                        for (final RecommendationUiFilter filter
-                            in RecommendationUiFilter.values)
-                          DropdownMenuItem(
-                            value: filter,
-                            child: Text(_filterLabel(filter)),
-                          ),
-                      ],
-                      onChanged: (RecommendationUiFilter? value) {
-                        if (value != null) {
-                          setState(() => _filter = value);
-                        }
-                      },
-                    ),
-                  ),
-                ],
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Recommendations',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 12),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<RecommendationUiFilter>(
+                initialValue: _filter,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Filter',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: [
+                  for (final RecommendationUiFilter filter
+                      in RecommendationUiFilter.values)
+                    DropdownMenuItem(
+                      value: filter,
+                      child: Text(_filterLabel(filter)),
+                    ),
+                ],
+                onChanged: (RecommendationUiFilter? value) {
+                  if (value != null) {
+                    setState(() => _filter = value);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
               _SummaryRow(recommendations: widget.recommendations),
               const SizedBox(height: 12),
               if (recommendations.isEmpty)
@@ -105,7 +106,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     recommendation: recommendation,
                     dataset: widget.dataset,
                     selected: identical(_selected, recommendation),
-                    onTap: () => setState(() => _selected = recommendation),
+                    onTap: compact
+                        ? () => _openRecommendationSheet(recommendation)
+                        : () => setState(() => _selected = recommendation),
                     onOpenImage: recommendation.relatedImageIds.isEmpty
                         ? null
                         : () => widget.onImageSelected(
@@ -117,9 +120,16 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                               recommendation.relatedCategoryIds.first,
                             ),
                   ),
-            ],
-          ),
-        ),
+      ],
+    );
+
+    if (compact) {
+      return list;
+    }
+
+    return Row(
+      children: [
+        Expanded(flex: 3, child: list),
         const VerticalDivider(width: 1),
         SizedBox(
           width: 380,
@@ -137,6 +147,44 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openRecommendationSheet(Recommendation recommendation) async {
+    setState(() => _selected = recommendation);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.8,
+            ),
+            child: _RecommendationDetails(
+              recommendation: recommendation,
+              dataset: widget.dataset,
+              onOpenImage: recommendation.relatedImageIds.isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(sheetContext).pop();
+                      widget.onImageSelected(
+                        recommendation.relatedImageIds.first,
+                      );
+                    },
+              onApplyClass: recommendation.relatedCategoryIds.isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(sheetContext).pop();
+                      widget.onCategorySelected(
+                        recommendation.relatedCategoryIds.first,
+                      );
+                    },
+            ),
+          ),
+        );
+      },
     );
   }
 

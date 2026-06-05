@@ -4,12 +4,14 @@ import 'dart:typed_data';
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/platform/platform_capabilities.dart';
 import '../../platform_io/annotated_image_saver.dart';
 import '../../platform_io/pdf_font_loader.dart';
 import '../../core/parser/coco_serializer.dart';
 import '../../platform_io/ap_evaluator.dart';
 import '../../platform_io/file_pick_result.dart';
 import '../../platform_io/image_source.dart';
+import '../../platform_io/platform_capabilities.dart';
 import '../../platform_io/platform_file_picker.dart';
 import '../../platform_io/project_file_io.dart';
 import '../../platform_io/recent_projects_io.dart';
@@ -21,11 +23,14 @@ import '../../platform_io/thumbnail_cache.dart';
 import '../../platform_io/user_preferences.dart';
 import '../export/annotated_image_renderer.dart';
 import '../l10n/app_locale_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/annotated_export_dialog.dart';
 import '../widgets/dashboard_panel.dart';
 import '../widgets/detection_image_viewer.dart';
 import '../widgets/export_report_dialog.dart';
 import '../widgets/image_browser_panel.dart';
+import '../widgets/mobile_image_viewer.dart';
+import '../widgets/responsive.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/theme_selector.dart';
 import '../widgets/status_views.dart';
@@ -94,6 +99,7 @@ class WorkspaceScreen extends StatefulWidget {
     this.initialActiveRunIndex = 0,
     this.initialApEvalResults = const {},
     this.remoteContext,
+    this.capabilities,
     super.key,
   });
 
@@ -119,6 +125,7 @@ class WorkspaceScreen extends StatefulWidget {
   final Map<String, ApEvalResult> initialApEvalResults;
 
   final RemoteWorkspaceContext? remoteContext;
+  final PlatformCapabilities? capabilities;
 
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
@@ -141,12 +148,21 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   late String _projectName;
   int _activeRunIndex = 0;
   _WorkspacePage _page = _WorkspacePage.errorBrowser;
+
+  /// Bottom navigation index on compact layouts:
+  /// 0 Project, 1 Images, 2 Metrics, 3 Compare, 4 Reports, 5 More.
+  int _compactTabIndex = 1;
+
+  /// Selected metric sub-page within the compact Metrics tab.
+  _WorkspacePage _compactMetricsPage = _WorkspacePage.dashboard;
   String? _projectFilePath;
   RemoteWorkspaceContext? _remoteContext;
+  bool _browserDashboardVisible = true;
 
   EvalConfig _evalConfig = _defaultEvalConfig;
   EvalViewFilter _viewFilter = _defaultViewFilter;
   int? _selectedImageId;
+  int _browserScrollRequest = 0;
   DetectionMatch? _selectedMatch;
   Uint8List? _selectedImageBytes;
   bool _loadingImage = false;
@@ -166,6 +182,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   late final RecentProjectsManager _recentProjectsManager =
       createRecentProjectsManager(_preferences);
   late final ThumbnailCache _thumbnailCache = createThumbnailCache();
+  late final PlatformCapabilities _capabilities =
+      widget.capabilities ?? currentPlatformCapabilities();
 
   final Map<String, ApEvalResult> _apEvalResults = {};
   bool _runningApEval = false;
@@ -225,6 +243,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
     final String title =
         _projectName + (_projectFilePath == null ? ' (unsaved)' : '');
+
+    if (context.isCompactWidth) {
+      return _buildCompactScaffold(
+        title: title,
+        filteredView: filteredView,
+        selectedImage: selectedImage,
+        selectedMatches: selectedMatches,
+        effectiveImageId: effectiveImageId,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -289,6 +317,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     const VerticalDivider(width: 1),
                     Expanded(
                       child: _buildWorkspacePage(
+                        _page,
                         filteredView: filteredView,
                         selectedImage: selectedImage,
                         selectedMatches: selectedMatches,
@@ -312,13 +341,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     );
   }
 
-  Widget _buildWorkspacePage({
+  Widget _buildWorkspacePage(
+    _WorkspacePage page, {
     required FilteredEvalView filteredView,
     required ImageRecord? selectedImage,
     required List<DetectionMatch> selectedMatches,
     required int? effectiveImageId,
   }) {
-    return switch (_page) {
+    return switch (page) {
       _WorkspacePage.dashboard => DashboardPanel(
           dataset: widget.dataset,
           evalResult: _evalResult,
@@ -345,6 +375,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 thumbnailCache: _thumbnailCache,
                 projectId: _projectCacheId,
                 imageSource: widget.imageSource,
+                scrollToSelectedRequest: _browserScrollRequest,
                 onFilterChanged: _updateViewFilter,
                 onResetFilters: () => _updateViewFilter(_defaultViewFilter),
                 onImageSelected: _selectImage,
@@ -353,23 +384,72 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             const VerticalDivider(width: 1),
             Expanded(child: _viewer(selectedImage, selectedMatches)),
             const VerticalDivider(width: 1),
-            SizedBox(
-              width: 360,
-              child: BrowserDashboardTabs(
-                dataset: widget.dataset,
-                evalResult: _evalResult,
-                selectedImage: selectedImage,
-                selectedMatches: selectedMatches,
-                selectedMatch: _selectedMatch,
-                issues: widget.issues,
-                apEvalResult: _apEvalResults[_activeModelRun.id],
-                canRunApEval: _canRunApEval(),
-                runningApEval: _runningApEval,
-                onRunApEval: _canRunApEval() ? _runApEval : null,
-                onImportApMetrics: _importApMetrics,
-                apEvalUnavailableReason: _apEvalError,
+            if (_browserDashboardVisible)
+              SizedBox(
+                width: 360,
+                child: Column(
+                  children: [
+                    Material(
+                      color: Theme.of(context).colorScheme.surface,
+                      child: SizedBox(
+                        height: 48,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Details',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Hide details panel',
+                              onPressed: () => setState(
+                                () => _browserDashboardVisible = false,
+                              ),
+                              icon: const Icon(Icons.visibility_off),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: BrowserDashboardTabs(
+                        dataset: widget.dataset,
+                        evalResult: _evalResult,
+                        selectedImage: selectedImage,
+                        selectedMatches: selectedMatches,
+                        selectedMatch: _selectedMatch,
+                        issues: widget.issues,
+                        apEvalResult: _apEvalResults[_activeModelRun.id],
+                        canRunApEval: _canRunApEval(),
+                        runningApEval: _runningApEval,
+                        onRunApEval: _canRunApEval() ? _runApEval : null,
+                        onImportApMetrics: _importApMetrics,
+                        apEvalUnavailableReason: _apEvalError,
+                        onLocateSelectedInList: effectiveImageId == null
+                            ? null
+                            : () => setState(() => _browserScrollRequest++),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                width: 48,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: IconButton(
+                    tooltip: 'Show details panel',
+                    onPressed: () => setState(
+                      () => _browserDashboardVisible = true,
+                    ),
+                    icon: const Icon(Icons.visibility),
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       _WorkspacePage.datasetHealth => DatasetHealthScreen(
@@ -401,6 +481,622 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           onCategorySelected: _openCategoryInBrowser,
         ),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Compact (mobile / narrow) layout.
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCompactScaffold({
+    required String title,
+    required FilteredEvalView filteredView,
+    required ImageRecord? selectedImage,
+    required List<DetectionMatch> selectedMatches,
+    required int? effectiveImageId,
+  }) {
+    final AppLocalizations l10n = AppLocaleScope.l10n(context);
+    final Widget body = switch (_compactTabIndex) {
+      0 => _buildCompactProjectTab(l10n),
+      1 => _buildCompactImagesTab(l10n, filteredView),
+      2 => _buildCompactMetricsTab(
+          l10n,
+          filteredView: filteredView,
+          selectedImage: selectedImage,
+          selectedMatches: selectedMatches,
+          effectiveImageId: effectiveImageId,
+        ),
+      3 => _buildCompactCompareTab(l10n),
+      4 => _buildCompactReportsTab(l10n),
+      _ => _buildCompactMoreTab(l10n),
+    };
+
+    return Scaffold(
+      appBar: AppBar(
+        title: GestureDetector(
+          onDoubleTap: _evaluating ? null : _renameProject,
+          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        actions: [
+          if (_evaluating || _exporting || _addingRun || _savingProject)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          SafeArea(child: body),
+          if (_taskProgress != null)
+            TaskProgressOverlay(
+              progress: _taskProgress!,
+              onCancel: _taskProgress!.canCancel ? _cancelTask : null,
+            )
+          else if (_evaluating)
+            const _EvaluationOverlay(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _compactTabIndex,
+        onDestinationSelected: (int index) =>
+            setState(() => _compactTabIndex = index),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.folder_open),
+            label: l10n.t(MessageKey.navProject),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.photo_library),
+            label: l10n.t(MessageKey.navImages),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.assessment),
+            label: l10n.t(MessageKey.navMetrics),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.compare_arrows),
+            label: l10n.t(MessageKey.navCompare),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.download),
+            label: l10n.t(MessageKey.navReports),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.more_horiz),
+            label: l10n.t(MessageKey.navMore),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactProjectTab(AppLocalizations l10n) {
+    final RemoteWorkspaceContext? remote = _remoteContext;
+    final bool apAvailable = _apEvalResults[_activeModelRun.id] != null;
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _projectName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (remote != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    remote.server.url,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                if (_modelRunEntries.length >= 2)
+                  DropdownButtonFormField<int>(
+                    initialValue: _activeRunIndex,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Model run',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      for (int i = 0; i < _modelRunEntries.length; i++)
+                        DropdownMenuItem<int>(
+                          value: i,
+                          child: Text(
+                            _modelRunEntries[i].modelRun.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: _evaluating ? null : _switchActiveRun,
+                  )
+                else
+                  Text('Model run: ${_activeModelRun.name}'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed:
+                          _evaluating || _addingRun ? null : _addModelRun,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add run'),
+                    ),
+                    if (_modelRunEntries.length > 1)
+                      OutlinedButton.icon(
+                        onPressed: _evaluating || _addingRun
+                            ? null
+                            : _removeActiveModelRun,
+                        icon: const Icon(Icons.remove_circle_outline),
+                        label: const Text('Remove'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: _evaluating || _addingRun
+                          ? null
+                          : _renameActiveModelRun,
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Rename run'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed:
+                          _evaluating ? null : () => _reevaluate(_evalConfig),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reload'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Thresholds',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                _ThresholdField(
+                  label: 'IoU',
+                  value: _evalConfig.iouThreshold,
+                  enabled: !_evaluating,
+                  onSubmitted: (double v) =>
+                      _reevaluate(_evalConfig.copyWith(iouThreshold: v)),
+                ),
+                _ThresholdField(
+                  label: 'Confidence',
+                  value: _evalConfig.confidenceThreshold,
+                  enabled: !_evaluating,
+                  onSubmitted: (double v) =>
+                      _reevaluate(_evalConfig.copyWith(confidenceThreshold: v)),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('Class aware'),
+                      selected: _evalConfig.classAwareMatching,
+                      onSelected: _evaluating
+                          ? null
+                          : (bool v) => _reevaluate(
+                                _evalConfig.copyWith(classAwareMatching: v),
+                              ),
+                    ),
+                    FilterChip(
+                      label: const Text('Ignore crowd'),
+                      selected: _evalConfig.ignoreCrowd,
+                      onSelected: _evaluating
+                          ? null
+                          : (bool v) =>
+                              _reevaluate(_evalConfig.copyWith(ignoreCrowd: v)),
+                    ),
+                    TextButton.icon(
+                      onPressed: _evaluating
+                          ? null
+                          : () => _reevaluate(_defaultEvalConfig),
+                      icon: const Icon(Icons.restart_alt),
+                      label: const Text('Defaults'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'COCO AP metrics',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  apAvailable
+                      ? 'AP metrics available for this model run.'
+                      : 'AP metrics not computed.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (_remoteContext != null ||
+                        _capabilities.supportsLocalApEvaluator)
+                      OutlinedButton.icon(
+                        onPressed: _runningApEval || !_canRunApEval()
+                            ? null
+                            : _runApEval,
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Run COCO AP'),
+                      ),
+                    if (_capabilities.supportsLocalDatasetPicker)
+                      OutlinedButton.icon(
+                        onPressed: _runningApEval ? null : _importApMetrics,
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Import AP JSON'),
+                      ),
+                  ],
+                ),
+                if (_apEvalError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _apEvalError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactImagesTab(
+    AppLocalizations l10n,
+    FilteredEvalView filteredView,
+  ) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${filteredView.filteredImageIds.length} / '
+                  '${widget.dataset.imagesById.length}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () => _openFiltersSheet(l10n),
+                icon: const Icon(Icons.filter_list),
+                label: Text(l10n.t(MessageKey.mobileOpenFilters)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ImageBrowserPanel(
+            dataset: widget.dataset,
+            view: filteredView,
+            filter: _viewFilter,
+            selectedImageId: _selectedImageId,
+            thumbnailCache: _thumbnailCache,
+            projectId: _projectCacheId,
+            imageSource: widget.imageSource,
+            showFilters: false,
+            scrollToSelectedRequest: _browserScrollRequest,
+            onFilterChanged: _updateViewFilter,
+            onResetFilters: () => _updateViewFilter(_defaultViewFilter),
+            onImageSelected: (int id) {
+              _selectImage(id);
+              _openMobileViewer(id, filteredView);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openMobileViewer(int imageId, FilteredEvalView view) {
+    final Set<int> errorIds = <int>{
+      for (final int id in view.filteredImageIds)
+        if (view.imageSummaries[id]?.hasError ?? false) id,
+    };
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => MobileImageViewerPage(
+              dataset: widget.dataset,
+              categoriesById: widget.dataset.categoriesById,
+              imageIds: view.filteredImageIds,
+              errorImageIds: errorIds,
+              initialImageId: imageId,
+              matchesFor: view.visibleMatchesForImage,
+              loadImageBytes: widget.imageSource.readImageBytes,
+              modelRunName: _activeModelRun.name,
+              onImageChanged: _selectImage,
+            ),
+          ),
+        )
+        .then((_) {
+      // Back from the viewer: center the image list on the last image viewed
+      // (only takes effect when the Images tab is the screen underneath).
+      if (mounted) {
+        setState(() => _browserScrollRequest++);
+      }
+    });
+  }
+
+  Widget _buildCompactMetricsTab(
+    AppLocalizations l10n, {
+    required FilteredEvalView filteredView,
+    required ImageRecord? selectedImage,
+    required List<DetectionMatch> selectedMatches,
+    required int? effectiveImageId,
+  }) {
+    const List<(_WorkspacePage, String)> pages = [
+      (_WorkspacePage.dashboard, 'Dashboard'),
+      (_WorkspacePage.datasetHealth, 'Health'),
+      (_WorkspacePage.confusionMatrix, 'Confusion'),
+      (_WorkspacePage.worstCases, 'Worst'),
+      (_WorkspacePage.recommendations, 'Advice'),
+    ];
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              for (final (_WorkspacePage page, String label) in pages)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(label),
+                    selected: _compactMetricsPage == page,
+                    onSelected: (_) =>
+                        setState(() => _compactMetricsPage = page),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _buildWorkspacePage(
+            _compactMetricsPage,
+            filteredView: filteredView,
+            selectedImage: selectedImage,
+            selectedMatches: selectedMatches,
+            effectiveImageId: effectiveImageId,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactCompareTab(AppLocalizations l10n) {
+    if (_modelRunEntries.length < 2) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            l10n.t(MessageKey.mmSelectTwoRuns),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${_modelRunEntries.length} ${l10n.t(MessageKey.mmModelRuns)}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _evaluating ? null : _openCompareScreen,
+              icon: const Icon(Icons.compare_arrows),
+              label: Text(l10n.t(MessageKey.navCompare)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactReportsTab(AppLocalizations l10n) {
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.t(MessageKey.navReports),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                if (_capabilities.supportsReportDownload) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.t(MessageKey.mobileLargeExportWarning),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _evaluating ? null : _openExportDialog,
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export report'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _evaluating ? null : _openAnnotatedExportDialog,
+                    icon: const Icon(Icons.image),
+                    label: const Text('Export annotated'),
+                  ),
+                ] else
+                  Text(
+                    '${l10n.t(MessageKey.mobileExportDesktopPwaOnly)} '
+                    '${l10n.t(MessageKey.mobileExportLimited)}',
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactMoreTab(AppLocalizations l10n) {
+    final RemoteWorkspaceContext? remote = _remoteContext;
+    return ListView(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.brightness_6),
+          title: Text(l10n.t(MessageKey.themeTooltip)),
+          trailing: const ThemeSelector(),
+        ),
+        ListTile(
+          leading: const Icon(Icons.language),
+          title: const Text('Language'),
+          trailing: const LanguageSelector(),
+        ),
+        if (remote != null)
+          ListTile(
+            leading: const Icon(Icons.dns),
+            title: Text(l10n.t(MessageKey.remoteConnectToServer)),
+            subtitle: Text(remote.server.url),
+          ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.save),
+          title: const Text('Save project'),
+          onTap: _evaluating || _savingProject ? null : () => _saveProject(),
+        ),
+        ListTile(
+          leading: const Icon(Icons.drive_file_rename_outline),
+          title: const Text('Rename project'),
+          onTap: _evaluating ? null : _renameProject,
+        ),
+        ListTile(
+          leading: const Icon(Icons.cleaning_services_outlined),
+          title: const Text('Clear thumbnail cache'),
+          onTap: _evaluating ? null : _clearThumbnailCache,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openFiltersSheet(AppLocalizations l10n) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setSheetState) {
+            final FilteredEvalView view = _buildFilteredView();
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              l10n.t(MessageKey.mobileFilters),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                _updateViewFilter(_defaultViewFilter);
+                                setSheetState(() {});
+                              },
+                              child:
+                                  Text(l10n.t(MessageKey.mobileResetFilters)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ImageBrowserFilters(
+                          dataset: widget.dataset,
+                          view: view,
+                          filter: _viewFilter,
+                          onFilterChanged: (EvalViewFilter f) {
+                            _updateViewFilter(f);
+                            setSheetState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(l10n.t(MessageKey.mobileApplyFilters)),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _viewer(ImageRecord? selectedImage, List<DetectionMatch> matches) {
@@ -499,126 +1195,123 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   List<Widget> _buildAppBarActions(BuildContext context) {
+    const Widget spinner = Padding(
+      padding: EdgeInsets.symmetric(horizontal: 14),
+      child: Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
     return [
       // Model run selector / label.
       if (_modelRunEntries.length >= 2)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: DropdownButton<int>(
-            value: _activeRunIndex,
-            underline: const SizedBox.shrink(),
-            items: [
-              for (int i = 0; i < _modelRunEntries.length; i++)
-                DropdownMenuItem<int>(
-                  value: i,
-                  child: Text(_modelRunEntries[i].modelRun.name),
-                ),
-            ],
-            onChanged: _evaluating ? null : _switchActiveRun,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 200),
+            child: DropdownButton<int>(
+              value: _activeRunIndex,
+              underline: const SizedBox.shrink(),
+              isExpanded: true,
+              items: [
+                for (int i = 0; i < _modelRunEntries.length; i++)
+                  DropdownMenuItem<int>(
+                    value: i,
+                    child: Text(
+                      _modelRunEntries[i].modelRun.name,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: _evaluating ? null : _switchActiveRun,
+            ),
           ),
         )
       else
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Center(child: Text(_activeModelRun.name)),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Text(
+                _activeModelRun.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
         ),
 
       // Rename active model run.
-      Tooltip(
-        message: 'Rename model run',
-        child: IconButton(
-          onPressed: _evaluating || _addingRun ? null : _renameActiveModelRun,
-          icon: const Icon(Icons.edit),
-        ),
+      IconButton(
+        tooltip: 'Rename model run',
+        onPressed: _evaluating || _addingRun ? null : _renameActiveModelRun,
+        icon: const Icon(Icons.edit),
       ),
 
       // Add Model Run button.
-      if (!_addingRun)
-        TextButton.icon(
+      if (_addingRun)
+        spinner
+      else
+        IconButton(
+          tooltip: 'Add model run',
           onPressed: _evaluating ? null : _addModelRun,
           icon: const Icon(Icons.add),
-          label: const Text('Add model run'),
-        ),
-      if (_addingRun)
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Center(
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
         ),
 
       // Remove model run button (only when > 1 runs).
       if (_modelRunEntries.length > 1)
-        TextButton.icon(
+        IconButton(
+          tooltip: 'Remove model run',
           onPressed: _evaluating || _addingRun ? null : _removeActiveModelRun,
-          icon: const Icon(Icons.remove_circle),
-          label: const Text('Remove'),
+          icon: const Icon(Icons.remove_circle_outline),
         ),
 
       // Compare Models button.
       if (_modelRunEntries.length >= 2)
-        TextButton.icon(
+        IconButton(
+          tooltip: 'Compare models',
           onPressed: _evaluating ? null : _openCompareScreen,
           icon: const Icon(Icons.compare_arrows),
-          label: const Text('Compare'),
         ),
 
-      TextButton.icon(
-        onPressed: _evaluating ? null : _openAnnotatedExportDialog,
-        icon: const Icon(Icons.image),
-        label: const Text('Export annotated'),
-      ),
-
-      Tooltip(
-        message: 'Clear thumbnail cache',
-        child: IconButton(
-          onPressed: _evaluating ? null : _clearThumbnailCache,
-          icon: const Icon(Icons.cleaning_services_outlined),
+      if (_capabilities.supportsReportDownload)
+        IconButton(
+          tooltip: 'Export annotated images',
+          onPressed: _evaluating ? null : _openAnnotatedExportDialog,
+          icon: const Icon(Icons.image),
         ),
+
+      IconButton(
+        tooltip: 'Clear thumbnail cache',
+        onPressed: _evaluating ? null : _clearThumbnailCache,
+        icon: const Icon(Icons.cleaning_services_outlined),
       ),
 
       // Save project button.
-      if (_savingProject)
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Center(
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+      if (_capabilities.supportsLocalStandaloneProjects)
+        if (_savingProject)
+          spinner
+        else
+          IconButton(
+            tooltip: 'Save project',
+            onPressed: _evaluating ? null : _saveProject,
+            icon: const Icon(Icons.save),
           ),
-        )
-      else
-        TextButton.icon(
-          onPressed: _evaluating ? null : _saveProject,
-          icon: const Icon(Icons.save),
-          label: const Text('Save'),
-        ),
 
-      // Export button.
-      if (_exporting)
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Center(
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+      // Export report button.
+      if (_capabilities.supportsReportDownload)
+        if (_exporting)
+          spinner
+        else
+          IconButton(
+            tooltip: 'Export report',
+            onPressed: _evaluating ? null : _openExportDialog,
+            icon: const Icon(Icons.download),
           ),
-        )
-      else
-        TextButton.icon(
-          onPressed: _evaluating ? null : _openExportDialog,
-          icon: const Icon(Icons.download),
-          label: const Text('Export report'),
-        ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 4),
       const Center(child: ThemeSelector()),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 8),
@@ -674,7 +1367,39 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   void _openImageInBrowser(int imageId) {
-    setState(() => _page = _WorkspacePage.errorBrowser);
+    FilteredEvalView view = _buildFilteredView();
+    final bool resetFilter = !view.filteredImageIds.contains(imageId);
+    if (resetFilter) {
+      view = _filteredViewFor(_evalResult, _defaultViewFilter);
+    }
+    if (context.isCompactWidth) {
+      // On compact width the full-screen viewer opens on top of the CURRENT
+      // screen (e.g. the worst-cases / health list the image was tapped from),
+      // so pressing back returns to that exact list and item instead of jumping
+      // to the Images tab. Only make sure the requested image is part of the
+      // view passed to the viewer so prev/next navigation works.
+      if (resetFilter) {
+        setState(() {
+          _cachedView = view;
+          _cachedViewResult = _evalResult;
+          _cachedViewFilter = _defaultViewFilter;
+          _viewFilter = _defaultViewFilter;
+        });
+      }
+      _selectImage(imageId);
+      _openMobileViewer(imageId, view);
+      return;
+    }
+    setState(() {
+      _page = _WorkspacePage.errorBrowser;
+      if (resetFilter) {
+        _cachedView = view;
+        _cachedViewResult = _evalResult;
+        _cachedViewFilter = _defaultViewFilter;
+        _viewFilter = _defaultViewFilter;
+      }
+      _browserScrollRequest++;
+    });
     _selectImage(imageId);
   }
 
@@ -685,7 +1410,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         imageFilter: EvalImageFilter.all,
       ),
     );
-    setState(() => _page = _WorkspacePage.errorBrowser);
+    setState(() {
+      _page = _WorkspacePage.errorBrowser;
+      _compactTabIndex = 1;
+    });
   }
 
   void _updateViewFilter(EvalViewFilter filter) {
@@ -1222,8 +1950,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     return '$name (${DateTime.now().millisecondsSinceEpoch})';
   }
 
-  // The button is always enabled — availability is checked lazily on click.
-  bool _canRunApEval() => !_runningApEval;
+  bool _canRunApEval() {
+    if (_runningApEval) return false;
+    if (_remoteContext != null) return true;
+    return _capabilities.supportsLocalApEvaluator;
+  }
 
   Future<void> _runApEval() async {
     final RemoteWorkspaceContext? remote = _remoteContext;

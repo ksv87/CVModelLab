@@ -10,7 +10,12 @@ import 'image_source.dart';
 import 'platform_file_picker_desktop.dart' show DesktopDirectoryImageSource;
 import 'project_file_io_stub.dart';
 
-ProjectFileIo createProjectFileIo() => const DesktopProjectFileIo();
+ProjectFileIo createProjectFileIo() {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return const UnsupportedProjectFileIo();
+  }
+  return const DesktopProjectFileIo();
+}
 
 class DesktopProjectFileIo implements ProjectFileIo {
   const DesktopProjectFileIo();

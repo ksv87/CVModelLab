@@ -4,6 +4,7 @@ import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/image_preview_pane.dart';
+import '../widgets/responsive.dart';
 import '../widgets/status_views.dart';
 
 class WorstCasesScreen extends StatefulWidget {
@@ -48,67 +49,78 @@ class _WorstCasesScreenState extends State<WorstCasesScreen>
         icon: Icons.task_alt,
       );
     }
-    return Row(
-      children: [
-        Expanded(
-          flex: 3,
-          child: DefaultTabController(
-            length: categories.length,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    final bool compact = context.isCompactWidth;
+    // On compact width tapping an item opens the image in the browser instead
+    // of a side preview pane (which is dropped to give the list full width).
+    final void Function(WorstCaseItem, String) onItemTap = compact
+        ? (WorstCaseItem item, String _) => widget.onImageSelected(item.imageId)
+        : _selectPreview;
+
+    final Widget tabbed = DefaultTabController(
+      length: categories.length,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Worst Cases',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const Spacer(),
-                      DropdownButton<int>(
-                        value: _topN,
-                        items: const [
-                          DropdownMenuItem(value: 20, child: Text('Top 20')),
-                          DropdownMenuItem(value: 50, child: Text('Top 50')),
-                          DropdownMenuItem(value: 100, child: Text('Top 100')),
-                          DropdownMenuItem(value: 0, child: Text('All')),
-                        ],
-                        onChanged: (int? value) {
-                          if (value != null) {
-                            setState(() => _topN = value);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                TabBar(
-                  isScrollable: true,
-                  tabs: [
-                    for (final group in categories)
-                      Tab(text: '${group.label} (${group.items.length})'),
-                  ],
-                ),
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      for (final group in categories)
-                        _WorstCaseList(
-                          label: group.label,
-                          categoryKey: group.key,
-                          items: _limit(group.items),
-                          selectedImageId: _previewImageId,
-                          onPreview: _selectPreview,
-                          onExportAnnotated: widget.onExportAnnotated,
-                        ),
-                    ],
+                  child: Text(
+                    'Worst Cases',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                ),
+                DropdownButton<int>(
+                  value: _topN,
+                  items: const [
+                    DropdownMenuItem(value: 20, child: Text('Top 20')),
+                    DropdownMenuItem(value: 50, child: Text('Top 50')),
+                    DropdownMenuItem(value: 100, child: Text('Top 100')),
+                    DropdownMenuItem(value: 0, child: Text('All')),
+                  ],
+                  onChanged: (int? value) {
+                    if (value != null) {
+                      setState(() => _topN = value);
+                    }
+                  },
                 ),
               ],
             ),
           ),
-        ),
+          TabBar(
+            isScrollable: true,
+            tabs: [
+              for (final group in categories)
+                Tab(text: '${group.label} (${group.items.length})'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                for (final group in categories)
+                  _WorstCaseList(
+                    label: group.label,
+                    categoryKey: group.key,
+                    items: _limit(group.items),
+                    selectedImageId: _previewImageId,
+                    onPreview: onItemTap,
+                    onExportAnnotated: widget.onExportAnnotated,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (compact) {
+      return tabbed;
+    }
+
+    return Row(
+      children: [
+        Expanded(flex: 3, child: tabbed),
         const VerticalDivider(width: 1),
         Expanded(
           flex: 2,

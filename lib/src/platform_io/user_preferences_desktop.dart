@@ -3,10 +3,35 @@ export 'user_preferences_stub.dart' show createUserPreferencesStore;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../core/preferences/user_preferences_store.dart';
 
 UserPreferencesStore createUserPreferencesStore() {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return MobileSharedPreferencesStore();
+  }
   return DesktopJsonUserPreferencesStore();
+}
+
+class MobileSharedPreferencesStore implements UserPreferencesStore {
+  MobileSharedPreferencesStore({SharedPreferencesAsync? preferences})
+      : _preferences = preferences ?? SharedPreferencesAsync();
+
+  final SharedPreferencesAsync _preferences;
+
+  @override
+  Future<String?> getString(String key) => _preferences.getString(key);
+
+  @override
+  Future<void> setString(String key, String value) {
+    return _preferences.setString(key, value);
+  }
+
+  @override
+  Future<void> remove(String key) {
+    return _preferences.remove(key);
+  }
 }
 
 class DesktopJsonUserPreferencesStore implements UserPreferencesStore {

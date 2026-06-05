@@ -42,7 +42,7 @@ CV Model Lab помогает разбирать качество датасет
 - Desktop Recent Projects и last-used folder preferences.
 - Image Browser thumbnail cache с web-safe fallback.
 - Web/PWA restore mode для браузерных сценариев.
-- Desktop и Web/PWA support из одного приложения.
+- Desktop, Web/PWA и Android/iOS remote-client support из одного приложения.
 
 ## Примеры отчётов
 
@@ -60,12 +60,41 @@ CV Model Lab помогает разбирать качество датасет
 
 ## Поддерживаемые платформы
 
-- Linux desktop.
-- Windows desktop.
-- macOS desktop.
-- Web/PWA в браузере.
+| Платформа | Локальные standalone датасеты | Удалённые проекты сервера |
+|-----------|-------------------------------|---------------------------|
+| Linux / Windows / macOS desktop | Да | Да |
+| Web/PWA | Да, через browser-selected files | Да |
+| Android / iOS apps | Нет | Да, только remote |
 
 Desktop builds требуют соответствующий Flutter desktop toolchain на целевой ОС. Web build работает без backend и использует browser file selection APIs.
+
+## Android и iOS приложения
+
+Android и iOS приложения работают только как удалённые клиенты для CV Model Lab
+Server. Они запускаются в **режиме удалённого клиента**, подключаются к вручную
+введённому URL сервера и открывают server manifest projects или custom server
+paths через server file browser. Они не запрашивают broad storage permissions и
+не открывают локальные COCO annotations, predictions, каталоги изображений,
+локальные project files или локальный AP evaluator с устройства.
+
+Подробнее: [Android и iOS как удалённые клиенты](docs/ru/mobile_apps.md) /
+[Android and iOS Remote Clients](docs/mobile_apps.md).
+
+## Мобильный PWA
+
+Сборка Web/PWA адаптивна и подстраивается под узкие и мобильные экраны. На
+компактной ширине она переключается на мобильную вёрстку с нижней навигацией
+(Проект, Изображения, Метрики, Сравнение, Отчёты, Ещё), полноэкранным
+просмотрщиком с зумом/панорамированием и параметрами наложения, фильтрами в
+bottom sheet, мобильным представлением Confusion Matrix с топом путаниц и
+диалогом экспорта для узких экранов. На широких экранах сохраняется
+desktop-вёрстка.
+
+Работает на Android Chrome, iOS Safari, установленном PWA и суженном окне
+desktop-браузера. Нативные приложения Android и iOS используют отдельный
+remote-only client mode, описанный выше.
+
+Подробнее: [Мобильный PWA](docs/ru/mobile_pwa.md) / [Mobile PWA](docs/mobile_pwa.md).
 
 ## Поддерживаемые форматы
 

@@ -117,40 +117,54 @@ class _ImagePreviewPaneState extends State<ImagePreviewPane> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  image.fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+              Text(
+                image.fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-              if (canFocus) ...[
-                SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  segments: const [
-                    ButtonSegment<bool>(value: false, label: Text('All')),
-                    ButtonSegment<bool>(value: true, label: Text('Only error')),
+              if (canFocus || widget.onOpenInBrowser != null) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (canFocus)
+                      SegmentedButton<bool>(
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        segments: const [
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text('All'),
+                          ),
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text('Only error'),
+                          ),
+                        ],
+                        selected: {_errorsOnly},
+                        onSelectionChanged: (Set<bool> values) {
+                          setState(() => _errorsOnly = values.first);
+                        },
+                      ),
+                    if (widget.onOpenInBrowser != null)
+                      TextButton.icon(
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text('Open in Browser'),
+                        onPressed: () => widget.onOpenInBrowser!(imageId!),
+                      ),
                   ],
-                  selected: {_errorsOnly},
-                  onSelectionChanged: (Set<bool> values) {
-                    setState(() => _errorsOnly = values.first);
-                  },
                 ),
-                const SizedBox(width: 8),
               ],
-              if (widget.onOpenInBrowser != null)
-                TextButton.icon(
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text('Open in Browser'),
-                  onPressed: () => widget.onOpenInBrowser!(imageId!),
-                ),
             ],
           ),
         ),

@@ -38,54 +38,105 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.remoteForgetApiKey => 'Забыть сохранённый ключ',
       MessageKey.remoteApiKeyCleared => 'Сохранённый API-ключ удалён',
       MessageKey.remoteApiKeyInvalid => 'Неверный API-ключ.',
+      MessageKey.remoteProject => 'Удалённый проект',
       MessageKey.themeTooltip => 'Тема',
       MessageKey.themeSystem => 'Системная',
       MessageKey.themeLight => 'Светлая',
       MessageKey.themeDark => 'Тёмная',
+      MessageKey.navProject => 'Проект',
+      MessageKey.navImages => 'Изображения',
+      MessageKey.navMetrics => 'Метрики',
+      MessageKey.navCompare => 'Сравнение',
+      MessageKey.navReports => 'Отчёты',
+      MessageKey.navMore => 'Ещё',
+      MessageKey.mobileOverlayOptions => 'Параметры наложения',
+      MessageKey.mobileNextImage => 'Следующее изображение',
+      MessageKey.mobilePrevImage => 'Предыдущее изображение',
+      MessageKey.mobileNextError => 'Следующая ошибка',
+      MessageKey.mobilePrevError => 'Предыдущая ошибка',
+      MessageKey.mobileOpenFilters => 'Открыть фильтры',
+      MessageKey.mobileApplyFilters => 'Применить фильтры',
+      MessageKey.mobileResetFilters => 'Сбросить фильтры',
+      MessageKey.mobileFilters => 'Фильтры',
+      MessageKey.mobileFullMatrix => 'Полная матрица',
+      MessageKey.mobileTopConfusedPairs => 'Топ путаниц классов',
+      MessageKey.mobileMissedPairs => 'Пропущенные объекты',
+      MessageKey.mobileBackgroundFpPairs => 'Ложные на фоне',
+      MessageKey.mobileLargeExportWarning =>
+        'Большие экспорты могут выполняться долго в мобильном браузере.',
+      MessageKey.mobileCompactLayout => 'Компактный режим',
+      MessageKey.mobileDetails => 'Детали',
+      MessageKey.mobileShowDetails => 'Показать детали',
+      MessageKey.mobileBackToList => 'К списку',
+      MessageKey.mobileModelView => 'Просмотр модели',
+      MessageKey.mobileDiffView => 'Просмотр различий',
+      MessageKey.mobileBaseModel => 'Базовая',
+      MessageKey.mobileCandidateModel => 'Кандидат',
+      MessageKey.mobileFitToScreen => 'Вписать в экран',
+      MessageKey.mobileRemoteClientMode => 'Режим удалённого клиента',
+      MessageKey.mobileRemoteClientExplanation =>
+        'Мобильные приложения работают как удалённые клиенты. Запустите CV Model Lab Server и подключитесь к его URL.',
+      MessageKey.mobileLocalUnavailable =>
+        'Локальные проекты недоступны на мобильных.',
+      MessageKey.mobileOpenRecentRemoteProject =>
+        'Открыть недавний удалённый проект',
+      MessageKey.mobileRememberApiKeyOnDevice =>
+        'Запомнить API-ключ на этом устройстве',
+      MessageKey.mobileForgetSavedApiKey => 'Забыть сохранённый API-ключ',
+      MessageKey.mobileDisconnectServer => 'Отключиться от сервера',
+      MessageKey.mobileExportDesktopPwaOnly =>
+        'Этот экспорт доступен в настольной версии и PWA.',
+      MessageKey.mobileExportLimited =>
+        'Поддержка на мобильных ограничена в этой версии.',
+      MessageKey.mobileServerUnreachable => 'Сервер недоступен',
+      MessageKey.mobileNetworkError => 'Ошибка сети',
       MessageKey.parseInvalidJson => 'Некорректный JSON: ${p['error'] ?? ''}',
       MessageKey.parseAnnotationsRootMustBeObject =>
-        'Корень COCO annotations должен быть объектом',
+        'Корень COCO-аннотаций должен быть объектом',
       MessageKey.parseAnnotationsListsRequired =>
         'images, annotations и categories должны быть списками',
-      MessageKey.parseImageMustBeObject => 'image должен быть объектом',
+      MessageKey.parseImageMustBeObject =>
+        'Запись изображения должна быть объектом',
       MessageKey.parseImageRequiresIdAndFileName =>
-        'image требует id и file_name',
+        'Запись изображения должна содержать id и file_name',
       MessageKey.parseDuplicateImageIdSkipped =>
         'дублирующийся image id ${p['id']} пропущен',
-      MessageKey.parseCategoryMustBeObject => 'category должен быть объектом',
-      MessageKey.parseCategoryRequiresIdAndName => 'category требует id и name',
+      MessageKey.parseCategoryMustBeObject =>
+        'Запись категории должна быть объектом',
+      MessageKey.parseCategoryRequiresIdAndName =>
+        'Запись категории должна содержать id и name',
       MessageKey.parseDuplicateCategoryIdSkipped =>
         'дублирующийся category id ${p['id']} пропущен',
       MessageKey.parseAnnotationMustBeObject =>
-        'annotation должен быть объектом',
+        'Аннотация должна быть объектом',
       MessageKey.parseAnnotationUnknownImageId =>
-        'annotation ссылается на неизвестный image_id',
+        'Аннотация ссылается на неизвестный image_id',
       MessageKey.parseAnnotationUnknownCategoryId =>
-        'annotation ссылается на неизвестный category_id',
+        'Аннотация ссылается на неизвестный category_id',
       MessageKey.parsePredictionsRootMustBeList =>
-        'Корень COCO predictions должен быть списком',
+        'Корень COCO-предсказаний должен быть списком',
       MessageKey.parsePredictionMustBeObject =>
-        'prediction должен быть объектом',
+        'Предсказание должно быть объектом',
       MessageKey.parsePredictionUnknownCategoryId =>
-        'prediction ссылается на неизвестный category_id',
+        'Предсказание ссылается на неизвестный category_id',
       MessageKey.parsePredictionUnknownImageId =>
-        'prediction ссылается на неизвестный image_id',
+        'Предсказание ссылается на неизвестный image_id',
       MessageKey.parsePredictionRequiresImageIdOrFileName =>
-        'prediction требует image_id или file_name',
+        'Предсказание должно содержать image_id или file_name',
       MessageKey.parsePredictionFileNameBasenameFallback =>
-        'prediction file_name сопоставлен по basename fallback',
+        'file_name предсказания сопоставлен по имени файла',
       MessageKey.parsePredictionFileNameAmbiguous =>
-        'basename у prediction file_name неоднозначен',
+        'имя файла в prediction file_name неоднозначно',
       MessageKey.parsePredictionUnknownFileName =>
-        'prediction ссылается на неизвестный file_name',
+        'Предсказание ссылается на неизвестный file_name',
       MessageKey.parsePredictionRequiresNumericScore =>
-        'prediction требует numeric score',
+        'Предсказание должно содержать числовой score',
       MessageKey.parsePredictionScoreOutOfRange =>
-        'prediction score вне ожидаемого диапазона 0..1',
+        'score предсказания вне ожидаемого диапазона 0..1',
       MessageKey.parseBboxMustHaveFourNumbers =>
         'bbox должен содержать 4 числа',
       MessageKey.parseBboxNonPositiveSize =>
-        'bbox width и height должны быть положительными',
+        'ширина и высота bbox должны быть положительными',
       MessageKey.parseMissingImageFile => 'файл изображения не найден',
       MessageKey.parseMoreMissingImageFiles =>
         'ещё ${p['count']} файлов изображений не найдено',
@@ -94,9 +145,9 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.errorPermissionDenied =>
         'CV Model Lab не смог получить доступ к выбранному файлу или папке. Выберите файл заново или используйте доступную директорию.',
       MessageKey.errorApUnavailable =>
-        'COCO AP evaluation недоступен в этой среде. В web импортируйте AP metrics JSON.',
+        'Расчёт COCO AP недоступен в этой среде. В web-версии импортируйте JSON с AP-метриками.',
       MessageKey.errorOperationFailed =>
-        'Операцию не удалось завершить. Проверьте details или выберите другой файл/папку.',
+        'Операцию не удалось завершить. Проверьте подробности или выберите другой файл либо папку.',
       MessageKey.errorProjectRestoreFailed =>
         'Не удалось восстановить проект. Заново выберите файлы и повторите.',
       MessageKey.errorExportFailed =>
@@ -113,20 +164,20 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.recCandidateRegression => _recCandidateRegression(p),
       MessageKey.recThresholdLowPrecision => _recThresholdLowPrecision(p),
       MessageKey.recThresholdLowRecall => _recThresholdLowRecall(p),
-      MessageKey.reportTitle => 'Отчет CV Model Lab',
+      MessageKey.reportTitle => 'Отчёт CV Model Lab',
       MessageKey.reportDatasetSummary => 'Сводка датасета',
-      MessageKey.reportModelRunSummary => 'Сводка model run',
+      MessageKey.reportModelRunSummary => 'Сводка запуска модели',
       MessageKey.reportOverallMetrics => 'Общие метрики',
       MessageKey.reportPerClassMetrics => 'Метрики по классам',
       MessageKey.reportSmallObjectStats => 'Статистика малых объектов',
-      MessageKey.reportConfusionMatrix => 'Confusion Matrix',
-      MessageKey.reportDatasetHealth => 'Dataset Health',
-      MessageKey.reportWorstCases => 'Worst Cases',
+      MessageKey.reportConfusionMatrix => 'Матрица ошибок',
+      MessageKey.reportDatasetHealth => 'Проверка датасета',
+      MessageKey.reportWorstCases => 'Худшие случаи',
       MessageKey.reportRecommendations => 'Рекомендации',
-      MessageKey.reportCocoApMetrics => 'COCO AP Metrics',
+      MessageKey.reportCocoApMetrics => 'Метрики COCO AP',
       MessageKey.reportModelComparison => 'Сравнение моделей',
       MessageKey.reportImageErrors => 'Ошибки по изображениям',
-      MessageKey.reportMatches => 'Matches',
+      MessageKey.reportMatches => 'Сопоставления',
       MessageKey.reportExecutiveSummary => 'Сводка',
       MessageKey.reportAppendix => 'Приложение: примеры ошибок',
       MessageKey.reportImagesByStatus => 'Изображения по статусу',
@@ -147,8 +198,7 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.mmLargeErrorSpread => 'Большой разброс ошибок',
       MessageKey.mmPredictionCountDisagreement =>
         'Расхождение числа предсказаний',
-      MessageKey.mmApNotComputed =>
-        'AP-метрики для этой модели не рассчитаны.',
+      MessageKey.mmApNotComputed => 'AP-метрики для этой модели не рассчитаны.',
       MessageKey.mmSelectTwoRuns =>
         'Добавьте минимум два запуска модели для сравнения.',
       MessageKey.mmOpenPairwise => 'Открыть попарное сравнение',
@@ -166,7 +216,7 @@ class AppLocalizationsRu extends AppLocalizations {
       MessageKey.mmWrongModels => 'Ошибающиеся модели',
       MessageKey.mmSpread => 'Разброс',
       MessageKey.mmImagesWithErrors => 'Изображений с ошибками',
-      MessageKey.mmSmallRecall => 'Recall малых',
+      MessageKey.mmSmallRecall => 'Полнота малых',
       MessageKey.mmExportTable => 'Экспортировать таблицу',
       MessageKey.mmType => 'Тип',
       MessageKey.mmImage => 'Изображение',
@@ -181,91 +231,95 @@ class AppLocalizationsRu extends AppLocalizations {
   String _part(MessageParams p) => '${p['part'] ?? 'message'}';
 
   String _recLowRecall(MessageParams p) => switch (_part(p)) {
-        'title' => 'Низкий recall для класса "${p['class_name']}"',
+        'title' => 'Низкая полнота для класса "${p['class_name']}"',
         'action' =>
-          'Проверьте false negatives, консистентность разметки, добавьте примеры и рассмотрите изменения resolution/augmentation.',
+          'Проверьте пропущенные объекты, согласованность разметки, добавьте примеры и рассмотрите изменение разрешения или аугментаций.',
         _ => 'Модель пропускает много объектов этого класса.',
       };
 
   String _recLowPrecision(MessageParams p) => switch (_part(p)) {
-        'title' => 'Низкий precision для класса "${p['class_name']}"',
+        'title' => 'Низкая точность для класса "${p['class_name']}"',
         'action' =>
-          'Проверьте false positives, добавьте hard negatives, пересмотрите taxonomy и score threshold.',
-        _ => 'Многие predictions этого класса являются false positives.',
+          'Проверьте ложные срабатывания, добавьте сложные отрицательные примеры, пересмотрите таксономию классов и порог score.',
+        _ =>
+          'Многие предсказания этого класса являются ложными срабатываниями.',
       };
 
   String _recRareClass(MessageParams p) => switch (_part(p)) {
         'title' => 'Редкий класс "${p['class_name']}"',
         'action' =>
-          'Соберите больше samples или не доверяйте метрикам этого класса.',
-        _ => 'У этого класса слишком мало ground-truth примеров.',
+          'Соберите больше примеров или не полагайтесь на метрики этого класса.',
+        _ => 'У этого класса слишком мало эталонных примеров.',
       };
 
   String _recClassImbalance(MessageParams p) => switch (_part(p)) {
         'title' => 'Обнаружен дисбаланс классов',
-        'action' => 'Соберите или oversample underrepresented classes.',
-        _ => 'Некоторые классы имеют очень малую долю GT objects.',
+        'action' =>
+          'Соберите больше данных для редких классов или используйте oversampling.',
+        _ => 'Некоторые классы имеют очень малую долю эталонных объектов.',
       };
 
   String _recSmallObject(MessageParams p) => switch (_part(p)) {
         'title' => 'Слабое качество на малых объектах',
         'action' =>
-          'Рассмотрите higher input resolution, tiling, больше small-object samples или ревью tiny annotations.',
+          'Рассмотрите повышение входного разрешения, tiling, добавление примеров малых объектов или проверку очень маленьких аннотаций.',
         _ =>
-          'Small objects для "${p['class_name']}" имеют заметно более низкий recall, чем крупные объекты.',
+          'Малые объекты класса "${p['class_name']}" имеют заметно более низкую полноту, чем крупные объекты.',
       };
 
   String _recHighConfidenceFp(MessageParams p) => switch (_part(p)) {
-        'title' => 'High-confidence false positives',
+        'title' => 'Ложные срабатывания с высокой уверенностью',
         'action' =>
-          'Проверьте hard negatives, добавьте background examples, проверьте score calibration.',
+          'Проверьте сложные отрицательные примеры, добавьте фоновые примеры и проверьте калибровку score.',
         _ =>
-          'Некоторые false positives имеют высокий confidence, что ухудшает надежность thresholding.',
+          'Некоторые ложные срабатывания имеют высокую уверенность, что снижает надёжность выбора порога.',
       };
 
   String _recManyFn(MessageParams p) => switch (_part(p)) {
         'title' => 'Много пропущенных объектов',
         'action' =>
-          'Проверьте FN cases, consistency разметки, input resolution, augmentation и train/val distribution.',
-        _ => 'False negatives — значимая часть текущего профиля ошибок.',
+          'Проверьте случаи пропусков, согласованность разметки, входное разрешение, аугментации и распределение train/val.',
+        _ =>
+          'Пропущенные объекты составляют значимую часть текущего профиля ошибок.',
       };
 
   String _recClassConfusion(MessageParams p) => switch (_part(p)) {
         'title' =>
           'Путаница классов: "${p['gt_class_name']}" предсказан как "${p['pred_class_name']}"',
         'action' =>
-          'Проверьте annotation rules и visual similarity. Добавьте discriminative examples.',
-        _ => 'Модель путает эти два класса в class-agnostic matching.',
+          'Проверьте правила разметки и визуальную похожесть классов. Добавьте различающие примеры.',
+        _ => 'Модель путает эти два класса при сопоставлении без учёта класса.',
       };
 
   String _recDatasetHealth(MessageParams p) => switch (_part(p)) {
-        'title' => 'Обнаружены ошибки Dataset Health',
-        'action' => 'Исправьте issues датасета перед доверием метрикам.',
+        'title' => 'Обнаружены ошибки в датасете',
+        'action' =>
+          'Исправьте проблемы датасета, прежде чем доверять метрикам.',
         _ =>
-          'Dataset Health нашел ошибки, которые могут сделать метрики ненадежными.',
+          'Проверка датасета нашла ошибки, из-за которых метрики могут быть ненадёжными.',
       };
 
   String _recCandidateRegression(MessageParams p) => switch (_part(p)) {
-        'title' => 'Candidate model регрессировал',
+        'title' => 'Модель-кандидат регрессировала',
         'action' =>
-          'Проверьте broken/regressed images перед выбором candidate для production.',
+          'Проверьте изображения с ухудшениями перед выбором кандидата для продакшена.',
         _ =>
-          'Candidate model добавил broken или regressed images относительно base run.',
+          'Модель-кандидат добавила ухудшившиеся изображения по сравнению с базовым запуском.',
       };
 
   String _recThresholdLowPrecision(MessageParams p) => switch (_part(p)) {
-        'title' => 'Precision низкий, recall приемлемый',
-        'action' => 'Попробуйте повысить confidence threshold.',
+        'title' => 'Точность низкая, полнота приемлемая',
+        'action' => 'Попробуйте повысить порог уверенности.',
         _ =>
-          'Текущий threshold сохраняет много detections, но пропускает много false positives.',
+          'Текущий порог сохраняет много детекций, но допускает много ложных срабатываний.',
       };
 
   String _recThresholdLowRecall(MessageParams p) => switch (_part(p)) {
-        'title' => 'Recall низкий, precision приемлемый',
+        'title' => 'Полнота низкая, точность приемлемая',
         'action' =>
-          'Попробуйте снизить confidence threshold или улучшить data/model recall.',
+          'Попробуйте снизить порог уверенности или улучшить полноту данных и модели.',
         _ =>
-          'Текущий threshold может быть слишком строгим или модели нужен более сильный recall.',
+          'Текущий порог может быть слишком строгим, либо модели нужно улучшить полноту.',
       };
 
   @override
@@ -280,120 +334,122 @@ class AppLocalizationsRu extends AppLocalizations {
       DatasetIssueType.missingImageFile => switch (part) {
           'title' => 'Файл изображения не найден',
           'recommendation' => 'Добавьте файл или исправьте путь file_name.',
-          _ => 'Image "$file" указан в COCO, но файл не найден.',
+          _ => 'Изображение "$file" указано в COCO, но файл не найден.',
         },
       DatasetIssueType.unusedImageFile => switch (part) {
           'title' => 'Неиспользуемый файл изображения',
           'recommendation' =>
-            'Удалите файл или добавьте для него image record.',
-          _ => 'File "$file" присутствует, но не referenced by dataset.',
+            'Удалите файл или добавьте для него запись изображения.',
+          _ => 'Файл "$file" присутствует, но не используется датасетом.',
         },
       DatasetIssueType.unknownAnnotationImageId => switch (part) {
-          'title' => 'Annotation ссылается на неизвестное image',
+          'title' => 'Аннотация ссылается на неизвестное изображение',
           'recommendation' =>
-            'Удалите annotation или добавьте missing image record.',
+            'Удалите аннотацию или добавьте отсутствующую запись изображения.',
           _ =>
-            'Annotation ${p['annotation_id']} ссылается на image_id ${p['image_id']}, которого нет в dataset.',
+            'Аннотация ${p['annotation_id']} ссылается на image_id ${p['image_id']}, которого нет в датасете.',
         },
       DatasetIssueType.unknownAnnotationCategoryId => switch (part) {
-          'title' => 'Annotation ссылается на неизвестную category',
+          'title' => 'Аннотация ссылается на неизвестную категорию',
           'recommendation' =>
-            'Добавьте category в "categories" или исправьте annotation.',
+            'Добавьте категорию в "categories" или исправьте аннотацию.',
           _ =>
-            'Annotation ${p['annotation_id']} ссылается на category_id ${p['category_id']}, которая не объявлена.',
+            'Аннотация ${p['annotation_id']} ссылается на category_id ${p['category_id']}, которая не объявлена.',
         },
       DatasetIssueType.unknownPredictionImageId => switch (part) {
-          'title' => 'Prediction ссылается на неизвестное image',
+          'title' => 'Предсказание ссылается на неизвестное изображение',
           'recommendation' =>
-            'Проверьте, что predictions и annotations используют одинаковые image ids / file names.',
+            'Проверьте, что предсказания и аннотации используют одинаковые image_id и file_name.',
           _ =>
-            'Prediction ссылается на image_id ${p['image_id']}, которого нет в dataset.',
+            'Предсказание ссылается на image_id ${p['image_id']}, которого нет в датасете.',
         },
       DatasetIssueType.unknownPredictionCategoryId => switch (part) {
-          'title' => 'Prediction ссылается на неизвестную category',
+          'title' => 'Предсказание ссылается на неизвестную категорию',
           'recommendation' =>
-            'Согласуйте prediction category ids с dataset categories.',
+            'Согласуйте category_id предсказаний с категориями датасета.',
           _ =>
-            'Prediction ссылается на category_id ${p['category_id']}, которая не объявлена.',
+            'Предсказание ссылается на category_id ${p['category_id']}, которая не объявлена.',
         },
       DatasetIssueType.invalidBbox => switch (part) {
           'title' => 'Некорректный bbox',
-          'recommendation' => 'Удалите или исправьте degenerate box.',
-          _ => 'Box имеет non-positive width или height.',
+          'recommendation' => 'Удалите или исправьте вырожденный bbox.',
+          _ => 'Bbox имеет неположительную ширину или высоту.',
         },
       DatasetIssueType.bboxOutsideImage => switch (part) {
           'title' => 'BBox вне изображения',
-          'recommendation' => 'Исправьте bbox coordinates.',
-          _ => 'BBox полностью вне image bounds.',
+          'recommendation' => 'Исправьте координаты bbox.',
+          _ => 'BBox полностью находится вне границ изображения.',
         },
       DatasetIssueType.bboxPartiallyOutsideImage => switch (part) {
           'title' => 'BBox частично вне изображения',
-          'recommendation' => 'Clamp bbox to image.',
-          _ => 'BBox выходит за image bounds.',
+          'recommendation' => 'Обрежьте bbox по границам изображения.',
+          _ => 'BBox выходит за границы изображения.',
         },
       DatasetIssueType.extremeAspectRatio => switch (part) {
-          'title' => 'Extreme aspect ratio',
-          'recommendation' => 'Проверьте malformed box.',
-          _ => 'BBox имеет extreme aspect ratio.',
+          'title' => 'Экстремальное соотношение сторон',
+          'recommendation' => 'Проверьте, не является ли bbox ошибочным.',
+          _ => 'BBox имеет экстремальное соотношение сторон.',
         },
       DatasetIssueType.tinyBbox => switch (part) {
-          'title' => 'Tiny bbox',
-          'recommendation' => 'Проверьте, что annotation не является ошибкой.',
+          'title' => 'Очень маленький bbox',
+          'recommendation' => 'Проверьте, что аннотация не является ошибкой.',
           _ => 'BBox очень маленький.',
         },
       DatasetIssueType.hugeBbox => switch (part) {
-          'title' => 'Huge bbox',
-          'recommendation' => 'Подтвердите, что box intentional.',
+          'title' => 'Очень большой bbox',
+          'recommendation' => 'Подтвердите, что такой bbox указан намеренно.',
           _ => 'BBox покрывает большую часть изображения.',
         },
       DatasetIssueType.imageWithoutGroundTruth => switch (part) {
-          'title' => 'Image без ground truth',
+          'title' => 'Изображение без эталонной разметки',
           'recommendation' =>
-            'Подтвердите, что image intentionally negative sample.',
-          _ => 'Image "$file" не имеет annotations.',
+            'Подтвердите, что изображение намеренно является отрицательным примером.',
+          _ => 'Изображение "$file" не имеет аннотаций.',
         },
       DatasetIssueType.classWithoutGroundTruth => switch (part) {
-          'title' => 'Class без ground truth',
+          'title' => 'Класс без эталонной разметки',
           'recommendation' =>
-            'Удалите unused class или добавьте training data.',
-          _ => 'Class "$cls" не имеет GT objects.',
+            'Удалите неиспользуемый класс или добавьте обучающие данные.',
+          _ => 'Класс "$cls" не имеет эталонных объектов.',
         },
       DatasetIssueType.rareClass => switch (part) {
           'title' => 'Редкий класс',
-          'recommendation' => 'Соберите больше samples для этого класса.',
-          _ => 'Class "$cls" имеет мало GT objects.',
+          'recommendation' => 'Соберите больше примеров для этого класса.',
+          _ => 'Класс "$cls" имеет мало эталонных объектов.',
         },
       DatasetIssueType.classImbalance => switch (part) {
           'title' => 'Дисбаланс класса',
           'recommendation' =>
-            'Рассмотрите rebalance dataset или class weights.',
-          _ => 'Class "$cls" имеет малую долю GT objects.',
+            'Рассмотрите балансировку датасета или веса классов.',
+          _ => 'Класс "$cls" имеет малую долю эталонных объектов.',
         },
       DatasetIssueType.duplicateImageId => switch (part) {
-          'title' => 'Duplicate image id',
-          'recommendation' => 'Сделайте image ids уникальными.',
-          _ => 'Image id встречается больше одного раза.',
+          'title' => 'Дублирующийся image id',
+          'recommendation' => 'Сделайте image_id уникальными.',
+          _ => 'image_id встречается больше одного раза.',
         },
       DatasetIssueType.duplicateFileName => switch (part) {
-          'title' => 'Duplicate file name',
+          'title' => 'Дублирующееся file_name',
           'recommendation' =>
-            'Убедитесь, что каждый image record имеет unique file_name.',
-          _ => 'File_name используется несколькими image ids.',
+            'Убедитесь, что каждая запись изображения имеет уникальный file_name.',
+          _ => 'file_name используется несколькими image id.',
         },
       DatasetIssueType.duplicateAnnotationId => switch (part) {
-          'title' => 'Duplicate annotation id',
-          'recommendation' => 'Сделайте annotation ids уникальными.',
-          _ => 'Annotation id встречается больше одного раза.',
+          'title' => 'Дублирующийся annotation id',
+          'recommendation' => 'Сделайте annotation_id уникальными.',
+          _ => 'annotation_id встречается больше одного раза.',
         },
       DatasetIssueType.predictionWithoutImage => switch (part) {
-          'title' => 'Prediction без image',
-          'recommendation' => 'Согласуйте predictions с image list датасета.',
-          _ => 'Prediction не сопоставляется с image датасета.',
+          'title' => 'Предсказание без изображения',
+          'recommendation' =>
+            'Согласуйте предсказания со списком изображений датасета.',
+          _ => 'Предсказание не сопоставляется с изображением датасета.',
         },
       DatasetIssueType.predictionOnImageWithoutGroundTruth => switch (part) {
-          'title' => 'Predictions на image без ground truth',
-          'recommendation' => 'Проверьте полноту GT.',
-          _ => 'Image имеет predictions, но не имеет ground truth.',
+          'title' => 'Предсказания на изображении без эталонной разметки',
+          'recommendation' => 'Проверьте полноту эталонной разметки.',
+          _ =>
+            'Изображение имеет предсказания, но не имеет эталонной разметки.',
         },
     };
   }

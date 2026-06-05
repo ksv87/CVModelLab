@@ -1,6 +1,7 @@
 import 'package:cv_model_lab/cv_model_lab.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/preferences/recent_remote_projects.dart';
 import '../../platform_io/image_source.dart';
 import '../../platform_io/remote/api_base.dart';
 import '../../platform_io/remote/cvml_api_client.dart';
@@ -8,6 +9,7 @@ import '../../platform_io/remote/remote_connection.dart';
 import '../../platform_io/remote/remote_credentials.dart';
 import '../../platform_io/remote/remote_models.dart';
 import '../../platform_io/remote/remote_workspace.dart';
+import '../../platform_io/remote/served_mode.dart';
 import '../../platform_io/user_preferences.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/app_localizations.dart';
@@ -44,6 +46,8 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
   final TextEditingController _apiKeyController = TextEditingController();
   late final RemoteCredentialStore _credentials =
       RemoteCredentialStore(createUserPreferencesStore());
+  late final RecentRemoteProjectsManager _recentRemoteProjectsManager =
+      RecentRemoteProjectsManager(store: createUserPreferencesStore());
 
   bool _saveApiKey = false;
   bool _hasSavedKey = false;
@@ -100,11 +104,11 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
       await RemoteServerConnection(
         client: HttpCvmlApiClient(baseUrl: origin),
       ).fetchConfig();
-      served = true;
+      served = serverServesPwa(configOk: true, unauthorized: false);
     } on RemoteApiException catch (e) {
-      served = e.isUnauthorized;
+      served = serverServesPwa(configOk: false, unauthorized: e.isUnauthorized);
     } on Object {
-      served = false;
+      served = serverServesPwa(configOk: false, unauthorized: false);
     }
     if (!mounted) return;
     setState(() {
@@ -398,6 +402,15 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
           : entries
               .indexWhere((e) => e.modelRun.id == activeRunId)
               .clamp(0, entries.length - 1);
+      if (remoteDescriptor != null) {
+        await _recentRemoteProjectsManager.addOrUpdate(
+          serverUrl: connection.baseUrl,
+          projectName: info.name,
+          descriptor: remoteDescriptor,
+          activeModelRunId: entries[activeIndex].modelRun.id,
+          defaultEvalConfig: defaultConfig,
+        );
+      }
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => WorkspaceScreen(
@@ -446,7 +459,11 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
             children: [
               TextField(
                 controller: _urlController,
-                enabled: !_servedFromBackend && !_probing && widget.reopen == null,
+                enabled: serverUrlEditable(
+                  servedFromBackend: _servedFromBackend,
+                  probing: _probing,
+                  reopening: widget.reopen != null,
+                ),
                 decoration: InputDecoration(
                   labelText: l10n.t(MessageKey.remoteServerUrl),
                   hintText: 'http://localhost:8080',
@@ -474,7 +491,7 @@ class _RemoteConnectScreenState extends State<RemoteConnectScreen> {
                 value: _saveApiKey,
                 onChanged: (bool? v) =>
                     setState(() => _saveApiKey = v ?? false),
-                title: Text(l10n.t(MessageKey.remoteSaveApiKey)),
+                title: Text(l10n.t(MessageKey.mobileRememberApiKeyOnDevice)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
